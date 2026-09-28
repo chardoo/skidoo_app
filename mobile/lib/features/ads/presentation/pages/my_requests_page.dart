@@ -6,6 +6,7 @@ import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
+import 'package:jperg_app/features/ads/presentation/pages/create_request_flow.dart';
 import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
@@ -738,6 +739,26 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
   late final TextEditingController _locationCtrl;
   late final TextEditingController _budgetCtrl;
   String? _eventType;
+
+  /// When the shoot is.
+  ///
+  /// The card leads on it, the board filters on it, and the premium promise is
+  /// measured from it — so a sheet that could not change it left the one field
+  /// most likely to move (a postponed wedding) needing the request deleted and
+  /// posted again.
+  DateTime? _eventDate;
+  TimeOfDay? _eventTime;
+
+  /// How much of the day is being asked for, and the detail the choice needs.
+  String? _coverageKind;
+  int? _coverageHours;
+  String _coverageNote = '';
+
+  /// The budget as a range, which is what the create form collects and what
+  /// the card renders. The single figure this sheet used to hold could only
+  /// ever write the midpoint back over it.
+  late final TextEditingController _budgetMinCtrl;
+  late final TextEditingController _budgetMaxCtrl;
   bool _commentsEnabled = true;
 
   /// Whether this request asks for a creator under a delivery promise.
@@ -769,6 +790,17 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     _eventType = r.eventType.isEmpty ? null : r.eventType;
     _commentsEnabled = r.commentsEnabled;
     _premiumOnly = r.premiumOnly;
+    _eventDate = r.eventDate;
+    _eventTime = _parseTime(r.eventTime);
+    _coverageKind = r.coverageKind;
+    _coverageHours = r.coverageHours;
+    _coverageNote = r.coverageNote ?? '';
+    _budgetMinCtrl = TextEditingController(
+      text: r.budgetMin != null ? r.budgetMin!.toStringAsFixed(0) : '',
+    );
+    _budgetMaxCtrl = TextEditingController(
+      text: r.budgetMax != null ? r.budgetMax!.toStringAsFixed(0) : '',
+    );
     _loadPremiumTerms();
   }
 
@@ -778,6 +810,8 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     _descCtrl.dispose();
     _locationCtrl.dispose();
     _budgetCtrl.dispose();
+    _budgetMinCtrl.dispose();
+    _budgetMaxCtrl.dispose();
     super.dispose();
   }
 
@@ -847,6 +881,209 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
     }
   }
 
+  /// "HH:MM" as the server stores it, back into a picker value.
+  ///
+  /// Null on anything unparseable rather than throwing: an odd value on one
+  /// request should leave that field empty, not stop the sheet opening.
+  static TimeOfDay? _parseTime(String? wire) {
+    if (wire == null || wire.isEmpty) return null;
+    final parts = wire.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null || h > 23 || m > 59) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  String get _eventTimeWire => _eventTime == null
+      ? ''
+      : '${_eventTime!.hour.toString().padLeft(2, '0')}:'
+          '${_eventTime!.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _eventDate ?? now.add(const Duration(days: 7)),
+      // Editing a request whose date has already passed is a real case — the
+      // shoot slipped — so the floor is today rather than the old date.
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 365 * 3)),
+    );
+    if (picked != null) setState(() => _eventDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _eventTime ?? const TimeOfDay(hour: 10, minute: 0),
+    );
+    if (picked != null) setState(() => _eventTime = picked);
+  }
+
+  /// Pick the coverage, and ask for the detail that choice needs.
+  ///
+  /// Hourly with no hours, and Other with no note, both render as a label with
+  /// nothing after it — so the follow-up is part of choosing rather than a
+  /// second field to forget. Same rule the create flow applies.
+  Future<void> _pickCoverage(AppThemeExtension ext) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: ext.homeBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in RequestCoverage.values)
+                  ListTile(
+                    title: Text(
+                      option.label,
+                      style: TextStyle(
+                        color: ext.greetingColor,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    subtitle: Text(
+                      option.hint,
+                      style: TextStyle(
+                        color: ext.searchHintColor,
+                        fontSize: 12.sp,
+                      ),
+                    ),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(option.wire),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+
+    if (picked == 'hourly') {
+      final hours = await _askHours(ext);
+      if (hours == null) return;
+      setState(() {
+        _coverageKind = picked;
+        _coverageHours = hours;
+        _coverageNote = '';
+      });
+      return;
+    }
+    if (picked == 'other') {
+      final note = await _askNote(ext);
+      if (note == null || note.trim().isEmpty) return;
+      setState(() {
+        _coverageKind = picked;
+        _coverageNote = note.trim();
+        _coverageHours = null;
+      });
+      return;
+    }
+    setState(() {
+      _coverageKind = picked;
+      // The other choice's detail goes with it, or "Full Day Coverage (~3
+      // hrs)" survives an edit from hourly.
+      _coverageHours = null;
+      _coverageNote = '';
+    });
+  }
+
+  Future<int?> _askHours(AppThemeExtension ext) async {
+    final controller = TextEditingController(
+      text: _coverageHours?.toString() ?? '',
+    );
+    final result = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text('How many hours?',
+            style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          style: TextStyle(color: ext.greetingColor),
+          decoration: const InputDecoration(hintText: 'e.g. 3'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext)
+                .pop(int.tryParse(controller.text.trim())),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return (result != null && result > 0) ? result : null;
+  }
+
+  Future<String?> _askNote(AppThemeExtension ext) async {
+    final controller = TextEditingController(text: _coverageNote);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: ext.cardSurface,
+        title: Text('Describe the coverage',
+            style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          style: TextStyle(color: ext.greetingColor),
+          decoration: const InputDecoration(hintText: 'e.g. Ceremony only'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  /// The coverage as the sheet shows it back.
+  String get _coverageLabel {
+    switch (_coverageKind) {
+      case 'half_day':
+        return 'Half day (~4 hrs)';
+      case 'full_day':
+        return 'Full day (~8 hrs)';
+      case 'multi_day':
+        return 'Multi-day';
+      case 'hourly':
+        final h = _coverageHours;
+        return h == null ? 'Hourly' : 'Hourly (~$h ${h == 1 ? 'hr' : 'hrs'})';
+      case 'other':
+        return _coverageNote.isEmpty ? 'Other' : _coverageNote;
+      default:
+        return 'Not set';
+    }
+  }
+
   Future<void> _save() async {
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) return;
@@ -864,7 +1101,13 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
         // Always sent, including empty: an empty list is a deliberate "show it
         // everywhere", and the PATCH reads absent as "leave it alone".
         targetLocations: _targets.map((p) => p.toJson()).toList(),
-        budgetAmount: double.tryParse(_budgetCtrl.text.trim()),
+        eventDate: _eventDate,
+        eventTime: _eventTimeWire.isEmpty ? null : _eventTimeWire,
+        coverageKind: _coverageKind,
+        coverageHours: _coverageKind == 'hourly' ? _coverageHours : null,
+        coverageNote: _coverageKind == 'other' ? _coverageNote : null,
+        budgetMin: double.tryParse(_budgetMinCtrl.text.trim()),
+        budgetMax: double.tryParse(_budgetMaxCtrl.text.trim()),
         commentsEnabled: _commentsEnabled,
         // Only when the tier exists. Sending it to a server that has wound the
         // feature down would have the edit refused or silently ignored, and
@@ -973,11 +1216,79 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                   ),
                 ),
                 SizedBox(height: AppSpacing.md.h),
-                _EditField(
-                  label: 'Budget (${widget.request.currency})',
-                  ctrl: _budgetCtrl,
+                // ── When, and how much of the day ──────────────────────
+                //
+                // All four were missing from this sheet while the create form
+                // collected them and the server's PATCH already accepted them.
+                // The date is the one that mattered most: the card leads on
+                // it, the board filters on it, and the premium promise is
+                // measured from it — so a postponed shoot meant deleting the
+                // request and posting it again.
+                _EditPicker(
+                  label: 'Event date',
+                  value: _eventDate == null
+                      ? 'Not set'
+                      : '${_eventDate!.day.toString().padLeft(2, '0')}.'
+                          '${_eventDate!.month.toString().padLeft(2, '0')}.'
+                          '${_eventDate!.year}',
+                  isSet: _eventDate != null,
                   ext: ext,
-                  keyboardType: TextInputType.number,
+                  onTap: _pickDate,
+                ),
+                SizedBox(height: AppSpacing.md.h),
+                _EditPicker(
+                  label: 'Start time',
+                  value: _eventTime == null
+                      ? 'Not set'
+                      : _eventTime!.format(context),
+                  isSet: _eventTime != null,
+                  ext: ext,
+                  onTap: _pickTime,
+                  // Optional on a request and always has been: plenty are
+                  // posted before the day is planned that far.
+                  onClear: _eventTime == null
+                      ? null
+                      : () => setState(() => _eventTime = null),
+                ),
+                SizedBox(height: AppSpacing.md.h),
+                _EditPicker(
+                  label: 'Coverage',
+                  value: _coverageLabel,
+                  isSet: _coverageKind != null,
+                  ext: ext,
+                  onTap: () => _pickCoverage(ext),
+                  onClear: _coverageKind == null
+                      ? null
+                      : () => setState(() {
+                            _coverageKind = null;
+                            _coverageHours = null;
+                            _coverageNote = '';
+                          }),
+                ),
+                SizedBox(height: AppSpacing.md.h),
+                // A range, like the create form. The single figure this sheet
+                // used to hold could only write the midpoint back over what
+                // somebody had actually asked for.
+                Row(
+                  children: [
+                    Expanded(
+                      child: _EditField(
+                        label: 'Budget from (${widget.request.currency})',
+                        ctrl: _budgetMinCtrl,
+                        ext: ext,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.md.w),
+                    Expanded(
+                      child: _EditField(
+                        label: 'to',
+                        ctrl: _budgetMaxCtrl,
+                        ext: ext,
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
                 SizedBox(height: AppSpacing.lg.h),
                 Text(
@@ -1039,7 +1350,7 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                     clipBehavior: Clip.antiAlias,
                     child: SwitchListTile(
                       value: _premiumOnly,
-                      onChanged: widget.request.eventDate == null
+                      onChanged: _eventDate == null
                           ? null
                           : (v) => setState(() => _premiumOnly = v),
                       activeThumbColor: ext.accentGold,
@@ -1054,7 +1365,7 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
                         ),
                       ),
                       subtitle: Text(
-                        widget.request.eventDate == null
+                        _eventDate == null
                             ? 'Needs an event date — the promise is measured '
                                 'from it.'
                             : 'Creators who promise your photos within '
@@ -1136,6 +1447,97 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A field whose value is chosen rather than typed — a date, a time, the
+/// coverage.
+///
+/// Shaped like [_EditField] beside it so a form of both does not read as two
+/// different forms: same ground, same border, same label above a value. The
+/// difference is that tapping it opens a picker, and that an optional one can
+/// be cleared again — which matters because a time or a coverage somebody set
+/// by accident would otherwise be stuck on the request for good.
+class _EditPicker extends StatelessWidget {
+  const _EditPicker({
+    required this.label,
+    required this.value,
+    required this.isSet,
+    required this.ext,
+    required this.onTap,
+    this.onClear,
+  });
+
+  final String label;
+  final String value;
+
+  /// Unset values are shown in the hint colour, so "Not set" does not read as
+  /// something somebody typed.
+  final bool isSet;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w,
+          vertical: AppSpacing.md.h,
+        ),
+        decoration: BoxDecoration(
+          color: ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          border: Border.all(
+            color: ext.searchHintColor.withValues(alpha: 0.25),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: ext.searchHintColor,
+                      fontSize: 12.sp,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: isSet ? ext.greetingColor : ext.searchHintColor,
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onClear != null)
+              GestureDetector(
+                onTap: onClear,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: EdgeInsets.only(left: AppSpacing.sm.w),
+                  child: Icon(Icons.close_rounded,
+                      size: 18.sp, color: ext.searchHintColor),
+                ),
+              )
+            else
+              Icon(Icons.chevron_right_rounded,
+                  size: 20.sp, color: ext.searchHintColor),
+          ],
         ),
       ),
     );
