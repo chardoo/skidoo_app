@@ -174,6 +174,11 @@ class _FoundActionRailState extends State<FoundActionRail> {
         context,
         onInApp: _send,
         onExternal: _shareExternally,
+        previewUrl: widget.photo.url,
+        previewTitle: widget.photo.eventName,
+        previewSubtitle: widget.photo.photographerName.isEmpty
+            ? null
+            : 'by ${widget.photo.photographerName}',
       );
 
   /// Hands the photo to the OS share sheet — other apps, Messages, AirDrop.

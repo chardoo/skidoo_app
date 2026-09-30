@@ -501,6 +501,18 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
                   context,
                   onInApp: widget.onSend!,
                   onExternal: () => _handleAction(isDownload: false),
+                  // Saving is offered here as well as on its own rail button.
+                  // Somebody who has opened a sheet headed "where is this
+                  // going" should find every answer in it, including the one
+                  // that keeps the photo rather than sending it.
+                  onDownload: widget.showDownload
+                      ? () => _handleAction(isDownload: true)
+                      : null,
+                  previewUrl: widget.imageUrl,
+                  previewTitle: widget.eventName,
+                  previewSubtitle: widget.photographerName.isEmpty
+                      ? null
+                      : 'by ${widget.photographerName}',
                 ),
       ),
       if (widget.showComment)

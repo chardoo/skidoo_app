@@ -1,19 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/components/media/share_target_sheet.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// The sheet that replaced a pair of rail glyphs.
 ///
 /// The rails used to carry a paper plane for the in-app DM picker and a share
-/// arrow beside it for the OS sheet — two buttons for one intention, told
-/// apart only by two similar icons. "Send" and "share" name the same act to
-/// anyone who has not read the code, so which one did what was a guess that
-/// resolved only after the tap. Now one button opens this, and the two
-/// destinations are named.
+/// arrow beside it — two buttons for one intention, told apart only by two
+/// similar icons. "Send" and "share" name the same act to anyone who has not
+/// read the code, so which did what was a guess that resolved after the tap.
+///
+/// It then spent a while as two circles, "In app" and "External", which had
+/// the same fault one level up: **"External" was one word for two different
+/// acts.** A link goes instantly and opens for anybody; saving fetches the
+/// rendered file, watermarks it and takes a moment. Every destination names
+/// itself now, and says what happens if you pick it.
 void main() {
+  // A phone, not the 800x600 the binding defaults to. A bottom sheet is capped
+  // at a fraction of the screen height, and this one carries a preview and
+  // three rows — on the default surface that cap is tighter than the content,
+  // which is a fact about the test window rather than about any real device.
+  setUp(() {
+    final view =
+        TestWidgetsFlutterBinding.ensureInitialized().platformDispatcher.views.first;
+    view.physicalSize = const Size(1170, 2532);
+    view.devicePixelRatio = 3;
+    addTearDown(() {
+      view.resetPhysicalSize();
+      view.resetDevicePixelRatio();
+    });
+  });
+
   Widget host(Widget child) => ScreenUtilInit(
         designSize: const Size(390, 844),
         builder: (_, __) => MaterialApp(
@@ -24,7 +42,13 @@ void main() {
       );
 
   /// Pumps a button that opens the sheet, and records which route was taken.
-  Future<List<String>> openSheet(WidgetTester t, {String? title}) async {
+  Future<List<String>> openSheet(
+    WidgetTester t, {
+    String? title,
+    bool withDownload = true,
+    String? previewTitle,
+    String? previewSubtitle,
+  }) async {
     final taken = <String>[];
     await t.pumpWidget(host(Builder(
       builder: (context) => TextButton(
@@ -33,6 +57,9 @@ void main() {
           title: title ?? 'Share this photo',
           onInApp: () => taken.add('in-app'),
           onExternal: () => taken.add('external'),
+          onDownload: withDownload ? () => taken.add('download') : null,
+          previewTitle: previewTitle,
+          previewSubtitle: previewSubtitle,
         ),
         child: const Text('open'),
       ),
@@ -42,119 +69,141 @@ void main() {
     return taken;
   }
 
-  setUp(() {
-    final view = TestWidgetsFlutterBinding.ensureInitialized()
-        .platformDispatcher
-        .views
-        .first;
-    view.physicalSize = const Size(390 * 3, 844 * 3);
-    view.devicePixelRatio = 3;
+  group('what it offers', () {
+    testWidgets('every destination names itself', (t) async {
+      await openSheet(t);
+
+      expect(find.text('Send in Jperg'), findsOneWidget);
+      expect(find.text('Share a link'), findsOneWidget);
+      expect(find.text('Save the photo'), findsOneWidget);
+    });
+
+    testWidgets('and says what picking it does', (t) async {
+      // The line that carries the whole difference between the two outward
+      // routes: one is a link anybody can open, one is a file on your phone.
+      await openSheet(t);
+
+      expect(find.text('Anyone with the link can open it'), findsOneWidget);
+      expect(find.text('Watermarked, to your device'), findsOneWidget);
+    });
+
+    testWidgets('the watermark is said before the tap, not after', (t) async {
+      // Somebody saving a photo to post elsewhere should learn it carries a
+      // mark while they can still change their mind.
+      await openSheet(t);
+
+      expect(
+        find.textContaining('Watermarked'),
+        findsOneWidget,
+        reason: 'the save row has to disclose the mark up front',
+      );
+    });
+
+    testWidgets('a surface with no download does not offer one', (t) async {
+      // Left out rather than shown greyed: a disabled row invites a tap that
+      // can never work, and answers nothing.
+      await openSheet(t, withDownload: false);
+
+      expect(find.text('Save the photo'), findsNothing);
+      expect(find.text('Share a link'), findsOneWidget);
+    });
   });
 
-  tearDown(() {
-    final view = TestWidgetsFlutterBinding.ensureInitialized()
-        .platformDispatcher
-        .views
-        .first;
-    view.resetPhysicalSize();
-    view.resetDevicePixelRatio();
+  group('what it shows', () {
+    testWidgets('the thing being shared is named', (t) async {
+      // The sheet opens over the photograph it is about and hides it, so the
+      // subject has to come back somewhere — and it doubles as the check that
+      // this is the right one.
+      await openSheet(
+        t,
+        previewTitle: 'Sports Championship Finals',
+        previewSubtitle: 'by Kofi Mensah',
+      );
+
+      expect(find.text('Sports Championship Finals'), findsOneWidget);
+      expect(find.text('by Kofi Mensah'), findsOneWidget);
+    });
+
+    testWidgets('with no event named, the heading still says something',
+        (t) async {
+      // A sheet with no words at all is worse than a generic heading.
+      await openSheet(t, title: 'Share this event');
+
+      expect(find.text('Share this event'), findsOneWidget);
+    });
   });
 
-  testWidgets('offers both destinations, side by side', (t) async {
+  group('taking a route', () {
+    // Each one closes the sheet *before* it routes. Every destination opens
+    // something of its own — the DM picker, the OS sheet, a progress overlay —
+    // and stacking one on another leaves the reader two pops from where they
+    // started.
+
+    testWidgets('in app closes the sheet, then routes', (t) async {
+      final taken = await openSheet(t);
+
+      await t.tap(find.text('Send in Jperg'));
+      await t.pumpAndSettle();
+
+      expect(taken, ['in-app']);
+      expect(find.text('Send in Jperg'), findsNothing, reason: 'sheet closed');
+    });
+
+    testWidgets('the link closes the sheet, then routes', (t) async {
+      final taken = await openSheet(t);
+
+      await t.tap(find.text('Share a link'));
+      await t.pumpAndSettle();
+
+      expect(taken, ['external']);
+      expect(find.text('Share a link'), findsNothing, reason: 'sheet closed');
+    });
+
+    testWidgets('saving closes the sheet, then routes', (t) async {
+      final taken = await openSheet(t);
+
+      await t.tap(find.text('Save the photo'));
+      await t.pumpAndSettle();
+
+      expect(taken, ['download']);
+      expect(find.text('Save the photo'), findsNothing, reason: 'sheet closed');
+    });
+
+    testWidgets('choosing one does not fire the others', (t) async {
+      final taken = await openSheet(t);
+
+      await t.tap(find.text('Share a link'));
+      await t.pumpAndSettle();
+
+      expect(taken, hasLength(1));
+    });
+
+    testWidgets('dismissing takes no route at all', (t) async {
+      final taken = await openSheet(t);
+
+      await t.tapAt(const Offset(200, 60));
+      await t.pumpAndSettle();
+
+      expect(taken, isEmpty);
+    });
+  });
+
+  testWidgets('a screen reader hears one sentence per row', (t) async {
+    // Each row carries a title and a detail. Announced separately that is
+    // three readings of one control, and the repetition says less than the
+    // sentence did.
     await openSheet(t);
 
-    expect(find.byType(ShareTargetSheet), findsOneWidget);
-    expect(find.text('In app'), findsOneWidget);
-    expect(find.text('External'), findsOneWidget);
-
-    // Side by side, not stacked: same row, so the same vertical centre.
-    expect(
-      t.getCenter(find.text('In app')).dy,
-      t.getCenter(find.text('External')).dy,
-    );
-    // And in app on the left, external on the right.
-    expect(
-      t.getCenter(find.text('In app')).dx,
-      lessThan(t.getCenter(find.text('External')).dx),
-    );
-  });
-
-  testWidgets('draws both glyphs outlined, and In app matches the rail button',
-      (t) async {
-    // The rail's share button uses near_me_outlined too. That is deliberate:
-    // the button opens this sheet, so the glyph you pressed is the one you
-    // land on. Pinned here so the two cannot drift apart silently.
-    await openSheet(t);
-
-    expect(find.byIcon(Icons.near_me_outlined), findsOneWidget);
-    // The platform's own share mark, not iOS's on both: see
-    // [AppIcons.systemShare]. This button opens the *system* sheet, and the
-    // glyph is how a reader recognises which sheet they are about to get.
-    expect(find.byIcon(AppIcons.systemShare), findsOneWidget);
-    expect(find.byIcon(Icons.ios_share_rounded), findsNothing,
-        reason: 'tests run as Android; the iOS box belongs to iOS');
-    // Outlined, not the filled variants.
-    expect(find.byIcon(Icons.near_me), findsNothing);
-  });
-
-  testWidgets('names the destinations rather than relying on the glyph',
-      (t) async {
-    // The whole point of the sheet. A screen reader gets the full sentence,
-    // since "In app" on its own is not one.
-    await openSheet(t);
-
-    expect(find.bySemanticsLabel('Send to someone in the app'), findsOneWidget);
-    expect(find.bySemanticsLabel('Share outside the app'), findsOneWidget);
-  });
-
-  testWidgets('in app closes the sheet, then routes', (t) async {
-    // Order matters: the in-app route opens the DM picker, which is itself a
-    // modal sheet. Left open, this one would sit under it and leave the user
-    // two pops from where they started.
-    final taken = await openSheet(t);
-
-    await t.tap(find.text('In app'));
-    await t.pumpAndSettle();
-
-    expect(taken, ['in-app']);
-    expect(find.byType(ShareTargetSheet), findsNothing);
-  });
-
-  testWidgets('external closes the sheet, then routes', (t) async {
-    final taken = await openSheet(t);
-
-    await t.tap(find.text('External'));
-    await t.pumpAndSettle();
-
-    expect(taken, ['external']);
-    expect(find.byType(ShareTargetSheet), findsNothing);
-  });
-
-  testWidgets('choosing one does not fire the other', (t) async {
-    final taken = await openSheet(t);
-
-    await t.tap(find.text('External'));
-    await t.pumpAndSettle();
-
-    expect(taken, isNot(contains('in-app')));
-  });
-
-  testWidgets('the title is the callers, since not everything is a photo',
-      (t) async {
-    // The feed card shares an event, not a picture.
-    await openSheet(t, title: 'Share this event');
-
-    expect(find.text('Share this event'), findsOneWidget);
-  });
-
-  testWidgets('dismissing takes neither route', (t) async {
-    final taken = await openSheet(t);
-
-    // Tap the barrier above the sheet.
-    await t.tapAt(const Offset(10, 10));
-    await t.pumpAndSettle();
-
-    expect(taken, isEmpty);
-    expect(find.byType(ShareTargetSheet), findsNothing);
+    for (final sentence in [
+      'Send to someone in the app',
+      'Share a link outside the app',
+      'Save the photo to this device',
+    ]) {
+      expect(
+        find.bySemanticsLabel(sentence),
+        findsOneWidget,
+        reason: sentence,
+      );
+    }
   });
 }

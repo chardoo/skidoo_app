@@ -795,6 +795,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
       title: 'Share this event',
       onInApp: _share,
       onExternal: _shareExternal,
+      // The first photograph stands for the album, which is the same one the
+      // card was showing when the sheet opened over it.
+      previewUrl: widget.event.pictures.first.url,
+      previewTitle: widget.event.eventName,
+      previewSubtitle: widget.event.photographerName.isEmpty
+          ? null
+          : 'by ${widget.event.photographerName}',
     );
   }
 
