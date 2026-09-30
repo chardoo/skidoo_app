@@ -707,6 +707,13 @@ _Look _lookFor(String type) {
     // photographer's side this is the job not happening, which is the same
     // weight as being turned down.
     'request_withdrawn' => (icon: Icons.event_busy_rounded, color: alert),
+    // The delivery clock, while it can still be acted on. Amber rather than
+    // the bookings colour: it is a deadline with a badge behind it, and the
+    // next message on this subject is a strike.
+    'premium_delivery_due' => (
+        icon: Icons.hourglass_bottom_rounded,
+        color: alert
+      ),
     'request_expiring' => (
         icon: Icons.hourglass_bottom_rounded,
         color: bookings
