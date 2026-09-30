@@ -696,6 +696,17 @@ _Look _lookFor(String type) {
     'request_updated' => (icon: Icons.edit_calendar_rounded, color: bookings),
     'request_selected' => (icon: Icons.how_to_reg_rounded, color: bookings),
     'request_cancelled' => (icon: Icons.event_busy_rounded, color: alert),
+    // A candidate took their invitation back — a change to the list the
+    // requester is choosing from, not a refusal, so it keeps the bookings
+    // colour rather than the alert one.
+    'request_interest_withdrawn' => (
+        icon: Icons.person_remove_outlined,
+        color: bookings
+      ),
+    // The request somebody answered is off the board. Read from the
+    // photographer's side this is the job not happening, which is the same
+    // weight as being turned down.
+    'request_withdrawn' => (icon: Icons.event_busy_rounded, color: alert),
     'request_expiring' => (
         icon: Icons.hourglass_bottom_rounded,
         color: bookings
