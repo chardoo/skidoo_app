@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
@@ -18,6 +18,7 @@ class ProfilePhotoGrid extends StatefulWidget {
     required this.ext,
     required this.emptyTitle,
     required this.emptyHint,
+    this.emptyIcon = Icons.photo_library_outlined,
     this.removeIcon,
     this.removeTooltip,
     this.onRemove,
@@ -38,6 +39,11 @@ class ProfilePhotoGrid extends StatefulWidget {
   final AppThemeExtension ext;
   final String emptyTitle;
   final String emptyHint;
+
+  /// The glyph in the empty state. Defaults to a generic photo stack; a tab
+  /// with an icon of its own should pass that one, so the empty screen looks
+  /// like the tab it is in.
+  final IconData emptyIcon;
 
   /// The filled heart / bookmark on each tile — tapping it takes the photo out
   /// of the list it is in.
@@ -108,7 +114,10 @@ class _ProfilePhotoGridState extends State<ProfilePhotoGrid> {
     }
     if (photos.isEmpty) {
       return _Empty(
-          title: widget.emptyTitle, hint: widget.emptyHint, ext: ext);
+        title: widget.emptyTitle,
+        hint: widget.emptyHint,
+        icon: widget.emptyIcon,
+      );
     }
 
     return NotificationListener<ScrollNotification>(
@@ -162,40 +171,21 @@ class _ProfilePhotoGridState extends State<ProfilePhotoGrid> {
   }
 }
 
+/// Nothing in this tab yet.
+///
+/// Was its own drawing — a half-faded glyph 80px from the top, and a title in
+/// body type where every other empty state in the app uses Syne. Now the
+/// shared one, wrapped so the pull-to-refresh above it still has something to
+/// drag.
 class _Empty extends StatelessWidget {
-  const _Empty({required this.title, required this.hint, required this.ext});
+  const _Empty({required this.title, required this.hint, required this.icon});
 
   final String title;
   final String hint;
-  final AppThemeExtension ext;
+  final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      children: [
-        SizedBox(height: 80.h),
-        Icon(Icons.photo_library_outlined,
-            color: ext.searchHintColor.withValues(alpha: 0.5), size: 40.r),
-        SizedBox(height: AppSpacing.md.h),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: ext.greetingColor,
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        SizedBox(height: 6.h),
-        Text(
-          hint,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => ScrollableEmptyState(
+        child: AppEmptyState(icon: icon, message: title, hint: hint),
+      );
 }

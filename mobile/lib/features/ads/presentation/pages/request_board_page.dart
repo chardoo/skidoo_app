@@ -248,8 +248,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
           // and nothing here is broken or pending.
           ? const AppEmptyState(
               icon: Icons.photo_camera_outlined,
-              message: 'The request board is for photographers.\n\n'
-                  'You can still post a request of your own — tap Create, '
+              message: 'The request board is for photographers',
+              hint: 'You can still post a request of your own — tap Create, '
                   'and track it under My Requests.',
             )
           : _loading
@@ -275,7 +275,8 @@ class _RequestBoardPageState extends State<RequestBoardPage> {
                       if (!hasAd && visible.isEmpty) {
                         return const AppEmptyState(
                           icon: Icons.inbox_outlined,
-                          message: 'No open requests found',
+                          message: 'No open requests',
+                          hint: 'New requests from nearby clients appear here.',
                         );
                       }
                       return NotificationListener<ScrollNotification>(

@@ -369,8 +369,8 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
               : _events.isEmpty
                   ? const AppEmptyState(
                       icon: Icons.photo_camera_outlined,
-                      message:
-                          'No events yet — follow creators to see their work here.',
+                      message: 'No events yet',
+                      hint: 'Follow creators to see their work here.',
                     )
                   : NotificationListener<ScrollNotification>(
                       onNotification: (n) {

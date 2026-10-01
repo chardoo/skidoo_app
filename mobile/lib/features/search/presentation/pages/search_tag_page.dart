@@ -105,7 +105,8 @@ class _TagEventsView extends StatelessWidget {
     if (state.isEmpty) {
       return AppEmptyState(
         icon: Icons.tag_rounded,
-        message: 'Nothing tagged ${row.label} yet.',
+        message: 'Nothing tagged ${row.label} yet',
+        hint: 'Photos and events with this tag will show up here.',
       );
     }
 

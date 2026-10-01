@@ -164,6 +164,20 @@ class Styles {
           color: isDarkTheme ? Colors.white : Colors.black,
         ),
       ),
+      // ── Tabs ──────────────────────────────────────────────────────────────
+      //
+      // Material 3 draws a rule of its own under every TabBar, in
+      // `outlineVariant`, and puts the selection indicator *above* it rather
+      // than on it. The two are different weights and sit at different
+      // heights, so the active tab's indicator reads as a step off the line
+      // either side of it — which is what somebody reported on the profile
+      // tabs, and is equally true of the other three TabBars in the app.
+      //
+      // Switched off here rather than screen by screen: a rule under the tabs
+      // is a decision for the screen that wants one (see the profile's
+      // `_TabBarDelegate`, which draws its own at the indicator's weight and
+      // underneath it), not something Material should add unasked.
+      tabBarTheme: const TabBarThemeData(dividerHeight: 0),
       // ── Snackbars ─────────────────────────────────────────────────────────
       //
       // The app shows its snackbars through [AppSnackBar], which spells out

@@ -211,6 +211,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
                                 message: _mine.isEmpty
                                     ? 'No payments yet'
                                     : 'Nothing matches those filters',
+                                hint: _mine.isEmpty
+                                    ? 'Photos, boosts and bookings you pay for '
+                                        'are listed here.'
+                                    : 'Try clearing one of them.',
                               ),
                             ],
                           )

@@ -631,10 +631,19 @@ class UserProfilePageState extends State<UserProfilePage>
             pinned: true,
             delegate: _TabBarDelegate(
               background: ext.homeBackground,
+              hairline: ext.glassBorder,
               tabBar: TabBar(
                 controller: _tabs,
                 indicatorColor: ext.accentGold,
                 indicatorSize: TabBarIndicatorSize.tab,
+                indicatorWeight: _kRule,
+                // Material draws its own rule *under* the indicator and a
+                // pixel shorter, so the active tab's green sat on a step above
+                // the line either side of it. The delegate draws one rule
+                // instead, at the indicator's own weight and underneath it, so
+                // the green replaces that stretch of it rather than stacking
+                // on top.
+                dividerHeight: 0,
                 labelColor: ext.accentGold,
                 unselectedLabelColor: ext.searchHintColor,
                 tabs: const [
@@ -662,6 +671,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingLiked,
                 ext: ext,
                 emptyTitle: 'Nothing liked yet',
+                emptyIcon: Icons.favorite_rounded,
                 emptyHint: 'Photos you like show up here.',
                 removeIcon: Icons.favorite_rounded,
                 removeTooltip: 'Unlike',
@@ -679,6 +689,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingBookmarks,
                 ext: ext,
                 emptyTitle: 'Nothing bookmarked yet',
+                emptyIcon: Icons.bookmark_rounded,
                 emptyHint: 'Bookmark a photo or an event to find it here.',
                 removeIcon: Icons.bookmark_rounded,
                 removeTooltip: 'Remove bookmark',
@@ -696,6 +707,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingPurchased,
                 ext: ext,
                 emptyTitle: 'No purchased photos yet',
+                emptyIcon: Icons.shopping_bag_rounded,
                 emptyHint: 'All your purchased photos live here.',
                 // No corner action, and that is the point: un-liking and
                 // un-bookmarking undo something free and reversible. A
@@ -899,11 +911,26 @@ class _Stat extends StatelessWidget {
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
+
+/// The weight of both the rule under the tabs and the indicator on top of it.
+/// One number, because the whole point is that they are the same line.
+const double _kRule = 2;
+
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  const _TabBarDelegate({required this.tabBar, required this.background});
+  const _TabBarDelegate({
+    required this.tabBar,
+    required this.background,
+    required this.hairline,
+  });
 
   final TabBar tabBar;
   final Color background;
+
+  /// The rule that runs the width of the bar, under every tab. Material's own
+  /// is switched off (see `dividerHeight: 0` above): it is drawn a pixel
+  /// shorter than the indicator and below it, which left the active tab's
+  /// green sitting on a visible step.
+  final Color hairline;
 
   @override
   double get minExtent => tabBar.preferredSize.height;
@@ -913,11 +940,28 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
-      Container(color: background, child: tabBar);
+      Container(
+        color: background,
+        child: Stack(
+          children: [
+            // Underneath, so the indicator covers its own stretch exactly.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: _kRule,
+              child: ColoredBox(color: hairline),
+            ),
+            tabBar,
+          ],
+        ),
+      );
 
   @override
   bool shouldRebuild(_TabBarDelegate old) =>
-      old.tabBar != tabBar || old.background != background;
+      old.tabBar != tabBar ||
+      old.background != background ||
+      old.hairline != hairline;
 }
 
 /// The third tab is a doorway rather than a list: Broadcasts is its own screen

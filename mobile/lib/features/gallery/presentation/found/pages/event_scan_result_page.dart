@@ -244,8 +244,9 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
     if (album == null || album.photoCount == 0) {
       return const AppEmptyState(
         icon: Icons.person_search_rounded,
-        message: "We didn't find any photos of you in this event yet.\n"
-            "We'll let you know if that changes.",
+        message: 'No photos of you yet',
+        hint: "We didn't find you in this event. We'll let you know if that "
+            'changes.',
       );
     }
 

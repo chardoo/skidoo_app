@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
-import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
+import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
@@ -304,32 +304,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (_error != null) {
       // Scrollable so pull-to-refresh still works from the error state —
       // otherwise the only way to retry is to leave the tab and come back.
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: 120.h),
-          AppEmptyState(
-            icon: Icons.cloud_off_rounded,
-            message: _error!,
-            action:
-                TextButton(onPressed: _load, child: const Text('Try again')),
-          ),
-        ],
+      return ScrollableEmptyState(
+        child: AppErrorView(
+          icon: Icons.cloud_off_rounded,
+          message: _error!,
+          onRetry: _load,
+        ),
       );
     }
 
     if (_items.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: 120.h),
-          AppEmptyState(
-            icon: Icons.notifications_none_rounded,
-            message: _filter == null
-                ? 'No notifications yet.'
-                : 'Nothing under this filter yet.',
-          ),
-        ],
+      return ScrollableEmptyState(
+        child: AppEmptyState(
+          icon: Icons.notifications_none_rounded,
+          message: _filter == null
+              ? 'No notifications yet'
+              : 'Nothing under this filter',
+          hint: _filter == null
+              ? 'Likes, comments and updates land here.'
+              : 'Try another tab.',
+        ),
       );
     }
 

@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
-import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/common/widgets/app_confirm_dialog.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
@@ -55,6 +54,34 @@ class GroupInfoPage extends StatelessWidget {
             fontSize: 16.sp,
           ),
         ),
+        actions: [
+          // Renaming lives here rather than in the page.
+          //
+          // It used to be a field and a live Save button sitting permanently
+          // under a GROUP NAME heading — a block of the screen given over to
+          // something done once, if ever, and a button one stray tap from
+          // overwriting the name. An occasional act belongs behind a
+          // deliberate one.
+          //
+          // Drawn only for an admin, and only because renaming is the one
+          // thing in it: a menu that opens to nothing is worse than no menu.
+          // Watching the bloc rather than reading it once, because admin
+          // arrives with the room and the app bar is built before the body.
+          BlocBuilder<ChatRoomBloc, ChatRoomState>(
+            buildWhen: (p, c) => p.amIAdmin != c.amIAdmin || p.room != c.room,
+            builder: (context, state) {
+              final room = state.room;
+              if (!state.amIAdmin || room == null) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                icon: Icon(Icons.more_vert_rounded, color: ext.greetingColor),
+                tooltip: 'Group options',
+                onPressed: () => _showGroupMenu(context, room),
+              );
+            },
+          ),
+        ],
       ),
       body: BlocConsumer<ChatRoomBloc, ChatRoomState>(
         listenWhen: (p, c) => p.errorMessage != c.errorMessage,
@@ -134,10 +161,6 @@ class GroupInfoPage extends StatelessWidget {
                   // ── Admin-only controls ───────────────────────────────────
                   if (state.amIAdmin) ...[
                     SizedBox(height: AppSpacing.xl.h),
-                    const ChatSettingsLabel(label: 'GROUP NAME'),
-                    SizedBox(height: AppSpacing.sm.h),
-                    _RenameSection(room: room),
-                    SizedBox(height: AppSpacing.lg.h),
                     ChatSettingsCard(
                       children: [
                         ChatSettingsTile(
@@ -266,6 +289,123 @@ class GroupInfoPage extends StatelessWidget {
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────
+
+/// The ⋮ menu. One item today; a place for the next one.
+Future<void> _showGroupMenu(BuildContext context, ChatRoom room) async {
+  final ext = Theme.of(context).extension<AppThemeExtension>()!;
+  // The bloc is read before the await: this context belongs to the app bar,
+  // and the sheet below closes before the dialog opens.
+  final bloc = context.read<ChatRoomBloc>();
+
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => Container(
+      decoration: BoxDecoration(
+        color: ext.homeBackground,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                width: 36.w,
+                height: 4.h,
+                decoration: BoxDecoration(
+                  color: ext.searchHintColor.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
+              ),
+              _SheetOption(
+                icon: Icons.edit_outlined,
+                label: 'Edit group name',
+                color: ext.greetingColor,
+                onTap: () => Navigator.of(sheetContext).pop('rename'),
+              ),
+              SizedBox(height: AppSpacing.sm.h),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  if (choice != 'rename' || !context.mounted) return;
+  await _showRenameDialog(context, room: room, bloc: bloc);
+}
+
+/// Renaming, as a deliberate act with a way out of it.
+///
+/// A dialog rather than the old inline field, and the difference that matters
+/// is Cancel: the field saved on submit with nothing to abandon it, so a name
+/// half-typed and thought better of was already on its way to the server.
+Future<void> _showRenameDialog(
+  BuildContext context, {
+  required ChatRoom room,
+  required ChatRoomBloc bloc,
+}) async {
+  final ext = Theme.of(context).extension<AppThemeExtension>()!;
+  final controller = TextEditingController(text: room.name ?? '');
+
+  final name = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: ext.cardSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+      ),
+      title: Text(
+        'Group name',
+        style: TextStyle(
+          color: ext.greetingColor,
+          fontFamily: AppTypography.displayFontFamily,
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: AppTextField(
+        controller: controller,
+        dense: true,
+        autofocus: true,
+        hint: 'Enter group name',
+        onFieldSubmitted: (value) =>
+            Navigator.of(dialogContext).pop(value.trim()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(
+            'Cancel',
+            style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+          ),
+        ),
+        TextButton(
+          onPressed: () =>
+              Navigator.of(dialogContext).pop(controller.text.trim()),
+          child: Text(
+            'Save',
+            style: TextStyle(
+              color: ext.accentGold,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+
+  // Cancelled, blank, or unchanged. The last of those is not a no-op worth
+  // sending: it would write the same name back and tell every member about it.
+  if (name == null || name.isEmpty || name == (room.name ?? '')) return;
+  bloc.add(ChatRoomUpdateSettingsRequested(name: name));
+}
 
 class _GroupHeader extends StatefulWidget {
   const _GroupHeader({
@@ -458,76 +598,6 @@ class _PhotoActionSheet extends StatelessWidget {
 }
 
 // ── Rename ────────────────────────────────────────────────────────────────────
-
-class _RenameSection extends StatefulWidget {
-  const _RenameSection({required this.room});
-
-  final ChatRoom room;
-
-  @override
-  State<_RenameSection> createState() => _RenameSectionState();
-}
-
-class _RenameSectionState extends State<_RenameSection> {
-  late final TextEditingController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TextEditingController(text: widget.room.name ?? '');
-  }
-
-  @override
-  void didUpdateWidget(_RenameSection old) {
-    super.didUpdateWidget(old);
-    // Sync when a WS update changes the name from outside.
-    if (old.room.name != widget.room.name) {
-      _ctrl.text = widget.room.name ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _save(BuildContext context) {
-    final trimmed = _ctrl.text.trim();
-    if (trimmed.isEmpty || trimmed == (widget.room.name ?? '')) return;
-    context
-        .read<ChatRoomBloc>()
-        .add(ChatRoomUpdateSettingsRequested(name: trimmed));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-      child: Row(
-        children: [
-          Expanded(
-            child: AppTextField(
-              controller: _ctrl,
-              dense: true,
-              hint: 'Enter group name',
-              onFieldSubmitted: (_) => _save(context),
-            ),
-          ),
-          SizedBox(width: 10.w),
-          AppButton(
-            label: 'Save',
-            // Scaled, and tall enough to sit level with the dense field beside
-            // it, which Flutter clamps to the 48 dp minimum touch target.
-            width: 84.w,
-            height: 48.h,
-            onPressed: () => _save(context),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ── Member row ────────────────────────────────────────────────────────────────
 

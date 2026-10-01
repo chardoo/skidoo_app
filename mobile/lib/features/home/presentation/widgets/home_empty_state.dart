@@ -10,15 +10,15 @@ class HomeEmptyState extends StatelessWidget {
     required this.ext,
     required this.icon,
     required this.message,
-    this.action,
+    this.hint,
   });
 
   final AppThemeExtension ext;
   final IconData icon;
   final String message;
-  final Widget? action;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) =>
-      AppEmptyState(icon: icon, message: message, action: action);
+      AppEmptyState(icon: icon, message: message, hint: hint);
 }

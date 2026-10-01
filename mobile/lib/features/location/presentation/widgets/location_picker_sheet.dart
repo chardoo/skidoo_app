@@ -312,6 +312,7 @@ class _CountryStepState extends State<_CountryStep> {
               ? const AppEmptyState(
                   icon: Icons.public_off_rounded,
                   message: 'No countries match that',
+                  hint: 'Check the spelling, or clear the search.',
                 )
               : ListView.builder(
                   physics: const BouncingScrollPhysics(),

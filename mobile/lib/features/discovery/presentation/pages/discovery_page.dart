@@ -242,6 +242,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                         return const AppEmptyState(
                           icon: Icons.photo_library_outlined,
                           message: 'No events yet',
+                          hint: 'New work from creators lands here.',
                         );
                       }
 

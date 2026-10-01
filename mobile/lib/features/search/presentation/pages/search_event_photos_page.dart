@@ -189,7 +189,8 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
     if (state.isEmpty) {
       return const AppEmptyState(
         icon: Icons.photo_library_outlined,
-        message: 'No photos in this event yet.',
+        message: 'No photos yet',
+        hint: 'Nothing has been uploaded to this event.',
       );
     }
 

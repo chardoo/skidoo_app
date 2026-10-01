@@ -118,28 +118,19 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
               : _campaigns.isEmpty
                   ? AppEmptyState(
                       icon: Icons.rocket_launch_outlined,
-                      message: 'No campaigns yet!',
+                      message: 'No campaigns yet',
                       // The design makes the second line the way out, not a
                       // sentence to read — so it is the action, and it opens
                       // the wizard.
-                      action: TextButton(
-                        onPressed: () => Navigator.of(context)
-                            .push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const CampaignWizardPage(),
-                              ),
-                            )
-                            .then((_) => _load()),
-                        child: Text(
-                          'Create a campaign to get started.',
-                          style: TextStyle(
-                            color: ext.accentGold,
-                            fontSize: 14.sp,
-                            decoration: TextDecoration.underline,
-                            decorationColor: ext.accentGold,
-                          ),
-                        ),
-                      ),
+                      actionLabel: 'Create a campaign',
+                      hint: 'to get started.',
+                      onAction: () => Navigator.of(context)
+                          .push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const CampaignWizardPage(),
+                            ),
+                          )
+                          .then((_) => _load()),
                     )
                   : RefreshIndicator(
                       onRefresh: _load,

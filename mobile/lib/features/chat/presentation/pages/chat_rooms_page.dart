@@ -432,75 +432,11 @@ class _EmptyInbox extends StatelessWidget {
   final VoidCallback onStartChat;
 
   @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 100.w,
-              height: 100.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: ext.accentGold.withValues(alpha: 0.12),
-              ),
-              alignment: Alignment.center,
-              child: Icon(Icons.chat_bubble_outline_rounded,
-                  color: ext.accentGold, size: 42.sp),
-            ),
-            SizedBox(height: AppSpacing.xl.h),
-            Text(
-              'No messages yet!',
-              style: TextStyle(
-                color: ext.greetingColor,
-                fontFamily: AppTypography.displayFontFamily,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: AppSpacing.sm.h),
-            // One sentence with only the opening words tappable, so the link
-            // reads as part of the sentence rather than a button under it.
-            Text.rich(
-              TextSpan(
-                children: [
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Semantics(
-                      button: true,
-                      label: 'Start a chat',
-                      child: GestureDetector(
-                        onTap: onStartChat,
-                        child: Text(
-                          'Start a chat',
-                          style: TextStyle(
-                            color: ext.accentGold,
-                            fontSize: 14.sp,
-                            decoration: TextDecoration.underline,
-                            decorationColor: ext.accentGold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' to see your conversations here',
-                    style: TextStyle(
-                      color: ext.searchHintColor,
-                      fontSize: 14.sp,
-                    ),
-                  ),
-                ],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppEmptyState(
+        icon: Icons.chat_bubble_outline_rounded,
+        message: 'No messages yet',
+        actionLabel: 'Start a chat',
+        hint: 'to see your conversations here',
+        onAction: onStartChat,
+      );
 }
