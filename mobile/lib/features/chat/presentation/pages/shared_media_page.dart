@@ -145,7 +145,7 @@ class _SharedMediaPageState extends State<SharedMediaPage> {
 
     if (_items.isEmpty) {
       return const AppEmptyState(
-        icon: Icons.photo_library_outlined,
+        icon: AppIcons.camera,
         message: 'Nothing shared yet',
         hint: 'Photos and videos sent in this chat show up here.',
       );

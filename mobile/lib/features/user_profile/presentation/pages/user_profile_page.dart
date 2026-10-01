@@ -671,7 +671,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingLiked,
                 ext: ext,
                 emptyTitle: 'Nothing liked yet',
-                emptyIcon: Icons.favorite_rounded,
+                emptyIcon: AppIcons.emptyLikes,
                 emptyHint: 'Photos you like show up here.',
                 removeIcon: Icons.favorite_rounded,
                 removeTooltip: 'Unlike',
@@ -689,7 +689,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingBookmarks,
                 ext: ext,
                 emptyTitle: 'Nothing bookmarked yet',
-                emptyIcon: Icons.bookmark_rounded,
+                emptyIcon: AppIcons.emptySaved,
                 emptyHint: 'Bookmark a photo or an event to find it here.',
                 removeIcon: Icons.bookmark_rounded,
                 removeTooltip: 'Remove bookmark',
@@ -707,7 +707,7 @@ class UserProfilePageState extends State<UserProfilePage>
                 loading: _loadingPurchased,
                 ext: ext,
                 emptyTitle: 'No purchased photos yet',
-                emptyIcon: Icons.shopping_bag_rounded,
+                emptyIcon: AppIcons.fileCheck,
                 emptyHint: 'All your purchased photos live here.',
                 // No corner action, and that is the point: un-liking and
                 // un-bookmarking undo something free and reversible. A

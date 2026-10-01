@@ -17,6 +17,7 @@ import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 // ── What a row of this feed can be ────────────────────────────────────────────
 
@@ -368,7 +369,7 @@ class _FollowingFeedPageState extends State<FollowingFeedPage> {
                 )
               : _events.isEmpty
                   ? const AppEmptyState(
-                      icon: Icons.photo_camera_outlined,
+                      icon: AppIcons.camera,
                       message: 'No events yet',
                       hint: 'Follow creators to see their work here.',
                     )

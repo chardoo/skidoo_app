@@ -29,6 +29,7 @@ import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/features/feedback/presentation/feedback_sheet.dart';
 import 'package:jperg_app/features/location/presentation/location_mismatch_prompt.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/premium_invite_prompt.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Slides the header in and out with the feed's chrome.
 ///
@@ -589,10 +590,28 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
               color: ext.homeBackground,
               child: CustomScrollView(slivers: [
                 SliverFillRemaining(
-                  hasScrollBody: false,
+                  // `true`, and not the usual `false` for a centred empty
+                  // state. With `false` the sliver has to decide whether the
+                  // child is shorter than the space left, so it asks for
+                  // `getMaxIntrinsicHeight` — and [HomeEmptyState] is rooted in
+                  // a LayoutBuilder, which cannot answer that without running
+                  // its builder speculatively. It threw instead, taking the
+                  // whole screen's layout with it: the reader got nothing at
+                  // all rather than an empty state.
+                  //
+                  // `true` fills the remaining extent without asking, which is
+                  // what was wanted anyway — the empty state is built to fill
+                  // its box.
+                  //
+                  // The CustomScrollView around it stays. A RefreshIndicator
+                  // wraps this screen and when the feed is empty this is the
+                  // only scrollable left in it, so pulling to reload is the
+                  // reader's one way out. See
+                  // test/features/home/empty_feed_sliver_test.dart.
+                  hasScrollBody: true,
                   child: HomeEmptyState(
                     ext: ext,
-                    icon: Icons.photo_library_outlined,
+                    icon: AppIcons.camera,
                     message: AppLocalizations.of(context)!.homeNoEventsYet,
                   ),
                 ),

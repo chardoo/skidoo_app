@@ -12,6 +12,7 @@ import 'package:jperg_app/models/photographer/photographerModel.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class PhotographersPage extends StatefulWidget {
   const PhotographersPage({super.key});
@@ -117,7 +118,7 @@ class _PhotographersPageState extends State<PhotographersPage> {
               }
               if (state.photographers.isEmpty) {
                 return const AppEmptyState(
-                  icon: Icons.person_search_rounded,
+                  icon: AppIcons.user,
                   message: 'No creators found',
                   hint: 'Try a different search, or widen your filters.',
                 );

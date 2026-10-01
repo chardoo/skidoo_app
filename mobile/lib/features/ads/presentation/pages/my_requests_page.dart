@@ -407,7 +407,7 @@ class _MyRequestsPageState extends State<MyRequestsPage>
                 )
               : _requests.isEmpty
                   ? AppEmptyState(
-                      icon: Icons.inbox_outlined,
+                      icon: AppIcons.noteEdit,
                       message: 'No requests yet',
                       actionLabel: 'Request a photographer',
                       hint: 'to get started.',

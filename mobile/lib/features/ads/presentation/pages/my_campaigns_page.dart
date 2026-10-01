@@ -9,6 +9,7 @@ import 'package:jperg_app/features/ads/presentation/pages/campaign_details_page.
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_row.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class MyCampaignsPage extends StatefulWidget {
   const MyCampaignsPage({super.key, this.embedded = false, this.onCount});
@@ -117,7 +118,7 @@ class _MyCampaignsPageState extends State<MyCampaignsPage>
                 )
               : _campaigns.isEmpty
                   ? AppEmptyState(
-                      icon: Icons.rocket_launch_outlined,
+                      icon: AppIcons.share,
                       message: 'No campaigns yet',
                       // The design makes the second line the way out, not a
                       // sentence to read — so it is the action, and it opens

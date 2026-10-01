@@ -13,6 +13,7 @@ import 'package:jperg_app/features/search/presentation/pages/search_event_photos
 import 'package:jperg_app/features/search/presentation/widgets/load_more_listener.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_detail_app_bar.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_event_row_tile.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The events behind a tag row — the drill-down from the Tags chip.
 class SearchTagPage extends StatelessWidget {
@@ -104,7 +105,7 @@ class _TagEventsView extends StatelessWidget {
 
     if (state.isEmpty) {
       return AppEmptyState(
-        icon: Icons.tag_rounded,
+        icon: AppIcons.search,
         message: 'Nothing tagged ${row.label} yet',
         hint: 'Photos and events with this tag will show up here.',
       );

@@ -10,6 +10,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/theme/customThemeData.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_grid.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Every list that can be empty says so the same way.
 ///
@@ -38,18 +39,18 @@ void main() {
   group('the one drawing', () {
     testWidgets('the glyph sits in a tinted disc, in the accent', (t) async {
       await t.pumpWidget(host(const AppEmptyState(
-        icon: Icons.chat_bubble_outline_rounded,
+        icon: AppIcons.chatBubble,
         message: 'No messages yet',
       )));
       await t.pump();
 
-      final icon = t.widget<Icon>(find.byType(Icon));
+      final icon = t.widget<AppSvgIcon>(find.byType(AppSvgIcon));
       expect(icon.color, ext(true).accentGold);
 
       // The disc, not a bare glyph. It is what makes the state look designed
       // rather than like a missing image.
       final disc = t.widget<Container>(find.ancestor(
-        of: find.byType(Icon),
+        of: find.byType(AppSvgIcon),
         matching: find.byType(Container),
       ));
       final decoration = disc.decoration! as BoxDecoration;
@@ -60,7 +61,7 @@ void main() {
       // The reported bug: the profile tabs set no family, so the title came
       // out in DM Sans while every other empty state used Syne.
       await t.pumpWidget(host(const AppEmptyState(
-        icon: Icons.favorite_rounded,
+        icon: AppIcons.like,
         message: 'Nothing liked yet',
       )));
       await t.pump();
@@ -72,7 +73,7 @@ void main() {
 
     testWidgets('and the hint is body type, a step down', (t) async {
       await t.pumpWidget(host(const AppEmptyState(
-        icon: Icons.favorite_rounded,
+        icon: AppIcons.like,
         message: 'Nothing liked yet',
         hint: 'Photos you like show up here.',
       )));
@@ -89,12 +90,12 @@ void main() {
       // Both themes, because the disc is an alpha wash over the page and a
       // colour chosen against one background can vanish on the other.
       await t.pumpWidget(host(
-        const AppEmptyState(icon: Icons.inbox_outlined, message: 'No requests yet'),
+        const AppEmptyState(icon: AppIcons.noteEdit, message: 'No requests yet'),
         dark: false,
       ));
       await t.pump();
 
-      expect(t.widget<Icon>(find.byType(Icon)).color, ext(false).accentGoldDark);
+      expect(t.widget<AppSvgIcon>(find.byType(AppSvgIcon)).color, ext(false).accentGoldDark);
       expect(
         t.widget<Text>(find.text('No requests yet')).style?.color,
         ext(false).greetingColor,
@@ -146,7 +147,7 @@ void main() {
           child: Row(children: const [
             Expanded(
               child: AppEmptyState(
-                icon: Icons.public_off_rounded,
+                icon: AppIcons.mapPin,
                 message: 'No countries match that',
                 hint: 'Check the spelling, or clear the search.',
               ),
@@ -166,13 +167,13 @@ void main() {
 
     testWidgets('and comes back when there is room', (t) async {
       await t.pumpWidget(host(const AppEmptyState(
-        icon: Icons.public_off_rounded,
+        icon: AppIcons.mapPin,
         message: 'No countries match that',
       )));
       await t.pump();
 
       final disc = t.widget<Container>(find.ancestor(
-        of: find.byType(Icon),
+        of: find.byType(AppSvgIcon),
         matching: find.byType(Container),
       ));
       expect((disc.decoration! as BoxDecoration).shape, BoxShape.circle);
@@ -184,7 +185,7 @@ void main() {
       // Purchased photos have no action — you do not buy one from the tab that
       // lists them — and a link that goes nowhere is worse than no link.
       await t.pumpWidget(host(const AppEmptyState(
-        icon: Icons.shopping_bag_rounded,
+        icon: AppIcons.fileCheck,
         message: 'No purchased photos yet',
         hint: 'All your purchased photos live here.',
       )));
@@ -196,7 +197,7 @@ void main() {
     testWidgets('an action is a link inside the sentence', (t) async {
       var taps = 0;
       await t.pumpWidget(host(AppEmptyState(
-        icon: Icons.chat_bubble_outline_rounded,
+        icon: AppIcons.chatBubble,
         message: 'No messages yet',
         actionLabel: 'Start a chat',
         hint: 'to see your conversations here',
@@ -211,7 +212,7 @@ void main() {
     testWidgets('only the link is tappable, not the whole line', (t) async {
       var taps = 0;
       await t.pumpWidget(host(AppEmptyState(
-        icon: Icons.rocket_launch_outlined,
+        icon: AppIcons.share,
         message: 'No campaigns yet',
         actionLabel: 'Create a campaign',
         hint: 'to get started.',
@@ -236,7 +237,7 @@ void main() {
         ext: ext(true),
         emptyTitle: 'Nothing liked yet',
         emptyHint: 'Photos you like show up here.',
-        emptyIcon: Icons.favorite_rounded,
+        emptyIcon: AppIcons.like,
         onOpen: (_) {},
       )));
       await t.pump();

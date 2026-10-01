@@ -310,7 +310,7 @@ class _CountryStepState extends State<_CountryStep> {
         Expanded(
           child: visible.isEmpty
               ? const AppEmptyState(
-                  icon: Icons.public_off_rounded,
+                  icon: AppIcons.mapPin,
                   message: 'No countries match that',
                   hint: 'Check the spelling, or clear the search.',
                 )

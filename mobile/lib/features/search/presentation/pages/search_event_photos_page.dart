@@ -14,6 +14,7 @@ import 'package:jperg_app/features/search/presentation/bloc/event_photos_bloc.da
 import 'package:jperg_app/features/search/presentation/widgets/load_more_listener.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_detail_app_bar.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_photo_grid.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// An event's photos, reached by tapping an Events result.
 ///
@@ -188,7 +189,7 @@ class _EventPhotosViewState extends State<_EventPhotosView> {
 
     if (state.isEmpty) {
       return const AppEmptyState(
-        icon: Icons.photo_library_outlined,
+        icon: AppIcons.camera,
         message: 'No photos yet',
         hint: 'Nothing has been uploaded to this event.',
       );

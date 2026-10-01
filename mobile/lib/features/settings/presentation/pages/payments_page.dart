@@ -10,6 +10,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/settings/data/payments_api.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/payment_receipt_sheet.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Everything this account has paid, and everything it has been paid.
 ///
@@ -207,7 +208,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                             children: [
                               SizedBox(height: 80.h),
                               AppEmptyState(
-                                icon: Icons.receipt_long_outlined,
+                                icon: AppIcons.fileBlank,
                                 message: _mine.isEmpty
                                     ? 'No payments yet'
                                     : 'Nothing matches those filters',

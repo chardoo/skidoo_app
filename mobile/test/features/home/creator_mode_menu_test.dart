@@ -119,12 +119,35 @@ void main() {
     expect(find.text('Creator Dashboard'), findsNothing);
   });
 
-  test('the dashboard points at the public domain', () {
-    // It was a hardcoded picco-v2.onrender.com preview URL, which is not where
-    // anyone should be sent.
-    expect(AppLinksConfig.creatorDashboardUrl,
-        'https://jperg.com/photographer/dashboard');
-    expect(AppLinksConfig.creatorDashboardUrl,
-        startsWith(AppLinksConfig.shareBaseUrl));
+  group('where the web links point', () {
+    test('the portal opens on the Render deployment, for now', () {
+      // Deliberate and temporary: jperg.com serves production, and the portal
+      // this opens is still being built. Put both back on [shareBaseUrl] when
+      // the production site carries the new one.
+      expect(AppLinksConfig.creatorDashboardUrl,
+          'https://picco-v2.onrender.com/photographer/dashboard');
+      expect(AppLinksConfig.creatorUploadUrl,
+          'https://picco-v2.onrender.com/photographer/events');
+    });
+
+    test('but shares are still built on jperg.com', () {
+      // The one that must not follow it. This host is pinned in two places
+      // outside Dart — `applinks:jperg.com` in Runner.entitlements and
+      // `deepLinkHost` in build.gradle.kts — and a link built on any other
+      // host opens a browser instead of the app, silently. Moving the portal
+      // is a one-line change; moving this is a release of both platforms.
+      expect(AppLinksConfig.shareBaseUrl, 'https://jperg.com');
+    });
+
+    test('and the two are allowed to differ', () {
+      // Written down because they were the same for a while and the comment
+      // that said so has been removed. Somebody tidying `webPortalUrl` back
+      // onto `shareBaseUrl` would send every creator to production.
+      expect(
+        AppLinksConfig.creatorDashboardUrl,
+        isNot(startsWith(AppLinksConfig.shareBaseUrl)),
+        reason: 'the portal is a destination, not a link we parse back',
+      );
+    });
   });
 }

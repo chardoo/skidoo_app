@@ -28,6 +28,16 @@ class AppIcons {
   // ── Engagement ────────────────────────────────────────────────────────────
   static const like = '$_root/Interface/Heart_01.svg';
   static const comment = '$_root/Communication/Chat_Circle.svg';
+
+  /// The same file as [comment], under the name the other caller means.
+  ///
+  /// One rounded bubble. The two marks are easy to swap and the designs are
+  /// specific about which goes where: the *empty* Chats screen draws this
+  /// single bubble, while [conversation] — two overlapping ones — is the Chats
+  /// tab in the nav bar. An alias rather than a second path so they cannot
+  /// drift apart, and rather than reusing `comment` at the call site, where
+  /// "no messages yet" marked with a comment glyph reads as a mistake.
+  static const chatBubble = comment;
   static const save = '$_root/Interface/Bookmark.svg';
   static const share = '$_root/Communication/Paper_Plane.svg';
 
@@ -79,9 +89,35 @@ class AppIcons {
   static const qrCode = '$_root/System/Qr_Code.svg';
   static const clock = '$_root/Calendar/Clock.svg';
 
+  /// Paperwork. [fileBlank] is a document that exists, [fileCheck] one that is
+  /// settled — a receipt, a completed purchase — and [noteEdit] something
+  /// written rather than received, which is what a request brief is.
+  static const fileBlank = '$_root/File/File_Blank.svg';
+  static const fileCheck = '$_root/File/File_Check.svg';
+  static const noteEdit = '$_root/File/Note_Edit.svg';
+
   static const caretDown = '$_root/Arrow/Caret_Down_SM.svg';
   static const chevronRight = '$_root/Arrow/Chevron_Right_MD.svg';
   static const chevronUp = '$_root/Arrow/Chevron_Up_Duo.svg';
+
+  // ── Empty states ──────────────────────────────────────────────────────────
+  //
+  // Drawn for the screen that has nothing on it, and deliberately *not* the
+  // plain marks above. Each says what is missing rather than what the thing
+  // is: a bookmark with a tick in it, a heart with a line through it. The
+  // button that saves a post still uses [save], because a button says what it
+  // does — the difference is the whole point of having both.
+  //
+  // PNG rather than SVG, which is the one thing wrong with them: these arrived
+  // as 23–36 px bitmaps and the empty state draws at 30 logical points, so on
+  // a 3× phone they are upscaled around 2.5×. That is the exact problem the
+  // note at the top of this file describes the supplied set as having fixed.
+  // They are used as given because they are the artwork the designs call for
+  // and no vector exists yet; an .svg dropped in beside them is a one-line
+  // change here and nothing else.
+  static const emptySaved = '$_root/empty/bookmark.png';
+  static const emptyLikes = '$_root/empty/likes.png';
+  static const emptyChat = '$_root/empty/chat.png';
 
   static const info = '$_root/Warning/Info.svg';
   static const warning = '$_root/Warning/Circle_Warning.svg';

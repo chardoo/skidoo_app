@@ -4,6 +4,7 @@ import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_tile.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// The three-column grid behind the profile's Liked and Saved tabs.
 ///
@@ -18,7 +19,7 @@ class ProfilePhotoGrid extends StatefulWidget {
     required this.ext,
     required this.emptyTitle,
     required this.emptyHint,
-    this.emptyIcon = Icons.photo_library_outlined,
+    this.emptyIcon = AppIcons.camera,
     this.removeIcon,
     this.removeTooltip,
     this.onRemove,
@@ -43,7 +44,7 @@ class ProfilePhotoGrid extends StatefulWidget {
   /// The glyph in the empty state. Defaults to a generic photo stack; a tab
   /// with an icon of its own should pass that one, so the empty screen looks
   /// like the tab it is in.
-  final IconData emptyIcon;
+  final String emptyIcon;
 
   /// The filled heart / bookmark on each tile — tapping it takes the photo out
   /// of the list it is in.
@@ -182,7 +183,7 @@ class _Empty extends StatelessWidget {
 
   final String title;
   final String hint;
-  final IconData icon;
+  final String icon;
 
   @override
   Widget build(BuildContext context) => ScrollableEmptyState(

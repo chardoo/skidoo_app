@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
@@ -41,9 +42,17 @@ class AppEmptyState extends StatelessWidget {
           'an action needs both a label and something to do',
         );
 
-  /// The glyph. Outline or filled is the caller's business; size and colour
-  /// are not.
-  final IconData icon;
+  /// The glyph, as one of [AppIcons].
+  ///
+  /// A path into the supplied set rather than an [IconData], and the type is
+  /// the point: these were nineteen Material glyphs chosen one screen at a
+  /// time — `inbox_outlined` here, `rocket_launch_outlined` there — none of
+  /// which are in the icon set the rest of the app draws from. An empty state
+  /// is a whole screen with one mark on it, so it was the most visible place
+  /// the app was still wearing somebody else's icons.
+  ///
+  /// Size and colour stay out of the caller's hands, as before.
+  final String icon;
 
   /// The title line — "No messages yet", "Nothing liked yet".
   final String message;
@@ -57,8 +66,8 @@ class AppEmptyState extends StatelessWidget {
   final VoidCallback? onAction;
 
   /// The disc, and the glyph inside it. Fixed: see the note above.
-  static const double _discSize = 100;
-  static const double _iconSize = 42;
+  static const double _discSize = 80;
+  static const double _iconSize = 30;
 
   /// The disc never takes more than this share of the height it is given.
   /// Past it, the glyph stands on its own and the gaps tighten.
@@ -106,7 +115,7 @@ class AppEmptyState extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (tight)
-                  Icon(icon, color: accent, size: _iconSize.sp)
+                  _Glyph(icon, color: accent, size: _iconSize.sp)
                 else
                   Container(
                     width: _discSize.w,
@@ -116,7 +125,7 @@ class AppEmptyState extends StatelessWidget {
                       color: ext.accentGold.withValues(alpha: 0.12),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(icon, color: accent, size: _iconSize.sp),
+                    child: _Glyph(icon, color: accent, size: _iconSize.sp),
                   ),
                 SizedBox(height: (tight ? AppSpacing.md : AppSpacing.xl).h),
                 Text(
@@ -236,4 +245,47 @@ class ScrollableEmptyState extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// One of [AppIcons], whichever format it happens to be in.
+///
+/// The supplied set is SVG and [AppSvgIcon] draws it. The three empty-state
+/// marks — the ticked bookmark, the crossed heart, the single bubble — arrived
+/// as PNGs instead, so this picks by extension rather than making every caller
+/// know which kind of file it asked for.
+///
+/// Tinted either way, and that matters more than it looks: the empty state
+/// chooses between two accent shades depending on the ground it is drawn on,
+/// because the lighter one fails WCAG 1.4.11 on the light page (see the note
+/// above `accent`). A raster drawn in its own baked-in green would quietly
+/// opt out of that. `Image.asset`'s `color` composites in exactly like the
+/// SVG's `srcIn` filter, so both honour the choice.
+///
+/// Local to this file on purpose. If raster icons spread beyond these three
+/// this belongs next to [AppSvgIcon] instead — but one shared widget that
+/// silently accepts either format is also how a set stops being a set.
+class _Glyph extends StatelessWidget {
+  const _Glyph(this.asset, {required this.color, required this.size});
+
+  final String asset;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (asset.endsWith('.svg')) {
+      return AppSvgIcon(asset, color: color, size: size);
+    }
+    return Image.asset(
+      asset,
+      width: size,
+      height: size,
+      color: color,
+      // The sources are 23-36px and this draws at 30 logical points, so on a
+      // 2x or 3x screen they are being scaled up. Medium is the best of the
+      // cheap filters for that direction; nothing here can invent detail the
+      // file does not have.
+      filterQuality: FilterQuality.medium,
+    );
+  }
 }

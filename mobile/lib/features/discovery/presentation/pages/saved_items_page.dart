@@ -19,6 +19,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 class SavedItemsPage extends StatefulWidget {
   static const routeName = '/saved-items';
@@ -299,7 +300,7 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         color: ext.accentGold,
         child: const ScrollableEmptyState(
           child: AppEmptyState(
-            icon: Icons.bookmark_border_rounded,
+            icon: AppIcons.emptySaved,
             message: 'No saved items yet',
             hint: 'Bookmark events to find them here.',
           ),

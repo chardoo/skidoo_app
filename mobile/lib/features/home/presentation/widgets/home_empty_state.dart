@@ -14,7 +14,7 @@ class HomeEmptyState extends StatelessWidget {
   });
 
   final AppThemeExtension ext;
-  final IconData icon;
+  final String icon;
   final String message;
   final String? hint;
 

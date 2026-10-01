@@ -13,6 +13,7 @@ import 'package:jperg_app/features/gallery/presentation/found/models/found_album
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_album_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_scanning_orb.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// What a scanned event code opens: the search, then what it turned up.
 ///
@@ -243,7 +244,7 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
     // worth opening even when recognition found none of her in it.
     if (album == null || album.photoCount == 0) {
       return const AppEmptyState(
-        icon: Icons.person_search_rounded,
+        icon: AppIcons.user,
         message: 'No photos of you yet',
         hint: "We didn't find you in this event. We'll let you know if that "
             'changes.',

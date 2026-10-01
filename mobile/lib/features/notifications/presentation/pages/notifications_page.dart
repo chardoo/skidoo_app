@@ -316,7 +316,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (_items.isEmpty) {
       return ScrollableEmptyState(
         child: AppEmptyState(
-          icon: Icons.notifications_none_rounded,
+          icon: AppIcons.bell,
           message: _filter == null
               ? 'No notifications yet'
               : 'Nothing under this filter',

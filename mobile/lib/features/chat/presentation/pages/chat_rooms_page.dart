@@ -433,7 +433,7 @@ class _EmptyInbox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppEmptyState(
-        icon: Icons.chat_bubble_outline_rounded,
+        icon: AppIcons.emptyChat,
         message: 'No messages yet',
         actionLabel: 'Start a chat',
         hint: 'to see your conversations here',

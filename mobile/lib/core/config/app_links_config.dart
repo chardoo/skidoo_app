@@ -12,13 +12,27 @@ class AppLinksConfig {
 
   static const String shareBaseUrl = 'https://jperg.com';
 
-  /// The creator dashboard, which lives on the web rather than in the app.
+  /// Where the creator portal is opened from, which is **not** [shareBaseUrl].
   ///
-  /// Built on [shareBaseUrl] rather than written out, so it cannot drift from
-  /// the public domain the way the hardcoded Render preview URL it replaced
-  /// had — that one still pointed at picco-v2.onrender.com.
+  /// The two were the same until jperg.com went to production. They are
+  /// different things that happened to share a host:
+  ///
+  ///   * [shareBaseUrl] is the domain links are *built on*. It is pinned by
+  ///     `applinks:` in Runner.entitlements and `deepLinkHost` in
+  ///     build.gradle.kts, and a share built on any other host opens a browser
+  ///     instead of the app. It cannot move without shipping both.
+  ///   * This is a destination the app merely *sends somebody to*. Nothing
+  ///     parses it coming back, so it can point wherever the portal being
+  ///     worked on lives.
+  ///
+  /// Pointed at the Render deployment deliberately and for now: jperg.com
+  /// serves production, and the dashboard this opens is still being built. Put
+  /// it back to `shareBaseUrl` once the production site carries the new portal.
+  static const String webPortalUrl = 'https://picco-v2.onrender.com';
+
+  /// The creator dashboard, which lives on the web rather than in the app.
   static const String creatorDashboardUrl =
-      '$shareBaseUrl/photographer/dashboard';
+      '$webPortalUrl/photographer/dashboard';
 
   /// Where a new creator goes to put their first photos up.
   ///
@@ -27,7 +41,7 @@ class AppLinksConfig {
   /// point at `/upload`, which is not a route the site has — the button on
   /// "you're ready" opened the site's own 404 page, which is a poor first
   /// impression of a portal somebody has just signed up for.
-  static const String creatorUploadUrl = '$shareBaseUrl/photographer/events';
+  static const String creatorUploadUrl = '$webPortalUrl/photographer/events';
 
   /// The URL a share should carry for [link].
   ///

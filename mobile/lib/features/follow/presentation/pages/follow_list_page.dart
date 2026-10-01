@@ -409,7 +409,7 @@ class _EmptyState extends StatelessWidget {
     // the tab and coming back.
     return ScrollableEmptyState(
       child: AppEmptyState(
-        icon: isFollowers ? Icons.group_outlined : Icons.person_search_outlined,
+        icon: AppIcons.user,
         message: isFollowers ? 'No followers yet' : 'Not following anyone yet',
         hint: isFollowers
             ? 'People who follow you will appear here.'

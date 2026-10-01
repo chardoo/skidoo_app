@@ -240,7 +240,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
 
                       if (state.events.isEmpty) {
                         return const AppEmptyState(
-                          icon: Icons.photo_library_outlined,
+                          icon: AppIcons.camera,
                           message: 'No events yet',
                           hint: 'New work from creators lands here.',
                         );
