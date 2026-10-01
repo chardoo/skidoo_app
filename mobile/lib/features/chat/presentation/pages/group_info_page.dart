@@ -24,6 +24,7 @@ import 'package:jperg_app/features/chat/presentation/pages/shared_media_page.dar
 import 'package:jperg_app/features/chat/presentation/widgets/chat_settings_tile.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/widgets/text_prompt_dialog.dart';
 
 /// Details for a group: its photo and name, shared media, mute, who is in it,
 /// and the admin controls.
@@ -350,11 +351,11 @@ Future<void> _showRenameDialog(
   required ChatRoomBloc bloc,
 }) async {
   final ext = Theme.of(context).extension<AppThemeExtension>()!;
-  final controller = TextEditingController(text: room.name ?? '');
 
-  final name = await showDialog<String>(
+  final name = await showTextPromptDialog<String>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
+    initialText: room.name ?? '',
+    builder: (dialogContext, controller) => AlertDialog(
       backgroundColor: ext.cardSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg.r),
@@ -399,7 +400,6 @@ Future<void> _showRenameDialog(
       ],
     ),
   );
-  controller.dispose();
 
   // Cancelled, blank, or unchanged. The last of those is not a no-op worth
   // sending: it would write the same name back and tell every member about it.

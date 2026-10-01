@@ -5,6 +5,7 @@ import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 
@@ -403,37 +404,17 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFollowers = kind == FollowListTab.followers;
-    return ListView(
-      // Scrollable so RefreshIndicator and pull-to-refresh still work.
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        const SizedBox(height: 120),
-        Icon(
-          isFollowers ? Icons.group_outlined : Icons.person_search_outlined,
-          size: 56,
-          color: ext.searchHintColor.withValues(alpha: 0.5),
-        ),
-        const SizedBox(height: 14),
-        Center(
-          child: Text(
-            isFollowers ? 'No followers yet' : 'Not following anyone yet',
-            style: TextStyle(
-              color: ext.greetingColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Center(
-          child: Text(
-            isFollowers
-                ? 'People who follow you will appear here.'
-                : 'Accounts you follow will appear here.',
-            style: TextStyle(color: ext.searchHintColor, fontSize: 13),
-          ),
-        ),
-      ],
+    // Scrollable so RefreshIndicator and pull-to-refresh still work: a plain
+    // Center has nothing to drag, and the only way to retry becomes leaving
+    // the tab and coming back.
+    return ScrollableEmptyState(
+      child: AppEmptyState(
+        icon: isFollowers ? Icons.group_outlined : Icons.person_search_outlined,
+        message: isFollowers ? 'No followers yet' : 'Not following anyone yet',
+        hint: isFollowers
+            ? 'People who follow you will appear here.'
+            : 'Accounts you follow will appear here.',
+      ),
     );
   }
 }

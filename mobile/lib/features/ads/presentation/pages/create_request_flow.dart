@@ -15,6 +15,7 @@ import 'package:jperg_app/features/location/presentation/widgets/location_picker
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/features/photographers/data/premium_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/widgets/text_prompt_dialog.dart';
 
 /// Posting a request: fill it in, read it back, publish.
 ///
@@ -356,10 +357,10 @@ class _NewRequestStepState extends State<_NewRequestStep> {
     bool number = false,
   }) async {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final controller = TextEditingController(text: initial);
-    final answer = await showDialog<String>(
+    final answer = await showTextPromptDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      initialText: initial,
+      builder: (dialogContext, controller) => AlertDialog(
         backgroundColor: ext.cardSurface,
         title: Text(title,
             style: TextStyle(
@@ -390,7 +391,6 @@ class _NewRequestStepState extends State<_NewRequestStep> {
         ],
       ),
     );
-    controller.dispose();
     return answer;
   }
 

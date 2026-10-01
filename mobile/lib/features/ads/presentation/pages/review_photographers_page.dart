@@ -27,6 +27,7 @@ import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/reviews_pages.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/widgets/text_prompt_dialog.dart';
 
 /// What happened to a request while it was open, so the list behind it knows
 /// whether it is out of date.
@@ -531,10 +532,9 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
     required String confirmLabel,
     required bool required,
   }) async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
+    final result = await showTextPromptDialog<String>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, controller) => StatefulBuilder(
         builder: (_, setDialogState) => AlertDialog(
           title: Text(title),
           content: Column(
@@ -573,7 +573,6 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         ),
       ),
     );
-    controller.dispose();
     return result;
   }
 

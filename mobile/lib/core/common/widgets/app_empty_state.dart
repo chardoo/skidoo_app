@@ -79,13 +79,34 @@ class AppEmptyState extends StatelessWidget {
         final tight = constraints.maxHeight.isFinite &&
             _discSize.w > constraints.maxHeight * _mostOfTheBox;
 
+        // The accent takes its darker partner shade on a light ground.
+        //
+        // One accent was serving two very different grounds. The disc is the
+        // accent at 12% over the page: on near-black that wash stays dark and
+        // the glyph reads off it at 4.9:1, but on the light ground it lands on
+        // a pale mint where the *same* glyph measures 2.8:1 — under the 3:1
+        // WCAG 1.4.11 asks of a graphic, and visibly so, the mark looking
+        // half-erased rather than quiet. The link has it worse: body-sized
+        // text needs 4.5:1 and the accent on the light page gives 3.15:1.
+        //
+        // The dark shade fixes both at once — 4.4:1 in the disc, 5.0:1 for the
+        // link — and is already the accent's declared partner, so this is the
+        // palette being used as intended rather than a new colour.
+        //
+        // Read off the ground rather than `Theme.of(context).brightness`,
+        // because the ground is the thing the wash actually composites over —
+        // a theme that sets one and not the other would still come out right.
+        final accent = ext.homeBackground.computeLuminance() > 0.5
+            ? ext.accentGoldDark
+            : ext.accentGold;
+
         final content = Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (tight)
-                  Icon(icon, color: ext.accentGold, size: _iconSize.sp)
+                  Icon(icon, color: accent, size: _iconSize.sp)
                 else
                   Container(
                     width: _discSize.w,
@@ -95,7 +116,7 @@ class AppEmptyState extends StatelessWidget {
                       color: ext.accentGold.withValues(alpha: 0.12),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(icon, color: ext.accentGold, size: _iconSize.sp),
+                    child: Icon(icon, color: accent, size: _iconSize.sp),
                   ),
                 SizedBox(height: (tight ? AppSpacing.md : AppSpacing.xl).h),
                 Text(
@@ -110,6 +131,7 @@ class AppEmptyState extends StatelessWidget {
                     actionLabel: actionLabel,
                     onAction: onAction,
                     ext: ext,
+                    accent: accent,
                   ),
                 ],
               ],
@@ -140,12 +162,17 @@ class _SecondLine extends StatelessWidget {
     required this.actionLabel,
     required this.onAction,
     required this.ext,
+    required this.accent,
   });
 
   final String? hint;
   final String? actionLabel;
   final VoidCallback? onAction;
   final AppThemeExtension ext;
+
+  /// The accent already resolved against this theme's ground. Passed in rather
+  /// than read again so the link and the glyph cannot end up different shades.
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -171,9 +198,9 @@ class _SecondLine extends StatelessWidget {
               child: Text(
                 actionLabel!,
                 style: AppTypography.body.copyWith(
-                  color: ext.accentGold,
+                  color: accent,
                   decoration: TextDecoration.underline,
-                  decorationColor: ext.accentGold,
+                  decorationColor: accent,
                 ),
               ),
             ),

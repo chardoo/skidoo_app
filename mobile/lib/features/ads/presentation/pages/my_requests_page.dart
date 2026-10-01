@@ -26,6 +26,7 @@ import 'package:jperg_app/features/location/presentation/widgets/location_picker
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/widgets/text_prompt_dialog.dart';
 
 class MyRequestsPage extends StatefulWidget {
   const MyRequestsPage({super.key, this.embedded = false, this.onCount});
@@ -1004,12 +1005,10 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
   }
 
   Future<int?> _askHours(AppThemeExtension ext) async {
-    final controller = TextEditingController(
-      text: _coverageHours?.toString() ?? '',
-    );
-    final result = await showDialog<int>(
+    final result = await showTextPromptDialog<int>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      initialText: _coverageHours?.toString() ?? '',
+      builder: (dialogContext, controller) => AlertDialog(
         backgroundColor: ext.cardSurface,
         title: Text('How many hours?',
             style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
@@ -1033,15 +1032,14 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
         ],
       ),
     );
-    controller.dispose();
     return (result != null && result > 0) ? result : null;
   }
 
   Future<String?> _askNote(AppThemeExtension ext) async {
-    final controller = TextEditingController(text: _coverageNote);
-    final result = await showDialog<String>(
+    final result = await showTextPromptDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      initialText: _coverageNote,
+      builder: (dialogContext, controller) => AlertDialog(
         backgroundColor: ext.cardSurface,
         title: Text('Describe the coverage',
             style: TextStyle(color: ext.greetingColor, fontSize: 16.sp)),
@@ -1065,7 +1063,6 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
         ],
       ),
     );
-    controller.dispose();
     return result;
   }
 

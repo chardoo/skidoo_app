@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -93,11 +94,44 @@ void main() {
       ));
       await t.pump();
 
-      expect(t.widget<Icon>(find.byType(Icon)).color, ext(false).accentGold);
+      expect(t.widget<Icon>(find.byType(Icon)).color, ext(false).accentGoldDark);
       expect(
         t.widget<Text>(find.text('No requests yet')).style?.color,
         ext(false).greetingColor,
       );
+    });
+
+    test('the glyph is legible against its own disc, in both themes', () {
+      // The bug this is here for: one accent was serving two grounds. The disc
+      // is the accent at 12% over the page, which on near-black stays dark and
+      // on cream turns pale mint — so the accent that read cleanly in dark mode
+      // measured 2.8:1 in light and the glyph looked half-erased.
+      //
+      // Asserted as a ratio rather than as a colour, because the colour is the
+      // answer and the ratio is the requirement. Swapping the palette should
+      // fail this when the new shades do not carry, and pass when they do.
+      for (final dark in [true, false]) {
+        final e = ext(dark);
+        final disc = Color.alphaBlend(
+          e.accentGold.withValues(alpha: 0.12),
+          e.homeBackground,
+        );
+        final glyph = dark ? e.accentGold : e.accentGoldDark;
+
+        expect(
+          _contrast(glyph, disc),
+          greaterThanOrEqualTo(3.0),
+          reason: '${dark ? 'dark' : 'light'}: WCAG 1.4.11 wants 3:1 for a '
+              'graphic, and under it the mark reads as a rendering fault',
+        );
+        // The link is body-sized text on the page itself, which is the
+        // stricter bar of the two.
+        expect(
+          _contrast(glyph, e.homeBackground),
+          greaterThanOrEqualTo(4.5),
+          reason: '${dark ? 'dark' : 'light'}: the action link is text',
+        );
+      }
     });
   });
 
@@ -232,6 +266,32 @@ void main() {
       );
       expect(scroll.physics, isA<AlwaysScrollableScrollPhysics>());
     });
+
+    test('and the last two hand-rolled ones are gone', () {
+      // The followers list and the saved tab each drew their own: a 56px grey
+      // glyph, a 16px title, a 13px hint — the same anatomy as the shared
+      // widget at three different sizes, which is the drift this file exists
+      // to stop.
+      //
+      // Read off the source rather than pumped, because both live in private
+      // widgets inside pages that want a repository and a registered locator
+      // to build. The question here is only which widget they draw, and the
+      // import answers it.
+      for (final page in [
+        'lib/features/follow/presentation/pages/follow_list_page.dart',
+        'lib/features/discovery/presentation/pages/saved_items_page.dart',
+      ]) {
+        final source = File(page).readAsStringSync();
+
+        expect(source.contains('AppEmptyState'), isTrue,
+            reason: '$page should draw the shared empty state');
+        expect(
+          RegExp(r'size: 56').hasMatch(source),
+          isFalse,
+          reason: '$page is back to drawing its own 56px glyph',
+        );
+      }
+    });
   });
 
   group('the look is not a parameter', () {
@@ -278,4 +338,25 @@ void main() {
       }
     });
   });
+}
+
+/// WCAG relative luminance, and the ratio between two opaque colours.
+///
+/// Written out rather than taken from `Color.computeLuminance` alone because
+/// the ratio needs the +0.05 on both terms, and getting that wrong gives
+/// plausible-looking numbers that pass when they should not.
+double _luminance(Color c) {
+  double channel(double v) =>
+      v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+  return 0.2126 * channel(c.r) +
+      0.7152 * channel(c.g) +
+      0.0722 * channel(c.b);
+}
+
+double _contrast(Color a, Color b) {
+  final la = _luminance(a);
+  final lb = _luminance(b);
+  final hi = math.max(la, lb);
+  final lo = math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
 }

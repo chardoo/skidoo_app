@@ -10,7 +10,6 @@ import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/validators/media_validator.dart';
-import 'package:jperg_app/core/widgets/emoji_panel.dart';
 import 'package:jperg_app/features/chat/presentation/mentions.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/mention_picker.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
@@ -98,8 +97,6 @@ class ChatInputBar extends StatefulWidget {
 }
 
 class _ChatInputBarState extends State<ChatInputBar> {
-  bool _emojiOpen = false;
-
   /// The `@…` fragment under the caret, or null when the user isn't writing a
   /// mention. Recomputed on every change to the field — including caret moves,
   /// since clicking into an existing `@name` should reopen the picker.
@@ -166,11 +163,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
     // The composer is no longer empty, and the field's own onChanged does not
     // fire for a programmatic edit.
     widget.onTypingChanged?.call(result.text.trim().isNotEmpty);
-  }
-
-  void _toggleEmoji() {
-    setState(() => _emojiOpen = !_emojiOpen);
-    if (_emojiOpen) FocusManager.instance.primaryFocus?.unfocus();
   }
 
   Future<void> _pickImage() async {
@@ -245,13 +237,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
             participants: mentionMatches,
             handles: widget.mentionHandles,
             onSelected: _insertMention,
-          ),
-
-        // ── Emoji panel — sibling above the input row so it's never clipped ─
-        if (_emojiOpen)
-          EmojiPickerPanel(
-            ext: ext,
-            onEmojiSelected: (emoji) => insertEmoji(widget.controller, emoji),
           ),
 
         // ── Staged media preview ────────────────────────────────────────────
@@ -333,15 +318,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   )),
               SizedBox(width: AppSpacing.xs.w),
 
-              // Emoji button
-              EmojiButton(
-                isOpen: _emojiOpen,
-                onToggle: _toggleEmoji,
-                ext: ext,
-                iconSize: 20.sp,
-              ),
-              SizedBox(width: AppSpacing.xs.w),
-
               // Text input
               Expanded(
                 child: AppTextField(
@@ -349,9 +325,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
                   focusNode: widget.focusNode,
                   onChanged: (value) =>
                       widget.onTypingChanged?.call(value.trim().isNotEmpty),
-                  onTap: () {
-                    if (_emojiOpen) setState(() => _emojiOpen = false);
-                  },
                   maxLines: 4,
                   minLines: 1,
                   maxLength: 1000,

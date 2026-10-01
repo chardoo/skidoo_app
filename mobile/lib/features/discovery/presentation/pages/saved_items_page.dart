@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
+import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
@@ -290,31 +291,17 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
 
     final items = _items ?? [];
     if (items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacing.xxxl.w),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.bookmark_border_rounded,
-                  size: 56.sp, color: ext.searchHintColor),
-              SizedBox(height: 14.h),
-              Text(
-                'No saved items yet',
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontFamily: AppTypography.displayFontFamily,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                'Bookmark events to find them here.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
-              ),
-            ],
+      // Pull-to-refresh on the empty branch too. The list branch below has it,
+      // and a saved list that has just been emptied on another device is
+      // exactly when somebody pulls to check.
+      return RefreshIndicator(
+        onRefresh: _load,
+        color: ext.accentGold,
+        child: const ScrollableEmptyState(
+          child: AppEmptyState(
+            icon: Icons.bookmark_border_rounded,
+            message: 'No saved items yet',
+            hint: 'Bookmark events to find them here.',
           ),
         ),
       );
