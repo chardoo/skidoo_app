@@ -19,15 +19,24 @@ import 'package:jperg_app/core/common/reaction_feedback.dart';
 ///
 /// ## The shape of it
 ///
-/// 1 → ~1.55 → 1, up in about 150 ms and settled by 340. The tween names
-/// [peak] and `easeOutBack` carries it a little past; the peak is the curve's,
-/// not the number's.
+/// 1 → 1.8 → 0.94 → 1: up hard in about 110 ms, back down *past* resting size
+/// by 250, settled by 340.
 ///
-/// The overshoot is the entire effect. A scale that merely *approaches* its
-/// target reads as a slow zoom, and at this duration as nothing much at all —
-/// which is what the bar's heart did when all it had was a press dip to 0.85:
-/// the glyph got smaller under a thumb that was already covering it, and by the
-/// time the thumb lifted everything was over.
+/// Two things make this read as a pop rather than a zoom, and the first one
+/// alone was not enough:
+///
+/// * **It overshoots on the way up.** Obvious, and what the first version did.
+/// * **It undershoots on the way back.** The glyph passes resting size, dips
+///   a little under, and comes back. That is the squash after the stretch, and
+///   it is what the eye reads as something having *landed*. Without it the
+///   curve is symmetrical — the glyph swells and un-swells, which at any peak
+///   looks like a zoom. A 1.35 peak and then a 1.55 peak were both reported as
+///   not popping, and the number was never the problem.
+///
+/// Measured end to end, as the net scale arriving at the glyph, in
+/// `test/widgets/like_pop_visibility_test.dart` — because a pop can be
+/// cancelled by something else scaling the same glyph the other way, which is
+/// exactly what the bar's `AnimatedSwitcher` was doing to it.
 ///
 /// ## On the way in only
 ///
@@ -64,11 +73,18 @@ class ReactionPop extends StatefulWidget {
   /// different shape.
   static const Duration duration = Duration(milliseconds: 340);
 
-  /// The size the glyph aims for on the way up, before `easeOutBack` carries it
-  /// past. Raised from the 1.35 the rail used alone: at 1.35 on a 24 px glyph
-  /// the pop was about three pixels of travel, which is not enough to see on a
-  /// screen the thumb is still moving across.
-  static const double peak = 1.5;
+  /// How big the glyph gets at the top of the pop.
+  ///
+  /// 1.8 on the rail's 24 px heart is about 9 px of travel, against the 3 px
+  /// that 1.35 bought. Wrap the glyph alone and never its count: at this size
+  /// a number scaling with it is both distracting and wide enough to collide
+  /// with whatever sits next to it.
+  static const double peak = 1.8;
+
+  /// How far under resting size it settles back through — the squash that
+  /// makes the stretch read. Small on purpose: this should be felt, not seen
+  /// as a second animation.
+  static const double undershoot = 0.94;
 
   @override
   State<ReactionPop> createState() => _ReactionPopState();
@@ -82,17 +98,25 @@ class _ReactionPopState extends State<ReactionPop>
   );
 
   late final Animation<double> _scale = TweenSequence<double>([
-    // Up, past the target.
+    // Up, hard. `easeOutCubic` spends its speed at the start, so the glyph is
+    // most of the way there in the first few frames — that initial velocity is
+    // what the eye catches.
     TweenSequenceItem(
       tween: Tween(begin: 1.0, end: ReactionPop.peak)
-          .chain(CurveTween(curve: Curves.easeOutBack)),
-      weight: 45,
-    ),
-    // And back down to it, settling rather than snapping.
-    TweenSequenceItem(
-      tween: Tween(begin: ReactionPop.peak, end: 1.0)
           .chain(CurveTween(curve: Curves.easeOutCubic)),
-      weight: 55,
+      weight: 32,
+    ),
+    // Down through resting size, to just under it.
+    TweenSequenceItem(
+      tween: Tween(begin: ReactionPop.peak, end: ReactionPop.undershoot)
+          .chain(CurveTween(curve: Curves.easeInOutCubic)),
+      weight: 40,
+    ),
+    // And back up to rest. The squash resolving is the end of the gesture.
+    TweenSequenceItem(
+      tween: Tween(begin: ReactionPop.undershoot, end: 1.0)
+          .chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 28,
     ),
   ]).animate(_ctrl);
 

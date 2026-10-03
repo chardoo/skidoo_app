@@ -47,8 +47,16 @@ Photo photo({
     });
 
 const like = AppIcons.like;
-const comment = AppIcons.comment;
-const commentOff = Icons.comments_disabled_rounded;
+
+/// The comment action, open and closed.
+///
+/// Asked for by what it *says*, not by its glyph, because both states draw the
+/// same artwork now: a closed thread is the comment button dimmed, not a
+/// crossed bubble in its place. Told apart by their labels, which is also the
+/// only thing a reader who cannot see the dimming has to go on.
+const comment = _Reaction('the comment button', r'^Comments(?! disabled)');
+const commentOff = _Reaction('comments, closed', r'^Comments disabled');
+
 const bookmark = AppIcons.save;
 /// The bar's download glyph — the same outlined arrow every other download in
 /// the app uses.
@@ -62,13 +70,27 @@ const bookmark = AppIcons.save;
 const download = Icons.download_outlined;
 const share = AppIcons.share;
 
-/// Finds a glyph whether it is drawn from the artwork or the icon font.
+/// An action identified by its spoken label rather than its glyph — see
+/// [comment] and [commentOff], the two that share a drawing.
+class _Reaction {
+  const _Reaction(this.name, this.labelPattern);
+  final String name;
+  final String labelPattern;
+  @override
+  String toString() => name;
+}
+
+/// Finds an action whether it is named by artwork, by an icon-font glyph, or
+/// by what it announces.
 ///
-/// Rest states come from the supplied SVG set now; the font glyph is what an
-/// *active* reaction falls back to. Both are still one reaction each.
-Finder glyphFinder(Object glyph) => glyph is String
-    ? find.byWidgetPredicate((w) => w is AppSvgIcon && w.asset == glyph)
-    : find.byIcon(glyph as IconData);
+/// Rest states come from the supplied SVG set; the font glyph is what an
+/// *active* reaction falls back to. Either way it is one reaction each.
+Finder glyphFinder(Object glyph) => switch (glyph) {
+      String asset =>
+        find.byWidgetPredicate((w) => w is AppSvgIcon && w.asset == asset),
+      _Reaction r => find.bySemanticsLabel(RegExp(r.labelPattern)),
+      _ => find.byIcon(glyph as IconData),
+    };
 
 /// The glyphs on the rail, in the order the rail lists them.
 Set<Object> railOf(WidgetTester t) => {

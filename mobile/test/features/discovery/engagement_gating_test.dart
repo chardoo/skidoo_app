@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -78,11 +79,37 @@ void main() {
       expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
       expect(find.byIcon(Icons.thumb_down_outlined), findsOneWidget);
 
-      expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
-      // A struck-through comment icon in place of the button: a rail with no
-      // comment button at all reads as one that never had comments, and the
-      // owner's decision is worth stating.
-      expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
+      // The comment glyph stays, drawn unavailable — the *same* glyph, dimmed.
+      // A bar with no comment button at all reads as one that never had
+      // comments, and the owner's decision is worth stating; a different icon
+      // in its place said it by being a different drawing, which made the one
+      // unavailable action on the bar the only one that did not look like
+      // itself.
+      expect(find.byIcon(Icons.comments_disabled_rounded), findsNothing);
+      expect(find.byIcon(Icons.mode_comment_outlined), findsOneWidget);
+      // Matched loosely: the count rides in the same label, so the
+      // announcement is "Comments disabled" *and* the number.
+      expect(
+          find.bySemanticsLabel(RegExp('Comments disabled')), findsOneWidget);
+    });
+
+    testWidgets('and the closed one is dimmed, not drawn live', (tester) async {
+      // Dimming is now the whole visual signal, so it has to actually be there
+      // — and it has to reach the count, since a bright "7" over a greyed glyph
+      // reads as a live button.
+      await tester.pumpWidget(host(bar(commentsEnabled: true)));
+      await tester.pumpAndSettle();
+      final live =
+          tester.widget<Icon>(find.byIcon(Icons.mode_comment_outlined)).color;
+
+      await tester.pumpWidget(host(bar(commentsEnabled: false)));
+      await tester.pumpAndSettle();
+      final closed =
+          tester.widget<Icon>(find.byIcon(Icons.mode_comment_outlined));
+      final count = tester.widget<Text>(find.text('7'));
+
+      expect(closed.color, isNot(live));
+      expect(count.style?.color, closed.color);
     });
 
     testWidgets('share and save survive: they distribute, not react',
@@ -101,7 +128,8 @@ void main() {
       await tester.pumpWidget(host(bar(commentsEnabled: false)));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
+      expect(
+          find.bySemanticsLabel(RegExp('Comments disabled')), findsOneWidget);
       expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
       expect(find.byIcon(Icons.thumb_down_outlined), findsOneWidget);
     });
@@ -123,17 +151,39 @@ void main() {
           ),
         );
 
+    // The bubble, whichever state it is in: the rail draws design's artwork
+    // for the comment action, and a closed thread draws the same file.
+    final bubble = find.byWidgetPredicate(
+        (w) => w is AppSvgIcon && w.asset == AppIcons.comment);
+
     testWidgets('draws the comment action as unavailable, not absent',
         (tester) async {
       await tester.pumpWidget(rail(commentsEnabled: false));
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.mode_comment_outlined), findsNothing);
-      expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
+      // The same glyph the live action uses, and nothing from the icon font
+      // standing in for it.
+      expect(bubble, findsOneWidget);
+      expect(find.byIcon(Icons.comments_disabled_rounded), findsNothing);
       // Matched loosely: the count merges into the same semantics node, so the
       // announcement is "Comments disabled" *and* the number.
       expect(
           find.bySemanticsLabel(RegExp('Comments disabled')), findsOneWidget);
+    });
+
+    testWidgets('the closed thread draws the same glyph as the open one',
+        (tester) async {
+      // What the fix is: an unavailable action is the action, drawn
+      // unavailable. It used to be a crossed bubble out of the icon font — a
+      // different shape *and* a different icon family from the live one beside
+      // it.
+      await tester.pumpWidget(rail(commentsEnabled: true));
+      await tester.pumpAndSettle();
+      expect(bubble, findsOneWidget);
+
+      await tester.pumpWidget(rail(commentsEnabled: false));
+      await tester.pumpAndSettle();
+      expect(bubble, findsOneWidget);
     });
 
     testWidgets('dims the count along with the glyph', (tester) async {
@@ -141,8 +191,7 @@ void main() {
       await tester.pumpWidget(rail(commentsEnabled: false));
       await tester.pumpAndSettle();
 
-      final glyph =
-          tester.widget<Icon>(find.byIcon(Icons.comments_disabled_rounded));
+      final glyph = tester.widget<AppSvgIcon>(bubble);
       final count = tester.widget<Text>(find.text('7'));
 
       expect(glyph.color, isNot(Colors.white));
@@ -153,12 +202,12 @@ void main() {
       await tester.pumpWidget(rail(commentsEnabled: false));
       await tester.pumpAndSettle();
 
-      // No sheet, no navigation, no exception — the glyph has already said
-      // everything there is to say.
-      await tester.tap(find.byIcon(Icons.comments_disabled_rounded));
+      // No sheet, no navigation, no exception — the dimming and the label have
+      // already said everything there is to say.
+      await tester.tap(bubble);
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
+      expect(bubble, findsOneWidget);
     });
 
     testWidgets('the count survives the thread closing', (tester) async {

@@ -129,55 +129,93 @@ class _ShareSheetContentState extends State<_ShareSheetContent> {
     super.dispose();
   }
 
+  /// Fills the browse list in **at most two paints**: what the cache already
+  /// has, then everything the server says, in one frame.
+  ///
+  /// It used to take four, and the reader watched every one of them. The cached
+  /// read cleared `_loadingRooms` whether or not it had found anything, so an
+  /// empty cache — a first share, a fresh install — put the sheet through
+  /// spinner → "Type a name to search" → recent chats → suggested, each a
+  /// separate `setState` on a list that was still loading. Even with a warm
+  /// cache the rooms were re-set unconditionally when the refresh landed, so an
+  /// identical list rebuilt itself in front of you.
+  ///
+  /// So: an empty cache is not an answer and does not clear the spinner, the
+  /// refresh only re-sets the list when it actually differs, and the two
+  /// requests run together rather than the suggestions queueing behind the
+  /// rooms — they are independent, and in series they could not land in the
+  /// same frame even when both were quick.
   Future<void> _loadRoomsAndRecommendations() async {
     _myUserId = await sl<AuthService>().getUserId();
 
-    // Cached rooms first — instant, so the sheet never opens to a blank
-    // "recent chats" section while waiting on the network.
     try {
-      final cached = await sl<GetCachedRoomsUseCase>().call();
-      if (mounted) {
+      final cached = _shareTargets(await sl<GetCachedRoomsUseCase>().call());
+      if (mounted && cached.isNotEmpty) {
         setState(() {
-          _rooms = cached
-              .where((r) =>
-                  r.type.isShareTarget && !r.hasPendingInvite(_myUserId))
-              .toList();
+          _rooms = cached;
           _loadingRooms = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _loadingRooms = false);
+      // Nothing to show yet; the server call below is the one that decides.
     }
 
-    // Then refresh from the server in the background.
-    try {
-      final fresh = await sl<GetMyRoomsUseCase>().call();
-      if (mounted) {
-        setState(() {
-          _rooms = fresh
-              .where((r) =>
-                  r.type.isShareTarget && !r.hasPendingInvite(_myUserId))
-              .toList();
-          _loadingRooms = false;
-        });
-      }
-    } catch (_) {
-      // Cached list (if any) stays — a failed refresh isn't worth surfacing
-      // an error for in a share sheet.
-    }
+    // `Future.wait` rather than two awaits: both are in flight at once, and
+    // neither result is applied until both are in, so the sections arrive
+    // together instead of one pushing the other down the list.
+    final settled = await Future.wait([
+      sl<GetMyRoomsUseCase>()
+          .call()
+          .then<List<ChatRoom>?>(_shareTargets)
+          // A failed refresh isn't worth an error in a share sheet — the cached
+          // list stays, and null says "keep what is on screen".
+          .catchError((_) => null),
+      FollowRepository()
+          .getSuggestedPhotographers(limit: 10)
+          .then<List<SuggestedPhotographer>?>((s) => s)
+          .catchError((_) => null),
+    ]);
 
-    try {
-      final suggested =
-          await FollowRepository().getSuggestedPhotographers(limit: 10);
-      if (mounted) {
-        setState(() {
-          _recommended = suggested;
-          _loadingRecommended = false;
-        });
+    if (!mounted) return;
+    final fresh = settled[0] as List<ChatRoom>?;
+    final suggested = settled[1] as List<SuggestedPhotographer>?;
+    setState(() {
+      // Only when it says something new. Identical ids in an identical order
+      // with the same previews is the common case for a sheet opened twice in
+      // a row, and rebuilding the tiles for it is all cost and no information.
+      if (fresh != null && (_loadingRooms || !_sameRooms(_rooms, fresh))) {
+        _rooms = fresh;
       }
-    } catch (_) {
-      if (mounted) setState(() => _loadingRecommended = false);
+      if (suggested != null) _recommended = suggested;
+      // Settled either way: a request that failed has still answered, and a
+      // spinner left spinning on a dropped connection never resolves.
+      _loadingRooms = false;
+      _loadingRecommended = false;
+    });
+  }
+
+  /// The rooms this sheet can send into: conversations, minus any the user has
+  /// been invited to but not joined — sharing into one would accept the invite
+  /// sideways.
+  List<ChatRoom> _shareTargets(List<ChatRoom> rooms) => rooms
+      .where((r) => r.type.isShareTarget && !r.hasPendingInvite(_myUserId))
+      .toList();
+
+  /// Whether two room lists would draw the same tiles.
+  ///
+  /// Compares what [RoomTile] actually shows — identity and order, the preview
+  /// line, and the unread badge — rather than the objects, which are rebuilt by
+  /// every fetch and so never equal.
+  static bool _sameRooms(List<ChatRoom> a, List<ChatRoom> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id ||
+          a[i].unreadCount != b[i].unreadCount ||
+          a[i].lastMessage?.id != b[i].lastMessage?.id) {
+        return false;
+      }
     }
+    return true;
   }
 
   void _onScroll() {

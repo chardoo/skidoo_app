@@ -952,13 +952,20 @@ class ChatWebSocketService {
   void restoreFocus() => announceFocus();
 
   /// Send a plain-text or image/video message.
+  ///
+  /// [clientId] is the sender's own id for this message, returned untouched on
+  /// the echo so the app can match it to the bubble it already drew — see
+  /// [ChatMessage.clientId]. Optional only so the like/typing/ack frames above
+  /// do not have to invent one; every message send passes it.
   void send(String? content,
       {String? imageUrl,
       bool isVideo = false,
       bool paidPreview = false,
       String? replyToId,
-      String? roomId}) {
+      String? roomId,
+      String? clientId}) {
     final payload = <String, dynamic>{'type': 'message'};
+    if (clientId != null) payload['client_id'] = clientId;
     if (content != null && content.isNotEmpty) payload['content'] = content;
     if (imageUrl != null) {
       payload['image_url'] = imageUrl;
@@ -969,7 +976,12 @@ class ChatWebSocketService {
     }
     if (replyToId != null) payload['reply_to_id'] = replyToId;
     if (roomId != null) payload['room_id'] = roomId;
-    if (payload.length == 1) return; // only 'type', nothing to send
+    // Counted against what was actually asked for, not the size of the map:
+    // 'type' and 'client_id' are both bookkeeping, and a client id alone is
+    // still nothing to say.
+    if (!payload.containsKey('content') && !payload.containsKey('image_url')) {
+      return;
+    }
     _sendRaw(payload);
   }
 
@@ -990,9 +1002,11 @@ class ChatWebSocketService {
     int? senderSpkId,
     String? replyToId,
     String? roomId,
+    String? clientId,
   }) {
     final payload = <String, dynamic>{
       'type': 'message',
+      if (clientId != null) 'client_id': clientId,
       'ciphertext': ciphertext,
       'iv': iv,
       if (imageUrl != null) 'image_url': imageUrl,

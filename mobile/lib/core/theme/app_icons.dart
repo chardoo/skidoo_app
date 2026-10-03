@@ -51,11 +51,28 @@ class AppIcons {
   /// recognises the sheet they are about to get from the mark on the button.
   /// The app drew the iOS box on both, which on Android is a glyph the system
   /// does not use for anything.
-  static IconData get systemShare =>
+  static IconData get systemShare => _isApple
+      ? Icons.ios_share_rounded
+      : Icons.share_rounded;
+
+  /// Artwork to draw in place of [systemShare], or null to use the glyph.
+  ///
+  /// Null on iOS, where the box-with-an-arrow is a mark the system itself
+  /// uses and a reader recognises. Android's half of that bargain was
+  /// `Icons.share_rounded` — three connected dots — and it is the one mark in
+  /// the app drawn from neither the platform's own chrome nor this set: the
+  /// dots are a *Material* idiom that Android's share sheet no longer shows
+  /// anywhere a user would see it. So Android gets [externalLink], which says
+  /// "out of here" in the same hand as every other glyph around it.
+  ///
+  /// Null rather than an asset for both platforms, because on iOS the native
+  /// mark still earns its place: a bare icon button with no label is the one
+  /// case where the glyph has to name the sheet it opens.
+  static String? get systemShareAsset => _isApple ? null : externalLink;
+
+  static bool get _isApple =>
       defaultTargetPlatform == TargetPlatform.iOS ||
-              defaultTargetPlatform == TargetPlatform.macOS
-          ? Icons.ios_share_rounded
-          : Icons.share_rounded;
+      defaultTargetPlatform == TargetPlatform.macOS;
 
   // ── Chrome ────────────────────────────────────────────────────────────────
   static const search = '$_root/Interface/Search_Magnifying_Glass.svg';

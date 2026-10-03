@@ -69,8 +69,9 @@ class MediaReaction {
   final bool busy;
 
   /// False dims the glyph and its count and makes the tap do nothing — the
-  /// action is on the rail, saying it exists and is unavailable. See
-  /// [MediaReaction.commentsDisabled], the only thing that uses it.
+  /// action is on the rail, in its own glyph, saying it exists and is
+  /// unavailable. See [MediaReaction.commentsDisabled], the only thing that
+  /// uses it, and the reason the dimming has to carry the state on its own.
   final bool enabled;
 
   final String? semanticLabel;
@@ -109,15 +110,23 @@ class MediaReaction {
   ///
   /// Drawn rather than dropped. A rail that simply loses its comment button
   /// reads as a rail that never had one, and "you can't comment here" is a
-  /// thing worth saying — it is the owner's decision, not a fault. The crossed
-  /// glyph and the dimming say it, and the count stays: how many comments were
-  /// left before the thread closed is still true.
+  /// thing worth saying — it is the owner's decision, not a fault. The dimming
+  /// says it, and the count stays: how many comments were left before the
+  /// thread closed is still true.
   ///
-  /// The tap does nothing, deliberately. There is no sheet to open and nothing
-  /// to explain that the glyph hasn't already said.
+  /// The same glyph as [MediaReaction.comment], dimmed — not a second icon.
+  /// This used to draw `Icons.comments_disabled_rounded`, a crossed bubble out
+  /// of the Material font, which was a different shape *and* a different icon
+  /// family from the supplied artwork its live neighbour uses: the one action
+  /// on the rail whose off state didn't look like its on state. An unavailable
+  /// action is the same action, drawn unavailable.
+  ///
+  /// The tap does nothing, deliberately. There is no sheet to open, and the
+  /// semantic label carries "disabled" for anyone who cannot see the dimming.
   MediaReaction.commentsDisabled({int? count})
       : this(
-          icon: Icons.comments_disabled_rounded,
+          icon: Icons.mode_comment_outlined,
+          assetIcon: AppIcons.comment,
           count: count,
           enabled: false,
           semanticLabel: 'Comments disabled',

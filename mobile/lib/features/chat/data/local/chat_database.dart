@@ -248,17 +248,7 @@ class ChatDatabase {
     final db = await _database;
     await db.transaction((txn) async {
       for (final msg in messages) {
-        // Remove any optimistic placeholder for this content + image combination.
-        // The IS operator handles NULL correctly in SQLite — but sqflite's
-        // whereArgs validation rejects a literal null argument outright (see
-        // _imageUrlIsClause), so the clause/arg are built conditionally.
-        final (imageClause, imageArgs) = _imageUrlIsClause(msg.imageUrl);
-        await txn.delete(
-          'chat_messages',
-          where:
-              'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
-          whereArgs: [msg.roomId, msg.content, ...imageArgs],
-        );
+        await _dropPlaceholder(txn, msg);
 
         // Check whether a row with this id already exists so we can
         // preserve is_read=1 and decrypted content across server re-fetches.
@@ -332,14 +322,7 @@ class ChatDatabase {
     final db = await _database;
     await db.transaction((txn) async {
       // Delete the matching optimistic placeholder if present.
-      // Match on content + image_url so image-only messages don't accidentally
-      // wipe unrelated local placeholders (SQLite IS handles NULL correctly).
-      final (imageClause, imageArgs) = _imageUrlIsClause(message.imageUrl);
-      await txn.delete(
-        'chat_messages',
-        where: 'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
-        whereArgs: [message.roomId, message.content, ...imageArgs],
-      );
+      await _dropPlaceholder(txn, message);
       await txn.insert(
         'chat_messages',
         _nonNullRow(_messageToRow(message)),
@@ -552,6 +535,39 @@ class ChatDatabase {
   /// validation (unlike raw query args) rejects a literal null argument
   /// outright — see sqflite_common's `checkWhereArgs` — so a null value can
   /// never be placed in the args list itself.
+  /// Deletes the optimistic row [msg] is the server's copy of, if any.
+  ///
+  /// By the placeholder's own id wherever the echo carries one: the id the app
+  /// sent with the frame comes back on it (see [ChatMessage.clientId]) and it
+  /// *is* the placeholder's primary key, so nothing has to be compared.
+  ///
+  /// Content and image otherwise, which is what this always did and why a
+  /// placeholder could be orphaned: the server strips the body and dropped the
+  /// image URL on encrypted sends, so an echo that did not match left the local
+  /// row in the table — and the next time the room was opened from cache, the
+  /// message was there twice.
+  Future<void> _dropPlaceholder(DatabaseExecutor txn, ChatMessage msg) async {
+    final clientId = msg.clientId;
+    if (clientId != null && clientId.isNotEmpty) {
+      await txn.delete(
+        'chat_messages',
+        where: 'id = ? AND is_local = 1',
+        whereArgs: [clientId],
+      );
+      return;
+    }
+
+    // The IS operator handles NULL correctly in SQLite — but sqflite's
+    // whereArgs validation rejects a literal null argument outright (see
+    // _imageUrlIsClause), so the clause/arg are built conditionally.
+    final (imageClause, imageArgs) = _imageUrlIsClause(msg.imageUrl);
+    await txn.delete(
+      'chat_messages',
+      where: 'room_id = ? AND is_local = 1 AND content = ? AND $imageClause',
+      whereArgs: [msg.roomId, msg.content, ...imageArgs],
+    );
+  }
+
   (String, List<Object?>) _imageUrlIsClause(String? imageUrl) {
     if (imageUrl == null) return ('image_url IS NULL', const []);
     return ('image_url IS ?', [imageUrl]);

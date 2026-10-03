@@ -863,13 +863,17 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       imageUrl: event.imageUrl,
       createdAt: DateTime.now().toUtc(),
       isLocal: true,
+      clientId: tempId,
     );
     emit(state.copyWith(messages: _sorted([optimistic, ...state.messages])));
     _cacheAndAnnounce(optimistic);
 
     if (_ws.isConnected) {
       // WS already up — send immediately.
-      _ws.send(null, imageUrl: event.imageUrl, roomId: _currentRoomId);
+      _ws.send(null,
+          imageUrl: event.imageUrl,
+          roomId: _currentRoomId,
+          clientId: tempId);
     } else {
       // WS not ready yet — store URL; _onWsConnected will send it.
       emit(state.copyWith(pendingShareUrl: event.imageUrl));
@@ -963,6 +967,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         replyPreview: replyPreview,
         createdAt: DateTime.now().toUtc(),
         isLocal: true,
+        clientId: tempId,
       );
       emit(state.copyWith(
         messages: _sorted([optimistic, ...state.messages]),
@@ -977,6 +982,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         imageUrl: pendingUrl,
         paidPreview: pendingPaid,
         replyToId: event.replyToId,
+        clientId: tempId,
         emit: emit,
       );
       return;
@@ -1003,6 +1009,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         replyPreview: replyPreview,
         createdAt: DateTime.now().toUtc(),
         isLocal: true,
+        clientId: tempId,
         localMediaPath: pendingPath,
         uploadProgress: 0,
       );
@@ -1058,6 +1065,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           imageUrl: imageUrl,
           isVideo: pendingIsVideo,
           replyToId: event.replyToId,
+          clientId: tempId,
           emit: emit,
         );
       } catch (e) {
@@ -1090,6 +1098,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         replyPreview: replyPreview,
         createdAt: DateTime.now().toUtc(),
         isLocal: true,
+        clientId: tempId,
       );
 
       emit(state.copyWith(
@@ -1101,6 +1110,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       await _encryptAndSend(
         content: content,
         replyToId: event.replyToId,
+        clientId: tempId,
         emit: emit,
       );
     }
@@ -1135,6 +1145,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     /// recipient's bubble can mark it — see [ChatMessage.paidPreview].
     bool paidPreview = false,
     String? replyToId,
+
+    /// The id of the optimistic bubble this send belongs to, returned on the
+    /// echo so it can be matched back to it — see [ChatMessage.clientId]. Goes
+    /// on every branch below, including the four that fall back to plaintext:
+    /// which path the send took is not something the bubble on screen knows.
+    String? clientId,
     required Emitter<ChatRoomState> emit,
   }) async {
     final hasText = content != null && content.isNotEmpty;
@@ -1160,7 +1176,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: isVideo,
           paidPreview: paidPreview,
           replyToId: replyToId,
-          roomId: roomId);
+          roomId: roomId,
+          clientId: clientId);
       return;
     }
 
@@ -1174,6 +1191,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         isVideo: isVideo,
         paidPreview: paidPreview,
         replyToId: replyToId,
+        clientId: clientId,
       );
       return;
     }
@@ -1186,7 +1204,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: isVideo,
           paidPreview: paidPreview,
           replyToId: replyToId,
-          roomId: _currentRoomId);
+          roomId: _currentRoomId,
+          clientId: clientId);
       return;
     }
 
@@ -1226,7 +1245,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
               isVideo: isVideo,
               paidPreview: paidPreview,
               replyToId: replyToId,
-              roomId: _currentRoomId);
+              roomId: _currentRoomId,
+          clientId: clientId);
           return;
         } else {
           debugPrint(
@@ -1256,7 +1276,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
               isVideo: isVideo,
               paidPreview: paidPreview,
               replyToId: replyToId,
-              roomId: _currentRoomId);
+              roomId: _currentRoomId,
+          clientId: clientId);
           return;
         }
         debugPrint('[E2EE] Got recipient bundle — running X3DH');
@@ -1296,6 +1317,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         senderSpkId: bundleSpkId,
         replyToId: replyToId,
         roomId: _currentRoomId,
+        clientId: clientId,
       );
     } catch (e) {
       debugPrint('[E2EE] Encrypt failed, sending plaintext: $e');
@@ -1304,7 +1326,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: isVideo,
           paidPreview: paidPreview,
           replyToId: replyToId,
-          roomId: _currentRoomId);
+          roomId: _currentRoomId,
+          clientId: clientId);
     }
   }
 
@@ -1448,6 +1471,32 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       pictureLikes: event.update.likes,
       isPictureLiked: event.update.liked,
     ));
+  }
+
+  /// Whether [echo] is the server's copy of the optimistic bubble [local].
+  ///
+  /// By id wherever there is one to compare: the sender stamps every outgoing
+  /// frame with the bubble's own temp id and the server returns it untouched
+  /// (see [ChatMessage.clientId]), so the match survives anything the server
+  /// does to the payload on the way through.
+  ///
+  /// It needs to. This used to compare `content` and `imageUrl`, and the server
+  /// changes both: it `strip()`s the body, and on an encrypted send it stored no
+  /// `image_url` at all, so the echo of a shared photo came back with none.
+  /// A single mismatched field meant the placeholder was never removed and the
+  /// echo was inserted next to it — one share, two bubbles, until the room was
+  /// reopened and rebuilt from the single row that existed. The field
+  /// comparison is kept as the fallback, for an echo from a server that does
+  /// not return the id yet.
+  ///
+  /// [local] is only ever considered when it is one of ours and still
+  /// unconfirmed, so a settled message can never be taken for a placeholder.
+  @visibleForTesting
+  static bool confirms(ChatMessage echo, ChatMessage local) {
+    if (!local.isLocal) return false;
+    final id = echo.clientId;
+    if (id != null && id.isNotEmpty) return local.id == id;
+    return local.content == echo.content && local.imageUrl == echo.imageUrl;
   }
 
   /// Carry forward what only the sender knew.
@@ -1743,19 +1792,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     // Find the optimistic placeholder this message is confirming (if any).
-    final optimistic = state.messages
-        .where((m) =>
-            m.isLocal && m.content == msg.content && m.imageUrl == msg.imageUrl)
-        .firstOrNull;
+    final optimistic = state.messages.where((m) => confirms(msg, m)).firstOrNull;
 
     msg = inheritFromOptimistic(msg, optimistic);
 
     // Remove matching optimistic placeholder.
-    final updated = state.messages
-        .where((m) => !(m.isLocal &&
-            m.content == msg.content &&
-            m.imageUrl == msg.imageUrl))
-        .toList();
+    final updated = state.messages.where((m) => !confirms(msg, m)).toList();
 
     final hasOptimistic = optimistic != null;
     debugPrint('[ChatRoomBloc] _onReceived: optimistic match=$hasOptimistic'
@@ -3186,6 +3228,10 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     String? imageUrl,
     bool isVideo = false,
     String? replyToId,
+
+    /// See [_encryptAndSend] — carried on every branch here for the same
+    /// reason, plaintext fallbacks included.
+    String? clientId,
   }) async {
     final roomId = _currentRoomId;
     final hasText = content != null && content.isNotEmpty;
@@ -3196,7 +3242,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: isVideo,
           paidPreview: paidPreview,
           replyToId: replyToId,
-          roomId: roomId);
+          roomId: roomId,
+          clientId: clientId);
       return;
     }
 
@@ -3208,7 +3255,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: isVideo,
           paidPreview: paidPreview,
           replyToId: replyToId,
-          roomId: roomId);
+          roomId: roomId,
+          clientId: clientId);
       return;
     }
 
@@ -3222,6 +3270,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
         paidPreview: paidPreview,
         replyToId: replyToId,
         roomId: roomId,
+        clientId: clientId,
       );
     } catch (e) {
       debugPrint('[GroupE2EE] Encrypt failed, sending plaintext: $e');
@@ -3230,7 +3279,8 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
           isVideo: isVideo,
           paidPreview: paidPreview,
           replyToId: replyToId,
-          roomId: roomId);
+          roomId: roomId,
+          clientId: clientId);
     }
   }
 

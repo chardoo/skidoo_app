@@ -61,17 +61,26 @@ void main() {
     active.value = true;
     await tester.pump();
 
-    // Sampled across the way up. The peak must clear 1.35 — the value the
-    // rail used on its own, and the one that was too small to see.
+    // Sampled across the whole thing. Two reports of "it does not pop" came
+    // from peaks of 1.35 and then 1.55, so the floor here is deliberately
+    // well above both.
     var peak = 1.0;
-    for (var i = 0; i < 12; i++) {
+    var low = 1.0;
+    for (var i = 0; i < 24; i++) {
       await tester.pump(const Duration(milliseconds: 15));
       final s = scaleOf(tester);
       if (s > peak) peak = s;
+      if (s < low) low = s;
     }
-    expect(peak, greaterThan(1.35),
-        reason: 'the pop should be visibly bigger than the old 1.35');
-    expect(peak, lessThan(1.7), reason: 'and not cartoonish');
+    expect(peak, greaterThan(1.7),
+        reason: 'the pop has to be unmistakable, not marginally bigger');
+    expect(peak, lessThan(2.0), reason: 'and not cartoonish');
+
+    // The squash after the stretch — this is what makes it read as a pop
+    // rather than a zoom, and it is the half that was missing.
+    expect(low, lessThan(1.0),
+        reason: 'it must settle back *through* resting size, not down to it');
+    expect(low, greaterThan(0.85), reason: 'a dip, not a second animation');
 
     // Settled, exactly back to resting size.
     await tester.pumpAndSettle();

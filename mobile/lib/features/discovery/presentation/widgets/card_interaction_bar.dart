@@ -84,24 +84,25 @@ class CardInteractionBar extends StatelessWidget {
             // [ReactionPop]. A tap fired from here as well put two
             // acknowledgements on one gesture, which feels like a stutter
             // rather than a firmer tap.
-            active: liked,
             onTap: onLike,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  switchInCurve: Curves.elasticOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: anim,
-                    child: child,
-                  ),
+                // The pop goes round the glyph alone, and there is no
+                // AnimatedSwitcher under it any more.
+                //
+                // The switcher was scaling the incoming filled heart in from
+                // zero while the pop was scaling it up from one, and the two
+                // multiply: measured, the heart dropped to 0.56 before it grew,
+                // so a like read as the glyph being *replaced* rather than
+                // acknowledged. The fill changing colour is all the swap needs
+                // to say; the motion is the pop's job.
+                ReactionPop(
+                  active: liked,
                   child: Icon(
                     liked
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
-                    key: ValueKey(liked),
                     color: liked ? ext.likeRed : ext.greetingColor,
                     size: 26.sp,
                   ),
@@ -126,24 +127,16 @@ class CardInteractionBar extends StatelessWidget {
           // ── Dislike ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Dislike',
-            active: disliked,
             onTap: onDislike,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  switchInCurve: Curves.elasticOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: anim,
-                    child: child,
-                  ),
+                ReactionPop(
+                  active: disliked,
                   child: Icon(
                     disliked
                         ? Icons.thumb_down_rounded
                         : Icons.thumb_down_outlined,
-                    key: ValueKey(disliked),
                     color: disliked ? ext.dislikeBlue : ext.greetingColor,
                     size: 24.sp,
                   ),
@@ -190,24 +183,42 @@ class CardInteractionBar extends StatelessWidget {
               ),
             )
           else
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.comments_disabled_rounded,
-                    color: ext.searchHintColor.withValues(alpha: 0.4),
-                    size: 24.sp),
-                if (commentCount > 0) ...[
-                  SizedBox(width: 5.w),
-                  Text(
-                    _fmt(commentCount),
-                    style: TextStyle(
+            // The same glyph as the branch above, dimmed — the comment action
+            // drawn unavailable, not a different icon in its place. See
+            // [MediaReaction.commentsDisabled], which says it for the rails.
+            //
+            // Labelled, because the glyph no longer says "closed" by its
+            // shape: dimming is the whole visual signal, and a screen reader
+            // cannot see it.
+            Semantics(
+              button: true,
+              enabled: false,
+              label: commentCount > 0
+                  ? 'Comments disabled, ${_fmt(commentCount)}'
+                  : 'Comments disabled',
+              // One node carrying the whole thing, so the row announces a
+              // sentence rather than a bare number next to it — the count is
+              // inside the label above for the same reason.
+              excludeSemantics: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mode_comment_outlined,
                       color: ext.searchHintColor.withValues(alpha: 0.4),
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500,
+                      size: 24.sp),
+                  if (commentCount > 0) ...[
+                    SizedBox(width: 5.w),
+                    Text(
+                      _fmt(commentCount),
+                      style: TextStyle(
+                        color: ext.searchHintColor.withValues(alpha: 0.4),
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
 
           SizedBox(width: 18.w),
@@ -249,18 +260,11 @@ class CardInteractionBar extends StatelessWidget {
           // ── Bookmark ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Save',
-            active: saved,
             onTap: onSave,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              switchInCurve: Curves.elasticOut,
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: anim,
-                child: child,
-              ),
+            child: ReactionPop(
+              active: saved,
               child: Icon(
                 saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                key: ValueKey(saved),
                 color: saved ? ext.accentGold : ext.greetingColor,
                 size: 26.sp,
               ),
@@ -315,8 +319,15 @@ class _ExternalShareActionState extends State<_ExternalShareAction> {
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: widget.ext.greetingColor),
             )
-          : Icon(AppIcons.systemShare,
-              color: widget.ext.greetingColor, size: 22.sp),
+          // Design's mark where the platform's own is not worth drawing — see
+          // [AppIcons.systemShareAsset]. iOS keeps its native box-and-arrow:
+          // this button carries no label, so there the glyph is the only thing
+          // naming the sheet it opens.
+          : AppIcons.systemShareAsset != null
+              ? AppSvgIcon(AppIcons.systemShareAsset!,
+                  color: widget.ext.greetingColor, size: 22.sp)
+              : Icon(AppIcons.systemShare,
+                  color: widget.ext.greetingColor, size: 22.sp),
     );
   }
 }
@@ -328,18 +339,10 @@ class _AnimatedActionBtn extends StatefulWidget {
     required this.child,
     required this.onTap,
     this.semanticLabel,
-    this.active = false,
   });
   final Widget child;
   final VoidCallback onTap;
   final String? semanticLabel;
-
-  /// Whether this button is a reaction, and whether that reaction is on.
-  ///
-  /// Reactions pop and tap when they land ([ReactionPop]); the plain actions in
-  /// this bar — message, share — leave it false and get the press dip alone,
-  /// which is all a button that navigates somewhere should claim.
-  final bool active;
 
   @override
   State<_AnimatedActionBtn> createState() => _AnimatedActionBtnState();
@@ -377,12 +380,10 @@ class _AnimatedActionBtnState extends State<_AnimatedActionBtn>
           widget.onTap();
         },
         onTapCancel: () => _ctrl.forward(),
-        // Nested, so the two multiply: the press dip belongs to the whole
-        // control, the pop to what is inside it.
-        child: ScaleTransition(
-          scale: _ctrl,
-          child: ReactionPop(active: widget.active, child: widget.child),
-        ),
+        // The press dip only. The pop belongs to the glyph that changed, so
+        // each reaction wraps its own icon in a [ReactionPop] — applied here it
+        // would scale the counts along with them.
+        child: ScaleTransition(scale: _ctrl, child: widget.child),
       ),
     );
   }

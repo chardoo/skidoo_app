@@ -127,8 +127,12 @@ void main() {
         host(FoundActionRail(photo: photo(commentsEnabled: false))));
 
     expect(restGlyph(AppIcons.like), findsOneWidget);
-    expect(restGlyph(AppIcons.comment), findsNothing);
-    expect(find.byIcon(Icons.comments_disabled_rounded), findsOneWidget);
+    // The comment glyph stays, and it is the *same* glyph — dimmed, inert, and
+    // announced as closed. It used to be swapped for a crossed bubble out of
+    // the icon font: a different drawing for the one action on the rail that
+    // was unavailable, which is the one place the drawing should not change.
+    expect(restGlyph(AppIcons.comment), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Comments disabled')), findsOneWidget);
     expect(restGlyph(AppIcons.share), findsOneWidget);
   });
 }

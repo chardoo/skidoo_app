@@ -17,6 +17,7 @@ import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.da
 import 'package:jperg_app/features/chat/presentation/pages/contact_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/group_info_page.dart';
 import 'package:jperg_app/features/chat/presentation/pages/invite_to_group_page.dart';
+import 'package:jperg_app/core/common/widgets/reaction_pop.dart';
 import 'package:jperg_app/features/chat/presentation/mentions.dart';
 import 'package:jperg_app/features/chat/presentation/presence_label.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/chat_input_bar.dart';
@@ -1350,12 +1351,18 @@ class _LikeButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  isLiked
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: isLiked ? Colors.redAccent : ext.searchHintColor,
-                  size: 20.sp,
+                // The same pop, tap and click as every other heart in the app.
+                // This one had none of it: liking a message was a silent colour
+                // change under the thumb that was covering it.
+                ReactionPop(
+                  active: isLiked,
+                  child: Icon(
+                    isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    color: isLiked ? Colors.redAccent : ext.searchHintColor,
+                    size: 20.sp,
+                  ),
                 ),
                 if (likes != null) ...[
                   SizedBox(width: AppSpacing.xs.w),

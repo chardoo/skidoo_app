@@ -170,6 +170,15 @@ class ShareTargetSheet extends StatelessWidget {
                 _Destination(
                   ext: ext,
                   icon: AppIcons.systemShare,
+                  // Design's own mark rather than the platform's share glyph.
+                  //
+                  // [AppIcons.systemShare] draws the OS's own symbol so a bare
+                  // button can say which sheet is coming — on Android, three
+                  // connected dots. That argument does not apply to a row that
+                  // says "Share a link" in words and explains itself on the
+                  // line below: nothing here is left to the glyph, and the
+                  // dots were the one mark on this sheet from outside the set.
+                  assetIcon: AppIcons.externalLink,
                   title: 'Share a link',
                   // Says the two things somebody weighs before sending one: it
                   // is instant, and it works for anyone.
@@ -263,16 +272,14 @@ class _Preview extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Syne 16/bold is [AppTypography.title] exactly — the same
+                // numbers this spelled out by hand. Through the tier so the
+                // sheet's heading moves when the scale does.
                 Text(
                   heading,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontFamily: AppTypography.displayFontFamily,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTypography.title.copyWith(color: ext.greetingColor),
                 ),
                 if (subtitle?.trim().isNotEmpty ?? false) ...[
                   SizedBox(height: 2.h),
@@ -280,10 +287,8 @@ class _Preview extends StatelessWidget {
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ext.searchHintColor,
-                      fontSize: 14.sp,
-                    ),
+                    style:
+                        AppTypography.body.copyWith(color: ext.searchHintColor),
                   ),
                 ],
               ],
@@ -310,11 +315,17 @@ class _Destination extends StatelessWidget {
     required this.detail,
     required this.semanticLabel,
     required this.onTap,
+    this.assetIcon,
     this.featured = false,
   });
 
   final AppThemeExtension ext;
   final IconData icon;
+
+  /// Design's artwork for this row, drawn instead of [icon] where the set has
+  /// it — see [AppIcons]. The font glyph stays required as the fallback.
+  final String? assetIcon;
+
   final String title;
   final String detail;
 
@@ -354,10 +365,18 @@ class _Destination extends StatelessWidget {
                   color: featured ? ext.accentGold : ext.searchFieldFill,
                   borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
-                child: Icon(
-                  icon,
-                  color: featured ? Colors.white : ext.accentGold,
-                  size: 20.sp,
+                child: Center(
+                  child: assetIcon != null
+                      ? AppSvgIcon(
+                          assetIcon!,
+                          size: 20.sp,
+                          color: featured ? Colors.white : ext.accentGold,
+                        )
+                      : Icon(
+                          icon,
+                          color: featured ? Colors.white : ext.accentGold,
+                          size: 20.sp,
+                        ),
                 ),
               ),
               SizedBox(width: AppSpacing.md.w),
@@ -366,23 +385,24 @@ class _Destination extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // The tiers, not hand-typed numbers. This row is the app's
+                    // label-and-subtitle list row — see `SettingsRow`, which is
+                    // 15/medium over 12 — and it was 15/**bold** over 14, a
+                    // weight no 15 tier has and a detail line nearly the size
+                    // of the title above it. That is the whole of why the sheet
+                    // read as not quite ours.
                     Text(
                       title,
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.subtitle
+                          .copyWith(color: ext.greetingColor),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       detail,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ext.searchHintColor,
-                        fontSize: 14.sp,
-                      ),
+                      style: AppTypography.caption
+                          .copyWith(color: ext.searchHintColor),
                     ),
                   ],
                 ),

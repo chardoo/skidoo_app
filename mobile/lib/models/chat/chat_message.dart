@@ -81,6 +81,25 @@ class ChatMessage {
   /// True for messages added optimistically before server confirms.
   final bool isLocal;
 
+  /// The sending app's own id for this message, echoed back by the server.
+  ///
+  /// How an echo is matched to the optimistic bubble it confirms. That used to
+  /// be done by comparing fields — `isLocal && content == content && imageUrl
+  /// == imageUrl` — which holds only as long as the server returns both
+  /// untouched, and it does not: it strips the body, and on an encrypted send
+  /// it stored no `image_url` at all. Any one of those differences left the
+  /// optimistic bubble on screen *and* inserted the echo beside it, so a shared
+  /// photo appeared twice until the room was reopened and rebuilt from the one
+  /// row that actually existed.
+  ///
+  /// An id the sender made up cannot drift, so the match no longer depends on
+  /// what the server does to the payload. Set on outgoing messages only: on the
+  /// optimistic copy it equals [id] (the `local_…` temp id), on the echo it is
+  /// the value that came back. Null on anything received from somebody else,
+  /// and null on an echo from a server too old to return it — in which case the
+  /// field comparison is still there as a fallback.
+  final String? clientId;
+
   // ── E2EE fields (present when server forwards an encrypted message) ─────────
   /// True when the server stored ciphertext in [content] instead of plaintext.
   final bool isEncrypted;
@@ -216,6 +235,7 @@ class ChatMessage {
     this.readBy = const [],
     this.deliveredTo = const [],
     this.isLocal = false,
+    this.clientId,
     this.isEncrypted = false,
     this.iv,
     this.ephemeralKey,
@@ -288,6 +308,7 @@ class ChatMessage {
       deliveredTo: (json['delivered_to'] as List<dynamic>? ?? [])
           .whereType<String>()
           .toList(),
+      clientId: json['client_id'] as String?,
       isEncrypted: _flag(json['is_encrypted']),
       iv: json['iv'] as String?,
       ephemeralKey: json['ephemeral_key'] as String?,
@@ -325,6 +346,7 @@ class ChatMessage {
         'created_at': createdAt.toUtc().toIso8601String(),
         'is_read': isRead ? 1 : 0,
         'is_local': isLocal ? 1 : 0,
+        'client_id': clientId,
         'is_encrypted': isEncrypted ? 1 : 0,
         'iv': iv,
         'ephemeral_key': ephemeralKey,
@@ -356,6 +378,7 @@ class ChatMessage {
     List<String>? readBy,
     List<String>? deliveredTo,
     bool? isLocal,
+    String? clientId,
     String? imageUrl,
     bool? isVideo,
     String? content,
@@ -381,6 +404,7 @@ class ChatMessage {
       readBy: readBy ?? this.readBy,
       deliveredTo: deliveredTo ?? this.deliveredTo,
       isLocal: isLocal ?? this.isLocal,
+      clientId: clientId ?? this.clientId,
       isEncrypted: isEncrypted ?? this.isEncrypted,
       iv: iv,
       ephemeralKey: ephemeralKey,
