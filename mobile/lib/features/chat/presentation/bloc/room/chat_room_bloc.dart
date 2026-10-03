@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:bloc/bloc.dart';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
@@ -393,9 +394,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       _bgService.onUnreadUpdate?.call();
       _bgService.onRoomRead?.call(event.roomId);
 
-      final knownIds = state.messages.map((m) => m.id).toSet();
-      final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
-      final merged = _sorted([...state.messages, ...incoming]);
+      final merged = _withHistory(fresh);
 
       // Prefer the server's fresh room data over the potentially-stale object
       // passed at navigation time. This ensures adminOnly and participant list
@@ -806,8 +805,29 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       if (!isClosed) add(const _HistoryRefetchRequested());
     } else {
       _didInitialConnect = true;
+      // Except when something was sent before this moment arrived.
+      //
+      // These listeners attach last — for a DM, only after the session key is
+      // derived — and the room is usable the whole time they are not there.
+      // Anything sent in that window went out for real and was acknowledged to
+      // nobody: its echo arrived before there was anything listening for it.
+      // Left alone, the bubble sits on "sending" until the room is reopened.
+      //
+      // So if any send is still unconfirmed, go and ask what became of it. The
+      // answer settles the bubble, and `_withHistory` makes sure the settled
+      // copy replaces it rather than joining it.
+      if (!isClosed && _hasUnconfirmedSend) {
+        add(const _HistoryRefetchRequested());
+      }
     }
   }
+
+  /// Whether a message has been sent and not yet confirmed by the server.
+  ///
+  /// An upload still in flight does not count: nothing has been sent yet, so
+  /// there is nothing for the server to have a copy of.
+  bool get _hasUnconfirmedSend =>
+      state.messages.any((m) => m.isLocal && m.uploadProgress == null);
 
   /// Acknowledge the newest message from anyone other than me.
   ///
@@ -831,10 +851,12 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     try {
       final fresh = await _getMessages(roomId);
       if (isClosed) return;
-      final knownIds = state.messages.map((m) => m.id).toSet();
-      final incoming = fresh.where((m) => !knownIds.contains(m.id)).toList();
-      if (incoming.isEmpty) return;
-      emit(state.copyWith(messages: _sorted([...state.messages, ...incoming])));
+      final merged = _withHistory(fresh);
+      final incoming = fresh
+          .where((m) => !state.messages.any((held) => held.id == m.id))
+          .toList();
+      if (incoming.isEmpty && merged.length == state.messages.length) return;
+      emit(state.copyWith(messages: merged));
 
       // Mark the backfilled messages read + ack the latest peer message.
       await _markAsRead(roomId);
@@ -853,7 +875,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     // Always add the optimistic message immediately so the user sees it right
     // away regardless of WS state. The actual send happens now (if connected)
     // or in _onWsConnected (if still connecting).
-    final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final tempId = _newLocalId();
     final optimistic = ChatMessage(
       id: tempId,
       roomId: _currentRoomId ?? '',
@@ -954,7 +976,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
 
     // Shared gallery URL — already uploaded, send directly without re-uploading.
     if (hasUrlImage && !hasLocalImage) {
-      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final tempId = _newLocalId();
       final optimistic = ChatMessage(
         id: tempId,
         roomId: _currentRoomId ?? '',
@@ -989,7 +1011,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
 
     if (hasLocalImage) {
-      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final tempId = _newLocalId();
 
       // The bubble goes up FIRST, drawn from the file on disk.
       //
@@ -1086,7 +1108,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       }
     } else {
       // Text-only message.
-      final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+      final tempId = _newLocalId();
 
       final optimistic = ChatMessage(
         id: tempId,
@@ -1473,6 +1495,56 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     ));
   }
 
+  /// The list with [fresh] folded in: anything new added, and any optimistic
+  /// bubble those messages confirm taken away.
+  ///
+  /// Retiring the placeholder is the part this did not do, and the whole of
+  /// "sharing posts it twice". A room opens by painting its cache and *then*
+  /// fetching history, and for a DM the socket listeners are not attached
+  /// until that is finished — so a message sent in between is sent for real,
+  /// its echo lands on nothing, and it comes back instead inside the history
+  /// response already in flight. Merging that by id alone put the server's
+  /// copy next to the bubble it was the copy *of*: one send, two bubbles,
+  /// until the room was reopened and rebuilt from the single row.
+  ///
+  /// Only placeholders are ever dropped — [confirms] tests `isLocal` and the
+  /// sender — so nothing already settled can be removed by a history fetch.
+  List<ChatMessage> _withHistory(List<ChatMessage> fresh) =>
+      foldHistory(state.messages, fresh);
+
+  /// [_withHistory] as a function of its inputs, so it can be tested without a
+  /// room, a socket or a server.
+  @visibleForTesting
+  static List<ChatMessage> foldHistory(
+    List<ChatMessage> held,
+    List<ChatMessage> fresh,
+  ) {
+    final kept = [
+      for (final m in held)
+        if (!fresh.any((f) => confirms(f, m))) m,
+    ];
+    final knownIds = kept.map((m) => m.id).toSet();
+    return _sorted([
+      ...kept,
+      for (final m in fresh)
+        if (!knownIds.contains(m.id)) m,
+    ]);
+  }
+
+  /// An id for a message that exists only on this device so far.
+  ///
+  /// It is also the message's [ChatMessage.clientId] — what the server hands
+  /// back so the confirmed copy can be matched to the bubble already drawn —
+  /// so it has to be unique, and the millisecond clock alone is not: two sends
+  /// in the same millisecond collide on one device, and `local_<millis>` is a
+  /// value two *different* devices reach constantly. [confirms] also tests the
+  /// sender, so a collision across devices cannot retire somebody else's
+  /// bubble, but there is no reason to lean on that.
+  String _newLocalId() =>
+      'local_${DateTime.now().microsecondsSinceEpoch}_${_rand.nextInt(1 << 32)}';
+
+  static final _rand = math.Random();
+
   /// Whether [echo] is the server's copy of the optimistic bubble [local].
   ///
   /// By id wherever there is one to compare: the sender stamps every outgoing
@@ -1493,7 +1565,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
   /// unconfirmed, so a settled message can never be taken for a placeholder.
   @visibleForTesting
   static bool confirms(ChatMessage echo, ChatMessage local) {
-    if (!local.isLocal) return false;
+    if (!local.isLocal || local.senderId != echo.senderId) return false;
     final id = echo.clientId;
     if (id != null && id.isNotEmpty) return local.id == id;
     return local.content == echo.content && local.imageUrl == echo.imageUrl;
@@ -3520,7 +3592,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     _ws.unsubscribeRoom(roomId, holder: WsRoomHolder.room);
   }
 
-  List<ChatMessage> _sorted(List<ChatMessage> messages) {
+  static List<ChatMessage> _sorted(List<ChatMessage> messages) {
     final seen = <String>{};
     final unique = messages.where((m) => seen.add(m.id)).toList();
     unique.sort((a, b) => b.createdAt.compareTo(a.createdAt));

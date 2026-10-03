@@ -248,6 +248,14 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
         _messageBlocked = permission.canMessage
             ? null
             : switch (permission.reason) {
+                // Which side placed it decides whether there is anything to
+                // do about it. The server has always sent both flags and this
+                // screen read neither, so a block the requester placed
+                // themselves — the one case they can undo in a tap — read as
+                // the same dead end as being blocked by somebody else.
+                'USER_BLOCKED' when permission.blockedByMe =>
+                  'You blocked this user. Unblock them in the chat to message '
+                      'them.',
                 'USER_BLOCKED' => 'You cannot message this user.',
                 'RECIPIENT_NOT_ACCEPTING_DMS' =>
                   'This user is not accepting new conversations.',

@@ -9,6 +9,18 @@ class ChatRoomsState extends Equatable {
   /// True only when there are no cached rooms yet (first ever load).
   final bool isLoading;
 
+  /// Whether a load has answered yet — from the cache or from the server.
+  ///
+  /// The difference between "this inbox is empty" and "we have not looked".
+  /// Without it they were the same state: [rooms] empty and [isLoading] false
+  /// is what the bloc holds before its first read of the cache has even
+  /// started, and it is also what it holds for somebody who genuinely has no
+  /// conversations. The Chats tab drew the empty state for both — so a cold
+  /// start, where the first load is still going, opened on **"No messages
+  /// yet"**, and people started a new chat with somebody they were already
+  /// talking to.
+  final bool hasLoaded;
+
   /// True while a background server sync is in progress.
   final bool isSyncing;
 
@@ -40,6 +52,7 @@ class ChatRoomsState extends Equatable {
     this.rooms = const [],
     this.pendingInvites = const [],
     this.isLoading = false,
+    this.hasLoaded = false,
     this.isSyncing = false,
     this.unreadCounts = const {},
     this.lastMessageAt = const {},
@@ -48,10 +61,18 @@ class ChatRoomsState extends Equatable {
     this.currentUserId = '',
   });
 
+  /// Nothing is known about this inbox yet.
+  ///
+  /// Not the same as having no conversations, and that is the whole point —
+  /// see [hasLoaded]. A screen that cannot tell these apart says "No messages
+  /// yet" to somebody whose rooms are still loading.
+  bool get isUnknown => !hasLoaded && rooms.isEmpty && pendingInvites.isEmpty;
+
   ChatRoomsState copyWith({
     List<ChatRoom>? rooms,
     List<ChatRoom>? pendingInvites,
     bool? isLoading,
+    bool? hasLoaded,
     bool? isSyncing,
     Map<String, int>? unreadCounts,
     Map<String, DateTime>? lastMessageAt,
@@ -64,6 +85,7 @@ class ChatRoomsState extends Equatable {
         rooms: rooms ?? this.rooms,
         pendingInvites: pendingInvites ?? this.pendingInvites,
         isLoading: isLoading ?? this.isLoading,
+        hasLoaded: hasLoaded ?? this.hasLoaded,
         isSyncing: isSyncing ?? this.isSyncing,
         unreadCounts: unreadCounts ?? this.unreadCounts,
         lastMessageAt: lastMessageAt ?? this.lastMessageAt,
@@ -77,6 +99,7 @@ class ChatRoomsState extends Equatable {
         rooms,
         pendingInvites,
         isLoading,
+        hasLoaded,
         isSyncing,
         unreadCounts,
         lastMessageAt,

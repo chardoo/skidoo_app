@@ -186,7 +186,6 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     Emitter<ChatRoomsState> emit,
   ) async {
     _wireBackgroundCallbacks();
-    final myUserId = await _authService.getUserId();
 
     // Whether there is already an inbox on screen. Every re-entry to the Chats
     // tab lands here, so this is the common case, and the rule for it is: show
@@ -199,16 +198,23 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     //    Re-reading it when the list is already up would swap the rows for a
     //    staler copy of themselves and then swap them back a moment later —
     //    two visible content changes that tell the user nothing.
+    String myUserId = state.currentUserId;
     if (!hasRooms) {
       try {
+        // The user id runs *with* the cache rather than ahead of it. It is a
+        // secure-storage read, and on a cold start — the one path where the
+        // cache is all there is to show — it was holding the rows behind a
+        // round trip that none of them needed.
         final results = await Future.wait([
+          _authService.getUserId(),
           _getCachedRooms(),
           _getUnreadCounts(),
           _getLastMessageTimes(),
         ]);
-        final all = results[0] as List<ChatRoom>;
-        final counts = results[1] as Map<String, int>;
-        final lastTimes = results[2] as Map<String, DateTime>;
+        myUserId = results[0] as String;
+        final all = results[1] as List<ChatRoom>;
+        final counts = results[2] as Map<String, int>;
+        final lastTimes = results[3] as Map<String, DateTime>;
         final split = _splitRooms(all, myUserId);
         if (all.isNotEmpty) {
           emit(state.copyWith(
@@ -217,19 +223,27 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
             unreadCounts: counts,
             lastMessageAt: lastTimes,
             isSyncing: true,
+            hasLoaded: true,
             clearError: true,
             currentUserId: myUserId,
           ));
           _bgService.connectAll(split.$1);
         } else {
+          // Not `hasLoaded` yet: an empty cache is not an answer about what
+          // this person's inbox holds, and saying it is would put "No messages
+          // yet" in front of somebody whose rooms are still being fetched.
           emit(state.copyWith(
               isLoading: true, isSyncing: true, clearError: true));
         }
       } catch (_) {
+        if (myUserId.isEmpty) {
+          myUserId = await _authService.getUserId().catchError((_) => '');
+        }
         emit(
             state.copyWith(isLoading: true, isSyncing: true, clearError: true));
       }
     } else {
+      if (myUserId.isEmpty) myUserId = await _authService.getUserId();
       // isLoading stays false — it means "nothing to show yet", and there is
       // plenty to show. Only isSyncing moves, and nothing renders it.
       emit(state.copyWith(isSyncing: true, clearError: true));
@@ -283,6 +297,9 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
         // ahead of the server; they are the only ones that matter.
         liveMessages: pruneLive(state.liveMessages, split.$1),
         isLoading: false,
+        // The server has answered, so an empty list here really does mean an
+        // empty inbox and the Chats tab may say so.
+        hasLoaded: true,
         isSyncing: false,
         clearError: true,
         currentUserId: myUserId,
@@ -296,6 +313,10 @@ class ChatRoomsBloc extends Bloc<ChatRoomsEvent, ChatRoomsState> {
     } catch (e) {
       emit(state.copyWith(
         isLoading: false,
+        // Settled either way. A load that failed has still answered, and the
+        // error view below is what the screen owes the user — not a spinner
+        // that never resolves.
+        hasLoaded: true,
         isSyncing: false,
         errorMessage: state.rooms.isEmpty && state.pendingInvites.isEmpty
             ? 'Could not load chats.'

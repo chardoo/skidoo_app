@@ -91,9 +91,18 @@ class _ChatRoomsView extends StatelessWidget {
         builder: (context, state) {
           // Only the very first load, when there is genuinely nothing to draw.
           // Never swap a list the user is already looking at for a spinner.
-          if (state.isLoading &&
-              state.rooms.isEmpty &&
-              state.pendingInvites.isEmpty) {
+          //
+          // `!hasLoaded` is the half that was missing, and it is the whole of
+          // "my chats are gone on a cold start": before the first load has
+          // answered, the state is empty rooms and `isLoading` false — exactly
+          // what somebody with no conversations holds — so the tab opened on
+          // "No messages yet" and people started a second chat with somebody
+          // they were already talking to. Nothing is known about this inbox
+          // until a load says so.
+          if (state.isUnknown ||
+              (state.isLoading &&
+                  state.rooms.isEmpty &&
+                  state.pendingInvites.isEmpty)) {
             return const AppLoadingIndicator();
           }
 
