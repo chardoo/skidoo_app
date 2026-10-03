@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/easy_search_page.dart';
 
 /// "Add your face to get found", as a screen in front of an action that needs
 /// a face.
@@ -90,6 +91,10 @@ class _FaceGatePageState extends State<FaceGatePage> {
               reason: access == FoundAccess.signedOut
                   ? FaceGateReason.signedOut
                   : FaceGateReason.noFaceAdded,
+              // Signed-in only — easy search reads who you are from the token.
+              onEasySearch: access == FoundAccess.signedOut
+                  ? null
+                  : () => EasySearchPage.push(context),
               onPrimaryAction: () async {
                 if (access == FoundAccess.signedOut) {
                   await promptSignUp(

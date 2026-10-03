@@ -29,11 +29,21 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 /// screen's job is to let them disagree. Browsing the same album later from
 /// the Found tab starts empty instead. See [PhotoSelection].
 class EventScanResultPage extends StatefulWidget {
-  const EventScanResultPage({super.key, required this.code});
+  const EventScanResultPage({super.key, required this.code, this.createSearch});
 
   /// The scanned or typed event code. Treated as an event id, which is what
   /// the existing scan path does with it too.
   final String code;
+
+  /// How to look. Defaults to [EventScan] — the enrolled search, which is what
+  /// a scanned QR starts.
+  ///
+  /// Easy search passes an [EasySearch] instead, and nothing else on this
+  /// screen changes: both are a [LiveSearch], both fill the same two counters,
+  /// and both leave the same identification rows behind for the album to read.
+  /// A builder rather than an instance because Retry runs a second search, and
+  /// a search that has already streamed cannot be restarted.
+  final LiveSearch Function()? createSearch;
 
   @override
   State<EventScanResultPage> createState() => _EventScanResultPageState();
@@ -47,7 +57,7 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
 
   /// The live scan, which outlives this page — see [EventScan] and
   /// [_openAlbumWhileScanning]. Not final: Retry starts a fresh one.
-  late EventScan _scan = EventScan(code: widget.code);
+  late LiveSearch _scan = _build();
 
   /// True once the orb has been up for [_minimumScan], so a fast scan does not
   /// flash its result.
@@ -88,12 +98,15 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
     super.dispose();
   }
 
+  LiveSearch _build() =>
+      widget.createSearch?.call() ?? EventScan(code: widget.code);
+
   /// Throws the failed scan away and runs another.
   void _restart() {
     _scan.isRunning.removeListener(_onScanState);
     _scan.dispose();
     setState(() {
-      _scan = EventScan(code: widget.code);
+      _scan = _build();
       _loading = true;
       _error = null;
       _album = null;
@@ -224,6 +237,11 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
         // this person is in none of still reads as an event with photos.
         found: _scan.mineCount,
         publicFound: _scan.publicCount,
+        // How far through the album the server is. Matters most to easy
+        // search, which has no index to shortcut it: on a large event the
+        // counts can sit still for a while, and a progress line is the
+        // difference between waiting and giving up.
+        progress: _scan.progress,
         // Offered the moment there is something to look at: waiting out a
         // large event to see photos already found is a wait for nothing. The
         // scan keeps running behind the album.
@@ -243,11 +261,20 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
     // photoCount, not mineCount: an event whose public photos she can see is
     // worth opening even when recognition found none of her in it.
     if (album == null || album.photoCount == 0) {
-      return const AppEmptyState(
+      // A capped search did not look at the whole album, so it cannot say the
+      // person is not in it. "We didn't find you in this event" would be the
+      // one sentence here that is not true, and it is the sentence that stops
+      // them trying again.
+      return AppEmptyState(
         icon: AppIcons.user,
-        message: 'No photos of you yet',
-        hint: "We didn't find you in this event. We'll let you know if that "
-            'changes.',
+        message: _scan.truncated.value
+            ? 'No photos of you in the first part of this event'
+            : 'No photos of you yet',
+        hint: _scan.truncated.value
+            ? 'This album is large, so we searched the most recent photos. '
+                "We'll keep looking and let you know if you turn up."
+            : "We didn't find you in this event. We'll let you know if that "
+                'changes.',
       );
     }
 
@@ -263,6 +290,7 @@ class _Scanning extends StatelessWidget {
     required this.ext,
     required this.found,
     required this.publicFound,
+    required this.progress,
     required this.onViewNow,
   });
 
@@ -273,6 +301,9 @@ class _Scanning extends StatelessWidget {
 
   /// The event's public photos seen so far — not photos of this person.
   final ValueListenable<int> publicFound;
+
+  /// How far through the album the server is, or null before it says.
+  final ValueListenable<({int processed, int total})?> progress;
 
   final VoidCallback onViewNow;
 
@@ -289,10 +320,25 @@ class _Scanning extends StatelessWidget {
           style: AppTypography.headline.copyWith(color: ext.greetingColor),
         ),
         SizedBox(height: AppSpacing.sm.h),
-        Text(
-          'Analyzing event photos',
-          textAlign: TextAlign.center,
-          style: AppTypography.caption.copyWith(color: ext.searchHintColor),
+        // "Analyzing event photos", and once the server says how far it has
+        // got, how far it has got instead.
+        //
+        // The counts below only move when something is *found*, so on an album
+        // this person is barely in they sit still for a long time while real
+        // work is happening. This line is the one that keeps moving.
+        ListenableBuilder(
+          listenable: progress,
+          builder: (context, __) {
+            final p = progress.value;
+            return Text(
+              p == null
+                  ? 'Analyzing event photos'
+                  : 'Checked ${p.processed} of ${p.total} photos',
+              textAlign: TextAlign.center,
+              style:
+                  AppTypography.caption.copyWith(color: ext.searchHintColor),
+            );
+          },
         ),
         ListenableBuilder(
           listenable: Listenable.merge([found, publicFound]),

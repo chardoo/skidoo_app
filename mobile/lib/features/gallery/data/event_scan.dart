@@ -8,6 +8,55 @@ import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
+/// One run of a live photo search, whichever endpoint is doing the looking.
+///
+/// Two of them exist and they differ only in how the person is described to the
+/// face service: [EventScan] names an enrolled face, [EasySearch] attaches the
+/// selfies to the request and lets the service forget them. Everything after
+/// that is identical — the same SSE envelope, the same counts, the same album
+/// waiting at the end — so [EventScanResultPage] drives this rather than either
+/// class, and the orb, the "View now" hand-off and the "keep scanning after the
+/// page is gone" rule are written once.
+abstract class LiveSearch {
+  /// Photos of *this person*, which is what the screen counts.
+  ValueNotifier<int> get mineCount;
+
+  /// The rest of what the search returned — the event's public photos, which
+  /// the person may see and buy whether or not they are in any of them.
+  ValueNotifier<int> get publicCount;
+
+  /// False once the stream closes, however it closed.
+  ValueNotifier<bool> get isRunning;
+
+  /// Set only when nothing could be searched at all.
+  ValueNotifier<Object?> get error;
+
+  /// The event's name, from the first photo to carry it.
+  ValueNotifier<String?> get eventName;
+
+  /// How far through the album the server is, or null before it says.
+  ///
+  /// Both endpoints emit it. It matters most to [EasySearch], which has no
+  /// index to shortcut it and genuinely takes a while on a large album — but
+  /// the screen showing it is shared, so the signal is.
+  ValueNotifier<({int processed, int total})?> get progress;
+
+  /// True when the album was larger than one search covers.
+  ///
+  /// Only easy search can be truncated — the enrolled scan has a row for every
+  /// photo already — but the screen that has to *say so* is the shared one, so
+  /// the flag lives here and the enrolled scan simply never sets it.
+  ValueNotifier<bool> get truncated;
+
+  Future<void> start();
+
+  /// Stops the search without tearing down what it has published — the page
+  /// leaving is not the same as nobody needing the counters.
+  void cancel();
+
+  void dispose();
+}
+
 /// One run of `POST /client/search-images` for a scanned or typed event code.
 ///
 /// Why this is not just a Stream the scan page listens to: the page offers
@@ -23,7 +72,7 @@ import 'package:jperg_app/services/auth_service.dart';
 /// and forever. This runs recognition *now*, and writes the rows as it goes.
 /// That is also what makes the review album work afterwards: it reads the rows
 /// this created.
-class EventScan {
+class EventScan implements LiveSearch {
   EventScan({required this.code, http.Client? httpClient})
       : _http = httpClient ?? http.Client();
 
@@ -36,6 +85,7 @@ class EventScan {
   /// not every photo streamed: an owner scanning their own event receives the
   /// whole album in the `public` bucket, and "247 photos of you found" would
   /// be a lie about someone else's wedding.
+  @override
   final ValueNotifier<int> mineCount = ValueNotifier<int>(0);
 
   /// The rest of what the scan returned — the event's public photos, which the
@@ -43,19 +93,33 @@ class EventScan {
   /// separately rather than ignored: an event nobody recognised them in is
   /// still an event with photos in it, and a screen that only ever counts
   /// matches reads as "nothing here" when there is plenty.
+  @override
   final ValueNotifier<int> publicCount = ValueNotifier<int>(0);
 
   /// False once the stream closes, however it closed.
+  @override
   final ValueNotifier<bool> isRunning = ValueNotifier<bool>(true);
 
   /// Set only when nothing could be scanned at all. A stream that delivered
   /// photos and then broke is a result, not a failure — the photos it found
   /// are genuinely found, and the rows are already written.
+  @override
   final ValueNotifier<Object?> error = ValueNotifier<Object?>(null);
 
   /// The event's name, from the first photo to carry it. The result card names
   /// the album, and nothing else on this screen knows it.
+  @override
   final ValueNotifier<String?> eventName = ValueNotifier<String?>(null);
+
+  /// Same envelope, same meaning — see [LiveSearch.progress].
+  @override
+  final ValueNotifier<({int processed, int total})?> progress =
+      ValueNotifier<({int processed, int total})?>(null);
+
+  /// Never set here: an enrolled scan reads stored rows for every photo in the
+  /// album, so there is no cap for it to hit. See [LiveSearch.truncated].
+  @override
+  final ValueNotifier<bool> truncated = ValueNotifier<bool>(false);
 
   StreamSubscription<List<int>>? _sub;
   bool _disposed = false;
@@ -65,6 +129,7 @@ class EventScan {
   /// once per photo.
   int _unsignalled = 0;
 
+  @override
   Future<void> start() async {
     try {
       final api = sl<Api>();
@@ -142,6 +207,12 @@ class EventScan {
             );
           }
         }
+      case 'progress':
+        final processed = envelope['processed'];
+        final total = envelope['total'];
+        if (processed is int && total is int) {
+          progress.value = (processed: processed, total: total);
+        }
       case 'done':
         _finish();
     }
@@ -199,12 +270,14 @@ class EventScan {
 
   /// Stops the scan. Called when the person leaves without opening the album —
   /// a discarded scan should not keep spending recognition calls.
+  @override
   void cancel() {
     _sub?.cancel();
     _sub = null;
     if (isRunning.value) isRunning.value = false;
   }
 
+  @override
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -215,5 +288,7 @@ class EventScan {
     isRunning.dispose();
     error.dispose();
     eventName.dispose();
+    progress.dispose();
+    truncated.dispose();
   }
 }

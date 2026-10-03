@@ -29,6 +29,16 @@ String? _externalId;
 /// observer does not re-POST the same one on every change it reports.
 String? _registeredPlayerId;
 
+/// Who it was handed over *for*.
+///
+/// The guard used to be the subscription id alone, and a subscription id
+/// belongs to the device, not the account — it is the same value before and
+/// after somebody signs out and a second person signs in. So the check "have I
+/// already registered this id?" answered yes for the new account on the
+/// strength of the old one, and the arriving account was never registered at
+/// all. Pairing it with the account is what makes a switch re-POST.
+String? _registeredUserId;
+
 /// Guards against re-entry. [pushLogout] is reached from
 /// AuthService.removeToken, which the Dio 401 interceptor also calls — and
 /// [pushLogout] itself issues a request that can 401. Without this the two
@@ -288,16 +298,36 @@ Future<void> _ensureTagAndRegistration(String userId) async {
   await _registerDeviceWithBackend();
 }
 
-Future<void> pushLogout() async {
+Future<void> pushLogout() => _detach(unregisterBackend: true);
+
+/// Clear the alias without telling the backend.
+///
+/// For a launch that finds nobody signed in. The device can still be carrying
+/// the previous account — a sign-out whose DELETE never landed, a process
+/// killed between `OneSignal.logout()` being queued and run, a restore that
+/// brought the subscription back with it — and until something says otherwise
+/// every push for that account keeps arriving on a phone it no longer belongs
+/// to. Nothing used to say otherwise: reconcile asserts the alias only when it
+/// has an account to assert, so a signed-out launch left it exactly as it was.
+///
+/// The backend half is skipped because it cannot work: unregister-device is
+/// authenticated and there is no token to call it with. Calling it anyway
+/// would fire a 401 through the Dio interceptor on the startup path, which
+/// triggers a sign-out of the session that does not exist.
+Future<void> pushDetach() => _detach(unregisterBackend: false);
+
+Future<void> _detach({required bool unregisterBackend}) async {
   if (!_supported || !_initialised || _loggingOut) return;
   _loggingOut = true;
 
   final leaving = _externalId;
   try {
-    // Drop the backend's copy first, while the auth token still exists —
-    // AuthService.removeToken() deletes it immediately after this returns, and
-    // the endpoint is authenticated.
-    await _unregisterDeviceWithBackend();
+    if (unregisterBackend) {
+      // Drop the backend's copy first, while the auth token still exists —
+      // AuthService.removeToken() deletes it immediately after this returns,
+      // and the endpoint is authenticated.
+      await _unregisterDeviceWithBackend();
+    }
 
     // Before logout, or the tag outlives the session it belongs to and keeps
     // matching a filter for whoever signs in on this phone next.
@@ -314,30 +344,61 @@ Future<void> pushLogout() async {
     // registered to a phone somebody else was about to sign in on.
     _externalId = null;
     _registeredPlayerId = null;
+    _registeredUserId = null;
 
     await OneSignal.logout();
-    debugPrint('$_tag unregistered external id $leaving');
+    debugPrint('$_tag detached external id $leaving');
   } catch (e) {
-    debugPrint('$_tag logout FAILED: $e');
+    debugPrint('$_tag detach FAILED: $e');
   } finally {
     // Belt and braces for the failure paths above, which can throw before the
     // clear inside the try.
     _externalId = null;
     _registeredPlayerId = null;
+    _registeredUserId = null;
     _loggingOut = false;
   }
+}
+
+/// Whether the device still needs handing to the backend.
+///
+/// Pulled out of [_registerDeviceWithBackend] so it can be tested: everything
+/// around it is OneSignal statics and the service locator, and this is the part
+/// that was wrong. It used to compare [registeredPlayerId] alone, and a
+/// subscription id belongs to the *device* — it is the same value before and
+/// after one person signs out and another signs in — so the guard answered
+/// "already done" for an account that had never been registered at all, and the
+/// new account was reachable by nobody. The account has to be part of the
+/// comparison, because the backend reads it from the JWT: the same body sent
+/// under a different token is a different registration.
+@visibleForTesting
+bool shouldRegisterDevice({
+  required String? playerId,
+  required String? userId,
+  required String? registeredPlayerId,
+  required String? registeredUserId,
+}) {
+  // No subscription yet. Not an error — the id does not exist until the device
+  // has registered with APNs/FCM, and the observer calls back when it does.
+  if (playerId == null || playerId.isEmpty) return false;
+  return playerId != registeredPlayerId || userId != registeredUserId;
 }
 
 Future<void> _registerDeviceWithBackend() async {
   final playerId = OneSignal.User.pushSubscription.id;
   if (playerId == null || playerId.isEmpty) {
-    // Not an error — the id simply does not exist yet. The subscription
-    // observer in initPush() will call back here once it does.
     debugPrint('$_tag no subscription id yet — deferring device registration');
     return;
   }
   // The observer fires on every subscription change, not just the first.
-  if (playerId == _registeredPlayerId) return;
+  if (!shouldRegisterDevice(
+    playerId: playerId,
+    userId: _externalId,
+    registeredPlayerId: _registeredPlayerId,
+    registeredUserId: _registeredUserId,
+  )) {
+    return;
+  }
 
   try {
     await sl<Api>().dio.post(
@@ -349,7 +410,8 @@ Future<void> _registerDeviceWithBackend() async {
       },
     );
     _registeredPlayerId = playerId;
-    debugPrint('$_tag device registered with backend');
+    _registeredUserId = _externalId;
+    debugPrint('$_tag device registered with backend for $_externalId');
   } catch (e) {
     debugPrint('$_tag backend device registration FAILED: $e');
   }

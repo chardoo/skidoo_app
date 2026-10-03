@@ -209,8 +209,11 @@ void main() async {
     // affected are precisely the ones who went there once and believe it is
     // dealt with.
     //
-    // Safe for a signed-out launch: with no account it only makes the
-    // subscription match the switch, and nothing in it can raise a dialog.
+    // A signed-out launch is asserted too, and that is the half this used to
+    // miss: it passed null and reconcile left the alias alone, so a device
+    // still carrying the account that signed out last went on receiving their
+    // notifications — the "I logged in with a different account and the old
+    // one kept getting everything" report. adoptSession detaches instead.
     String? userId;
     if (AuthService.isAuthenticated.value) {
       // Guarded because it is a Keychain read on the startup path: a throw
@@ -221,7 +224,17 @@ void main() async {
         debugPrint('[Startup] could not read the user id for push: $e');
       }
     }
-    await PushNotificationService.instance.reconcile(userId: userId);
+    // "Signed in, but I could not find out as whom" is not the same as "signed
+    // out", and only the second one may detach. A throw above leaves userId
+    // null, and getUserId answers '' rather than null when the key is simply
+    // missing — so both have to be read as unknown, or a Keychain that lost one
+    // entry would unregister a device whose token is perfectly good.
+    final known = userId != null && userId.isNotEmpty;
+    if (!known && AuthService.isAuthenticated.value) {
+      await PushNotificationService.instance.reconcile();
+    } else {
+      await PushNotificationService.instance.adoptSession(userId);
+    }
   }());
 
   runApp(MyApp(

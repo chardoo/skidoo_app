@@ -27,6 +27,9 @@ class PushBackend {
   Future<void> login(String userId) => impl.pushLogin(userId);
   Future<void> logout() => impl.pushLogout();
 
+  /// Clear the alias without calling the backend. See [impl.pushDetach].
+  Future<void> detach() => impl.pushDetach();
+
   /// Who the SDK says this device is attached to. Null for nobody.
   Future<String?> attachedUserId() => impl.pushAttachedUserId();
 }
@@ -342,6 +345,45 @@ class PushNotificationService {
     } catch (e) {
       debugPrint('[Push] reconcile failed: $e');
     }
+  }
+
+  /// What a launch asserts: this device belongs to [userId], or to nobody.
+  ///
+  /// The null case is the half that was missing. [reconcile] only ever *adds*
+  /// an association — with no account to assert it leaves the alias alone — so
+  /// a launch that found nobody signed in left whatever the SDK was holding in
+  /// place. A device still carrying the previous account then kept receiving
+  /// that account's notifications, launch after launch, and the only thing
+  /// that ever cleared it was a reinstall.
+  ///
+  /// Separate from [reconcile] rather than folded into its null case, because
+  /// `reconcile()` is called with no arguments from every return to the
+  /// foreground. Detaching there would sign the device out of its own account
+  /// each time the app came forward.
+  Future<void> adoptSession(String? userId) async {
+    if (userId != null && userId.isNotEmpty) {
+      await reconcile(userId: userId);
+      return;
+    }
+
+    _userId = null;
+    try {
+      // Only when there is something to clear. Detaching unconditionally
+      // churns the subscription on every signed-out launch — and OneSignal
+      // answers a logout with a fresh anonymous user, so doing it for no
+      // reason makes one per launch.
+      final attached = await _backend.attachedUserId();
+      if (attached != null && attached.isNotEmpty) {
+        debugPrint('[Push] signed out but still attached to $attached — detaching');
+        await _backend.detach();
+      }
+    } catch (e) {
+      debugPrint('[Push] could not detach a stale session: $e');
+    }
+
+    // Still worth reconciling: with no account it only makes the subscription
+    // match the master switch, which a signed-out device should obey too.
+    await reconcile();
   }
 
   /// Attaches this device to [userId] so backend sends addressed to that

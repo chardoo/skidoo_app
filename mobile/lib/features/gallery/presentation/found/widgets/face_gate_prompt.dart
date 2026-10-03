@@ -35,6 +35,7 @@ class FaceGatePrompt extends StatelessWidget {
     required this.reason,
     required this.onPrimaryAction,
     this.onSignIn,
+    this.onEasySearch,
     this.title,
     this.subtitle,
     this.actionLabel,
@@ -48,6 +49,16 @@ class FaceGatePrompt extends StatelessWidget {
 
   /// Required in practice for [FaceGateReason.signedOut]; ignored otherwise.
   final VoidCallback? onSignIn;
+
+  /// The other way to be found: search one event by code, comparing selfies
+  /// that are never stored.
+  ///
+  /// Offered under the primary action rather than beside it — adding a face is
+  /// still the answer for someone who wants to be found in every event they
+  /// attend, and this is the answer for someone who will not leave biometrics
+  /// behind for that. Omitted entirely when the caller passes nothing, so a
+  /// surface that cannot route there does not advertise it.
+  final VoidCallback? onEasySearch;
 
   /// Copy overrides, for callers that need to ask for a face in a different
   /// context (e.g. after a failed match) without a new widget.
@@ -104,6 +115,10 @@ class FaceGatePrompt extends StatelessWidget {
               onTap: onPrimaryAction,
               ext: ext,
             ),
+            if (onEasySearch != null) ...[
+              SizedBox(height: AppSpacing.xl.h),
+              _EasySearchAction(onTap: onEasySearch!, ext: ext),
+            ],
             if (_showSignIn) ...[
               SizedBox(height: AppSpacing.lg.h),
               _SignInLine(onTap: onSignIn!, ext: ext),
@@ -175,6 +190,67 @@ class _PrimaryAction extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "Easy search", and the one line that explains why it is not the button
+/// above it.
+///
+/// Secondary by its drawing — outlined, not filled — because adding a face is
+/// still the better answer for most people: it is done once and works for
+/// every event afterwards. This is for the person who will not do that, and
+/// the description has to say what they give up (one event, a code needed) as
+/// well as what they get (nothing stored), or it reads as the same thing but
+/// easier, and everyone picks it.
+class _EasySearchAction extends StatelessWidget {
+  const _EasySearchAction({required this.onTap, required this.ext});
+
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Semantics(
+          button: true,
+          label: 'Easy search',
+          child: GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.xxxl.w,
+                vertical: AppSpacing.md.h,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.pill.r),
+                border: Border.all(
+                  color: ext.accentGold.withValues(alpha: 0.55),
+                  width: 1.2,
+                ),
+              ),
+              child: Text(
+                'Easy search',
+                style: AppTypography.bodyLargeBold
+                    .copyWith(color: ext.accentGold),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: AppSpacing.sm.h),
+        // Excluded from semantics: the button above already announces itself,
+        // and a screen reader should not read the label twice before getting
+        // to the explanation.
+        Text(
+          'Search one event with a code. Your selfies are used for that '
+          'search only and are never saved.',
+          textAlign: TextAlign.center,
+          style: AppTypography.caption.copyWith(color: ext.searchHintColor),
+        ),
+      ],
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/gallery/presentation/found/bloc/found_bloc.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_results_viewer_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/easy_search_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_album.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_empty_state.dart';
@@ -271,6 +272,17 @@ class _FoundFeedState extends State<FoundFeed> {
           reason: _access == FoundAccess.signedOut
               ? FaceGateReason.signedOut
               : FaceGateReason.noFaceAdded,
+          // Signed-in only: easy search reads who you are from the token, so
+          // there is nothing to offer a guest until they have an account.
+          onEasySearch: _access == FoundAccess.signedOut
+              ? null
+              : () async {
+                  await EasySearchPage.push(context);
+                  if (!mounted) return;
+                  // Whatever it found is in this list now.
+                  _reload();
+                  unawaited(_loadPending());
+                },
           onPrimaryAction: () async {
             if (_access == FoundAccess.signedOut) {
               await promptSignUp(

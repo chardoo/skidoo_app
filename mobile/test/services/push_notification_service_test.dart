@@ -63,6 +63,12 @@ class _FakeBackend extends PushBackend {
   }
 
   @override
+  Future<void> detach() async {
+    calls.add('detach');
+    attached = null;
+  }
+
+  @override
   Future<String?> attachedUserId() async => attached;
 }
 
@@ -392,4 +398,97 @@ void main() {
       expect(backend.calls, isNot(contains('requestPermission')));
     });
   });
+
+  group('what a launch asserts about the session', () {
+    test('a signed-in launch attaches that account', () async {
+      final backend = _FakeBackend();
+
+      await serviceFor(backend).adoptSession('user-a');
+
+      expect(backend.attached, 'user-a');
+      expect(backend.calls, contains('login(user-a)'));
+    });
+
+    test('a signed-out launch detaches an account left behind', () async {
+      // The report this is here for: sign out, sign in as somebody else — or
+      // do not sign in at all — and the old account keeps receiving. A logout
+      // whose DELETE never landed, or a process killed mid-logout, leaves the
+      // SDK holding the previous account, and reconcile() never cleared it
+      // because with no account to assert it did nothing at all.
+      final backend = _FakeBackend(attached: 'user-a');
+
+      await serviceFor(backend).adoptSession(null);
+
+      expect(backend.attached, isNull);
+      expect(backend.calls, contains('detach'));
+    });
+
+    test('a signed-out launch with nothing attached detaches nothing', () async {
+      // OneSignal answers a logout with a fresh anonymous user, so detaching
+      // for no reason makes one on every launch.
+      final backend = _FakeBackend();
+
+      await serviceFor(backend).adoptSession(null);
+
+      expect(backend.calls, isNot(contains('detach')));
+    });
+
+    test('an empty id counts as signed out', () async {
+      final backend = _FakeBackend(attached: 'user-a');
+
+      await serviceFor(backend).adoptSession('');
+
+      expect(backend.attached, isNull);
+    });
+
+    test('switching accounts moves the device to the new one', () async {
+      final backend = _FakeBackend(attached: 'user-a');
+
+      await serviceFor(backend).adoptSession('user-b');
+
+      expect(backend.attached, 'user-b');
+      expect(backend.calls, contains('login(user-b)'));
+    });
+
+    testWidgets('a later foreground never detaches the signed-in account',
+        (t) async {
+      // The reason this is its own entry point and not reconcile's null case:
+      // _onForeground calls reconcile() with no arguments, and a null-means-
+      // detach rule there would sign the device out every time the app came
+      // forward.
+      final backend = _FakeBackend();
+      final service = serviceFor(backend);
+      await service.init();
+      await service.adoptSession('user-a');
+      backend.calls.clear();
+
+      background(t);
+      foreground(t);
+      await t.pump();
+      await t.pump();
+
+      expect(backend.calls, isNot(contains('detach')));
+      expect(backend.attached, 'user-a');
+    });
+
+    test('a detach that throws does not take the launch with it', () async {
+      final backend = _ThrowingDetach();
+
+      await serviceFor(backend).adoptSession(null);
+
+      // Still reconciled the subscription afterwards.
+      expect(backend.calls, contains('setSubscribed(true)'));
+    });
+  });
+}
+
+/// A backend whose detach fails, for the one test that needs it.
+class _ThrowingDetach extends _FakeBackend {
+  _ThrowingDetach() : super(attached: 'user-a');
+
+  @override
+  Future<void> detach() async {
+    calls.add('detach');
+    throw StateError('the SDK is having a day');
+  }
 }
