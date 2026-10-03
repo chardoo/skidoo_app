@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/core/common/widgets/reaction_pop.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
@@ -172,14 +173,20 @@ class CommentItemWidget extends StatelessWidget {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      data.viewerLiked
-                                          ? Icons.favorite_rounded
-                                          : Icons.favorite_border_rounded,
-                                      size: 15.sp,
-                                      color: data.viewerLiked
-                                          ? ext.likeRed
-                                          : ext.searchHintColor,
+                                    // The same pop and tap as every other
+                                    // heart in the app, on the glyph alone so
+                                    // the count beside it holds still.
+                                    ReactionPop(
+                                      active: data.viewerLiked,
+                                      child: Icon(
+                                        data.viewerLiked
+                                            ? Icons.favorite_rounded
+                                            : Icons.favorite_border_rounded,
+                                        size: 15.sp,
+                                        color: data.viewerLiked
+                                            ? ext.likeRed
+                                            : ext.searchHintColor,
+                                      ),
                                     ),
                                     // The number goes when it is zero rather
                                     // than sitting there as a 0 — an unliked

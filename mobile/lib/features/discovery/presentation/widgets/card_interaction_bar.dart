@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/common/widgets/reaction_pop.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
@@ -79,10 +80,12 @@ class CardInteractionBar extends StatelessWidget {
           // ── Like ────────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Like',
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onLike();
-            },
+            // No haptic here: the pop owns it in both directions — see
+            // [ReactionPop]. A tap fired from here as well put two
+            // acknowledgements on one gesture, which feels like a stutter
+            // rather than a firmer tap.
+            active: liked,
+            onTap: onLike,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -123,10 +126,8 @@ class CardInteractionBar extends StatelessWidget {
           // ── Dislike ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Dislike',
-            onTap: () {
-              HapticFeedback.lightImpact();
-              onDislike();
-            },
+            active: disliked,
+            onTap: onDislike,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -248,10 +249,8 @@ class CardInteractionBar extends StatelessWidget {
           // ── Bookmark ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Save',
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onSave();
-            },
+            active: saved,
+            onTap: onSave,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               switchInCurve: Curves.elasticOut,
@@ -325,11 +324,22 @@ class _ExternalShareActionState extends State<_ExternalShareAction> {
 // ── Tap-scale wrapper ─────────────────────────────────────────────────────────
 
 class _AnimatedActionBtn extends StatefulWidget {
-  const _AnimatedActionBtn(
-      {required this.child, required this.onTap, this.semanticLabel});
+  const _AnimatedActionBtn({
+    required this.child,
+    required this.onTap,
+    this.semanticLabel,
+    this.active = false,
+  });
   final Widget child;
   final VoidCallback onTap;
   final String? semanticLabel;
+
+  /// Whether this button is a reaction, and whether that reaction is on.
+  ///
+  /// Reactions pop and tap when they land ([ReactionPop]); the plain actions in
+  /// this bar — message, share — leave it false and get the press dip alone,
+  /// which is all a button that navigates somewhere should claim.
+  final bool active;
 
   @override
   State<_AnimatedActionBtn> createState() => _AnimatedActionBtnState();
@@ -337,6 +347,9 @@ class _AnimatedActionBtn extends StatefulWidget {
 
 class _AnimatedActionBtnState extends State<_AnimatedActionBtn>
     with SingleTickerProviderStateMixin {
+  /// The press: a small dip under the finger, released on tap-up. Says the
+  /// touch landed, and says nothing about what it did — which is why a
+  /// reaction needs the pop on top of it.
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 100),
@@ -364,7 +377,12 @@ class _AnimatedActionBtnState extends State<_AnimatedActionBtn>
           widget.onTap();
         },
         onTapCancel: () => _ctrl.forward(),
-        child: ScaleTransition(scale: _ctrl, child: widget.child),
+        // Nested, so the two multiply: the press dip belongs to the whole
+        // control, the pop to what is inside it.
+        child: ScaleTransition(
+          scale: _ctrl,
+          child: ReactionPop(active: widget.active, child: widget.child),
+        ),
       ),
     );
   }

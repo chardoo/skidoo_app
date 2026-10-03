@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/components/common/navbar.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -429,7 +428,8 @@ class _FeedItemCardState extends State<FeedItemCard> {
     final d = widget.data;
     if (d.campaignId.isEmpty) return;
 
-    HapticFeedback.lightImpact();
+    // No haptic here — the rail's heart taps and clicks for itself the moment
+    // `_liked` flips, in both directions. See [ReactionPop].
     final wasLiked = _liked;
     final wasLikes = _likes;
     setState(() {

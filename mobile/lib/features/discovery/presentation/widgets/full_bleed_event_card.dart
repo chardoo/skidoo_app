@@ -662,12 +662,17 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
     _burst
       ..reset()
       ..forward();
-    HapticFeedback.lightImpact();
 
     final reaction =
         context.read<DiscoveryBloc>().state.reactions[widget.event.id] ??
             _ownReaction;
-    if (reaction.liked) return;
+    if (reaction.liked) {
+      // Already liked, so nothing flips and the rail's heart will not pop.
+      // The gesture still gets an answer — the burst above, and a tap for it
+      // here, which is the one case this method owns its own feedback.
+      HapticFeedback.lightImpact();
+      return;
+    }
 
     context.read<DiscoveryBloc>().add(DiscoveryReactionToggled(
           widget.event.id,

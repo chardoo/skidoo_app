@@ -4,7 +4,6 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -325,7 +324,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   Future<void> _toggleSave() async {
     final saved = _saved;
     if (saved == null || widget.pictureId.isEmpty) return;
-    HapticFeedback.lightImpact();
+    // As with the like above: the bookmark answers for itself.
     try {
       await saved.toggle(widget.pictureId);
     } catch (_) {
@@ -399,7 +398,8 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
   }
 
   void _toggleLike() {
-    HapticFeedback.lightImpact();
+    // No haptic here — the heart taps and clicks for itself the moment
+    // `_liked` flips, in both directions. See [ReactionPop].
     final nowLiked = !_liked;
     setState(() {
       _liked = nowLiked;
@@ -444,6 +444,10 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
       String? label,
       bool busy = false,
       String? semanticLabel,
+      // Reactions only — the like and the bookmark. Passing it is what makes
+      // the glyph pop and the device tap when one lands; download and share
+      // are not reactions and leave it false.
+      bool active = false,
     }) =>
         MediaRailAction(
           key: key,
@@ -454,6 +458,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           semanticLabel: semanticLabel,
           iconSize: _icnSize,
           tapTargetSize: _btnSize,
+          active: active,
           onTap: onTap,
         );
 
@@ -464,6 +469,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           label: _fmt(_likeCount),
           color: _liked ? ext.likeRed : Colors.white,
           semanticLabel: _liked ? 'Unlike' : 'Like',
+          active: _liked,
           onTap: _toggleLike,
         ),
       if (_canSave)
@@ -475,6 +481,7 @@ class _MediaActionButtonsState extends State<MediaActionButtons> {
           busy: _saved!.isBusy(widget.pictureId),
           semanticLabel:
               _saved!.isSaved(widget.pictureId) ? 'Remove from saved' : 'Save',
+          active: _saved!.isSaved(widget.pictureId),
           onTap: _toggleSave,
         ),
       if (widget.showDownload)

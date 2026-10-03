@@ -125,7 +125,8 @@ class _FoundActionRailState extends State<FoundActionRail> {
   }
 
   void _toggleLike() {
-    HapticFeedback.lightImpact();
+    // No haptic here — the rail's heart taps and clicks for itself the moment
+    // `_liked` flips, in both directions. See [ReactionPop].
     final nowLiked = !_liked;
     setState(() {
       _liked = nowLiked;
