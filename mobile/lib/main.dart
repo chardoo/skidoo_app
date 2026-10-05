@@ -14,6 +14,7 @@ import 'package:jperg_app/features/admin/data/repositories/app_config_watcher.da
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
+import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -180,6 +181,7 @@ void main() async {
   // rather than in the shell so a launch that ends on the feed still counts,
   // and unawaited because nothing about starting up waits on a counter.
   unawaited(FeedbackPrompt.noteLaunch());
+  unawaited(PersonalisationPrompt.noteLaunch());
   // The premium tier's invitation is paced the same way — see
   // [PremiumInvitePrompt], which owns every condition on when it appears.
   unawaited(PremiumInvitePrompt.noteLaunch());

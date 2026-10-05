@@ -216,13 +216,25 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
                       ),
                     ],
                   ),
+                  // "Diagnostic analytics / Share Usage Data / Help us improve
+                  // by sharing anonymized analytics" — which is what the switch
+                  // was called when 227 of 228 accounts left it off.
+                  //
+                  // Three things were wrong with that. It sounded like crash
+                  // reporting, something you hand a vendor. "Help us improve"
+                  // is a benefit to us, so there was no reason to say yes. And
+                  // it never said what the data is actually for: ranking this
+                  // person's own feed. See scripts/diagnose_tracking.py — the
+                  // pipeline is healthy end to end and starved of input.
                   SettingsSection(
-                    title: 'Diagnostic analytics',
+                    title: 'Personalisation',
                     children: [
                       SettingsRow(
-                        label: 'Share Usage Data',
+                        label: 'Personalise my feed',
                         subtitle:
-                            'Help us improve by sharing anonymized analytics',
+                            'Use what you watch and skip to choose which '
+                            'events you see. Never shared with other users or '
+                            'advertisers.',
                         value: _settings.shareUsageData,
                         isBusy: _saving == 'share_usage_data',
                         onChanged: (v) => _set('share_usage_data', v),

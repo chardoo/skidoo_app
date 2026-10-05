@@ -1,8 +1,11 @@
 import 'dart:math';
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
 
 /// Telling the server that something was actually looked at.
 ///
@@ -39,6 +42,16 @@ class ViewReporter {
     int? dwellSeconds,
   }) {
     if (entityId.isEmpty) return;
+
+    // One watched event, counted on the device, for deciding when it is worth
+    // offering to personalise the feed — see [PersonalisationPrompt]. Counted
+    // here rather than in the feed so the two cannot drift: the moment the
+    // feed stops being watched, this stops counting. Fire-and-forget, and it
+    // writes nothing anybody else reads.
+    if (entityType == 'event') {
+      unawaited(PersonalisationPrompt.noteFeedView());
+    }
+
     // Everything here is inside the try, not just the request: the reporter is
     // reached from dispose() and from page callbacks, where a throw would take
     // the screen with it — and there is no client under test or on a torn-down

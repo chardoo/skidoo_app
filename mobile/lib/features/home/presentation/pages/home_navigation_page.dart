@@ -30,6 +30,9 @@ import 'package:jperg_app/features/feedback/presentation/feedback_sheet.dart';
 import 'package:jperg_app/features/location/presentation/location_mismatch_prompt.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/premium_invite_prompt.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/features/settings/data/account_settings_api.dart';
+import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
+import 'package:jperg_app/features/settings/presentation/personalisation_sheet.dart';
 
 /// Slides the header in and out with the feed's chrome.
 ///
@@ -192,6 +195,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       _checkLocation();
       _maybeAskForFeedback();
       _maybeOfferPremium();
+      _maybeOfferPersonalisation();
     }
   }
 
@@ -228,6 +232,47 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       // prompt. ModalRoute.isCurrent is the one question that covers all three.
       if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
       await FeedbackSheet.show(context);
+    });
+  }
+
+  /// Offer to personalise the feed, once, after enough of it has been watched.
+  ///
+  /// `share_usage_data` is off by default and the only way to turn it on was a
+  /// switch in Settings › Privacy. One account in 228 had found it. This asks
+  /// in the feed, where the benefit lands.
+  ///
+  /// Last in the queue of three, and the longest delay: the other two are
+  /// questions about the app the person is using right now, where this is an
+  /// offer that keeps. [PersonalisationPrompt] decides whether there is
+  /// anything to ask about at all — it will not fire before a few launches and
+  /// a dozen watched events — and it only ever fires once.
+  void _maybeOfferPersonalisation() {
+    Future.delayed(const Duration(seconds: 14), () async {
+      if (!mounted) return;
+      try {
+        final settings = await AccountSettingsApi().fetch();
+        if (!await PersonalisationPrompt.shouldAsk(
+            alreadyOn: settings.shareUsageData)) {
+          return;
+        }
+        if (!mounted) return;
+        // Nothing stacked over the shell — the same check the other two make.
+        if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+        await PersonalisationSheet.show(
+          context,
+          onAccept: () async {
+            try {
+              await AccountSettingsApi().update('share_usage_data', true);
+              return true;
+            } catch (_) {
+              return false;
+            }
+          },
+        );
+      } catch (_) {
+        // A prompt that cannot read the current setting does not ask. Asking
+        // somebody who already said yes is worse than not asking at all.
+      }
     });
   }
 
