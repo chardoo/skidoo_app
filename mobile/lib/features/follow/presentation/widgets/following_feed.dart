@@ -13,6 +13,8 @@ import 'package:jperg_app/features/follow/presentation/widgets/feed_suggestions_
 import 'package:jperg_app/features/follow/presentation/widgets/following_empty_state.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart'
+    as prefetch;
 
 /// The "Following" feed: posts from the creators the user follows, backed by
 /// `FollowRepository.getFollowFeed`, with a card of suggested creators dealt
@@ -421,7 +423,14 @@ class FollowingFeedState extends State<FollowingFeed> {
 
   void _onActiveSlotChanged(int slotIndex) {
     _syncWatch();
-    if (slotIndex >= _slots.length - 2 && !_loadingMore) _loadMore();
+    // Backstop for the drag-time check — a slot reached without a drag never
+    // produces a scroll update.
+    _maybeLoadMore(slotIndex.toDouble());
+
+    // The next event's opening frame, decoded while this card is being read.
+    // Suggestion slots are skipped: they carry no event, and the post below
+    // one is what a swipe is heading for.
+    prefetch.warmEventFirstFrames(context, _eventsAfter(slotIndex));
 
     // Top the pool up before the last slice is reached, so the next card is
     // ready rather than silently skipped.
@@ -430,6 +439,37 @@ class FollowingFeedState extends State<FollowingFeed> {
     final slicesAvailable =
         (_suggestions.length / FollowingFeed.suggestionsPerCard).ceil();
     if (slicesUsed >= slicesAvailable - 1) _loadSuggestions(grow: true);
+  }
+
+  /// The next few events below [slotIndex], creator-suggestion cards skipped.
+  List<EventDiscovery> _eventsAfter(int slotIndex) {
+    final out = <EventDiscovery>[];
+    for (var i = slotIndex + 1;
+        i < _slots.length && out.length < prefetch.kFeedWarmAhead;
+        i++) {
+      final event = _slots[i].event;
+      if (event != null) out.add(event);
+    }
+    return out;
+  }
+
+  /// Ask for another page while the drag is still moving.
+  ///
+  /// `onPageChanged` fires once a swipe has settled, which is a whole card
+  /// after the reader's intent was plain. On a slow connection that card is
+  /// the difference between the next post being there and a spinner.
+  void _maybeLoadMore(double leadingEdge) {
+    // The trailing spinner is a slot nobody can swipe to, and counting it
+    // would have the feed ask for more because of a widget that exists only
+    // because it already did.
+    if (prefetch.shouldLoadMore(
+      leadingEdge: leadingEdge,
+      itemCount: _slots.length,
+      hasMore: _hasMore,
+      isLoading: _loadingMore,
+    )) {
+      _loadMore();
+    }
   }
 
   @override
@@ -478,7 +518,14 @@ class FollowingFeedState extends State<FollowingFeed> {
       // The Feed tab's pager, to the letter: vertical, one slot per page,
       // snapping. See the note on [FollowingFeed] for why the suggestions card
       // no longer needs this to be a free-scrolling list.
-      child: PageView.builder(
+      child: NotificationListener<ScrollUpdateNotification>(
+        onNotification: (_) {
+          // `page` is null until the controller is attached and laid out.
+          final edge = _pageCtrl.hasClients ? _pageCtrl.page : null;
+          if (edge != null) _maybeLoadMore(edge);
+          return false;
+        },
+        child: PageView.builder(
         controller: _pageCtrl,
         scrollDirection: Axis.vertical,
         onPageChanged: _onPageChanged,
@@ -522,6 +569,7 @@ class FollowingFeedState extends State<FollowingFeed> {
             onHide: () => _onHide(event.id),
           );
         },
+      ),
       ),
     );
   }

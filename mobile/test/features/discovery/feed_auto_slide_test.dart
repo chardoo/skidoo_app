@@ -10,6 +10,7 @@ import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.da
 import 'package:jperg_app/features/discovery/presentation/widgets/event_card/explore_event_cta.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/media_readiness.dart';
 
 /// A post that is landed on and left alone introduces its own album: the photos
 /// step forward by themselves until the third, where "Explore event photos"
@@ -58,6 +59,13 @@ Widget host(EventDiscovery ev) => ScreenUtilInit(
               activeCardIndex: ValueNotifier<int>(0),
               onTap: () {},
               onHide: () {},
+              // The slideshow is readiness-gated: it will not move onto a
+              // photo that has not arrived. There is no network here, so
+              // nothing would ever arrive and every advance would wait out
+              // MediaReadiness's ceiling. These tests are about *when* the
+              // slide fires, not about the gate — media_readiness_test.dart
+              // covers that.
+              readiness: MediaReadiness.resolved(),
             ),
           ),
         ),

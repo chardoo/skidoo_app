@@ -5,6 +5,8 @@ import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/widgets/media_backdrop.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/media_readiness.dart';
 
 /// Full-width swipeable photo/video carousel — Instagram / TikTok style.
 /// Media is always shown uncropped at its native aspect ratio (`BoxFit
@@ -24,6 +26,7 @@ class PostPhotoCarousel extends StatefulWidget {
     this.onMediaChanged,
     this.videoControlsBottomInset = 0,
     this.onVideoEnded,
+    this.readiness,
   });
 
   final List<EventPicture> pics;
@@ -54,6 +57,15 @@ class PostPhotoCarousel extends StatefulWidget {
   /// the next asset — see [FullBleedEventCard].
   final VoidCallback? onVideoEnded;
 
+  /// Which slides have settled, and so whether a forward swipe is allowed.
+  ///
+  /// Supplied by the card rather than made here, because the card's auto-slide
+  /// has to consult the same answer — a gate that stops the reader reaching a
+  /// blank slide while the card slides them onto it unprompted is no gate.
+  /// Null opts out entirely: the carousel scrolls freely, which is what the
+  /// standalone uses of it want.
+  final MediaReadiness? readiness;
+
   @override
   State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
 }
@@ -62,9 +74,96 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
   /// Drives play/pause for all video slides in this carousel.
   final _activeIndex = ValueNotifier<int>(0);
 
+  @override
+  void initState() {
+    super.initState();
+    // From the controller, not zero. A carousel opened part-way through — a
+    // deep link into one photo of an album — would otherwise believe it was on
+    // slide 0 until the first swipe, and the gate would hold it against a
+    // boundary it had already passed.
+    _activeIndex.value = widget.pageController.initialPage;
+    // The slide after this one, ready before the first swipe rather than
+    // after it. A carousel is built when its card reaches the screen, which
+    // is the moment there is time to spare — the reader is still looking at
+    // the slide it opened on.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _warmNeighbours(_activeIndex.value));
+  }
+
+  @override
+  void didUpdateWidget(PostPhotoCarousel old) {
+    super.didUpdateWidget(old);
+    // A recycled carousel showing a different event has different neighbours.
+    if (!identical(old.pics, widget.pics)) {
+      _warmNeighbours(_activeIndex.value);
+    }
+  }
+
+  void _warmNeighbours(int index) {
+    if (!mounted) return;
+    // Both directions, so swiping back is as immediate as swiping on. The one
+    // just left goes on downloading even though its widget was disposed —
+    // precacheImage outlives the widget tree, which is what makes returning to
+    // it instant.
+    warmCarouselNeighbours(context, widget.pics, index);
+    _trackAround(index);
+  }
+
+  /// Watch the slide in front and the one after it settle.
+  ///
+  /// Only those two: they are the whole of [canAdvance]'s question. The slide
+  /// behind is warmed by [warmCarouselNeighbours] above and will be tracked
+  /// when it is approached.
+  void _trackAround(int index) {
+    final readiness = widget.readiness;
+    if (readiness == null || !mounted) return;
+
+    final width = MediaQuery.sizeOf(context).width;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    for (final at in [index, index + 1]) {
+      if (at < 0 || at >= widget.pics.length) continue;
+      final url = warmableUrl(
+        widget.pics[at],
+        logicalWidth: width,
+        devicePixelRatio: dpr,
+      );
+      if (url == null) continue;
+      readiness.track(context, url, logicalWidth: width);
+    }
+  }
+
+  /// Whether a swipe off the slide in front may land.
+  ///
+  /// Read live from inside the gesture rather than captured at build time, so
+  /// a photo that arrives mid-drag opens the gate under the reader's thumb
+  /// instead of after the next rebuild.
+  bool _canAdvance() {
+    final readiness = widget.readiness;
+    if (readiness == null) return true;
+
+    final index = _activeIndex.value;
+    final next = index + 1;
+    // Nothing to advance to — let the pager's own bounds handle the edge.
+    if (next >= widget.pics.length) return true;
+
+    final width = MediaQuery.sizeOf(context).width;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    String? urlAt(int at) => warmableUrl(
+          widget.pics[at],
+          logicalWidth: width,
+          devicePixelRatio: dpr,
+        );
+
+    return canAdvance(
+      currentResolved: readiness.isResolved(urlAt(index)),
+      nextResolved: readiness.isResolved(urlAt(next)),
+    );
+  }
+
   void _onPageChanged(int i) {
     _activeIndex.value = i;
     widget.onMediaChanged?.call(i);
+    _warmNeighbours(i);
   }
 
   @override
@@ -78,7 +177,13 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
     return PageView.builder(
       controller: widget.pageController,
       physics: widget.scrollable
-          ? const BouncingScrollPhysics()
+          ? (widget.readiness == null
+              ? const BouncingScrollPhysics()
+              : _GatedForwardPhysics(
+                  canAdvance: _canAdvance,
+                  currentPage: () => _activeIndex.value,
+                  parent: const BouncingScrollPhysics(),
+                ))
           : const NeverScrollableScrollPhysics(),
       itemCount: widget.pics.length,
       onPageChanged: _onPageChanged,
@@ -154,6 +259,56 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
             ));
       },
     );
+  }
+}
+
+// ── Holding the carousel still while both slides are blank ────────────────────
+
+/// Refuses forward motion past the slide in front while [canAdvance] says no.
+///
+/// Forward only. Going back is never blocked — the slide behind has been seen,
+/// and the one thing a reader stuck on a spinner must always be able to do is
+/// retreat to something real.
+///
+/// Implemented as a boundary condition rather than by swapping in
+/// [NeverScrollableScrollPhysics], which would freeze both directions, and
+/// rather than by snapping back after the fact, which would let the blank
+/// slide appear and then yank it away. A boundary simply makes the pixels past
+/// the current page unreachable: the drag meets resistance exactly where a
+/// pager's own end-of-list does, which is a resistance thumbs already know.
+class _GatedForwardPhysics extends ScrollPhysics {
+  const _GatedForwardPhysics({
+    required this.canAdvance,
+    required this.currentPage,
+    super.parent,
+  });
+
+  /// Asked during the gesture, not at build time, so an image that lands
+  /// mid-drag opens the gate under the thumb.
+  final bool Function() canAdvance;
+  final int Function() currentPage;
+
+  @override
+  _GatedForwardPhysics applyTo(ScrollPhysics? ancestor) => _GatedForwardPhysics(
+        canAdvance: canAdvance,
+        currentPage: currentPage,
+        parent: buildParent(ancestor),
+      );
+
+  @override
+  double applyBoundaryConditions(ScrollMetrics position, double value) {
+    final fromParent = super.applyBoundaryConditions(position, value);
+    if (canAdvance()) return fromParent;
+
+    // Where the slide in front ends. viewportFraction is 1 here, so a page is
+    // exactly one viewport wide.
+    final limit = currentPage() * position.viewportDimension;
+    if (value > limit && value > position.pixels) {
+      // Reject the whole of the forward overshoot. Returning the difference is
+      // what tells the scroller "this much did not happen".
+      return value - limit;
+    }
+    return fromParent;
   }
 }
 

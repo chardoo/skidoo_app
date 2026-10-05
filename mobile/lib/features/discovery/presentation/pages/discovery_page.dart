@@ -12,12 +12,13 @@ import 'package:jperg_app/core/theme/dark_media_surface.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/login_bottom_sheet.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/utils/video_pause_notifier.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
-import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_join_prompt.dart';
 import 'package:jperg_app/features/home/presentation/pages/search_results_page.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -121,11 +122,27 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     _activeCardIndex.value = index;
     // They've found the gesture — the hint has done its job.
     _dismissSwipeHint();
-    if (index >= events.length - 3) {
-      final bloc = context.read<DiscoveryBloc>();
-      if (bloc.state.hasMore && !bloc.state.isLoadingMore) {
-        bloc.add(const DiscoveryLoadMoreRequested());
-      }
+    // Backstop for the drag-time check — a card reached without a drag never
+    // produces a scroll update.
+    _maybeLoadMore(events.length, index.toDouble());
+    // The next card's opening frame, decoded while this one is being read.
+    warmNextCards(context, events, index);
+  }
+
+  /// Ask for another page while the drag is still moving.
+  ///
+  /// `onPageChanged` fires once a swipe has settled, a whole card after the
+  /// reader's intent was plain — and on a slow connection that card is the
+  /// difference between the next one being there and a spinner.
+  void _maybeLoadMore(int itemCount, double leadingEdge) {
+    final bloc = context.read<DiscoveryBloc>();
+    if (shouldLoadMore(
+      leadingEdge: leadingEdge,
+      itemCount: itemCount,
+      hasMore: bloc.state.hasMore,
+      isLoading: bloc.state.isLoadingMore,
+    )) {
+      bloc.add(const DiscoveryLoadMoreRequested());
     }
   }
 
@@ -185,9 +202,13 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                     child: Padding(
                       // Clears the floating tab bar above it.
                       padding: EdgeInsets.only(top: 56.h),
-                      child: FaceGatePrompt(
-                        reason: FaceGateReason.signedOut,
-                        onPrimaryAction: () => promptSignUp(
+                      // A guest has no account, so there is nothing to list
+                      // and nothing to search — easy search reads who you are
+                      // from the token. An account is the only thing worth
+                      // offering, and asking for a selfie first (as the old
+                      // face panel did) put the second step before the first.
+                      child: FoundJoinPrompt(
+                        onJoin: () => promptSignUp(
                           context,
                           onAuthenticated: _onGateResolved,
                         ),
@@ -250,7 +271,18 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                       // logged-in Home feed uses — FullBleedEventCard runs in
                       // guest mode here (isAuthenticated: false), so every
                       // reaction prompts login via onTap instead of acting.
-                      return PageView.builder(
+                      return NotificationListener<ScrollUpdateNotification>(
+                        onNotification: (_) {
+                          // `page` is null until the controller is attached
+                          // and laid out.
+                          final edge =
+                              _pageCtrl.hasClients ? _pageCtrl.page : null;
+                          if (edge != null) {
+                            _maybeLoadMore(state.events.length, edge);
+                          }
+                          return false;
+                        },
+                        child: PageView.builder(
                         controller: _pageCtrl,
                         scrollDirection: Axis.vertical,
                         itemCount: state.events.length,
@@ -267,6 +299,7 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
                             isAuthenticated: false,
                           );
                         },
+                        ),
                       );
                     },
                   ),

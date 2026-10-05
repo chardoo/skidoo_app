@@ -28,6 +28,8 @@ import 'package:jperg_app/features/discovery/presentation/utils/open_photographe
 import 'package:jperg_app/features/discovery/presentation/widgets/card_interaction_bar.dart'
     show FollowButton;
 import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_preview.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/media_readiness.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/event_more_options_sheet.dart';
 import 'package:jperg_app/features/gallery/presentation/widgets/gallery_share_sheet.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
@@ -62,6 +64,7 @@ class FullBleedEventCard extends StatefulWidget {
     required this.onTap,
     required this.onHide,
     this.isAuthenticated = true,
+    this.readiness,
   });
 
   final EventDiscovery event;
@@ -76,6 +79,16 @@ class FullBleedEventCard extends StatefulWidget {
   /// established convention in [EventDiscoveryCard]).
   final bool isAuthenticated;
 
+  /// Which of this post's slides have settled. Tests only.
+  ///
+  /// The card makes its own in production. A widget test has no network, so
+  /// nothing ever resolves and the automatic slide waits out its ceiling on
+  /// every advance — which makes a test about the slideshow a test about the
+  /// gate. Pass [MediaReadiness.resolved] to say that readiness is not what is
+  /// being exercised.
+  @visibleForTesting
+  final MediaReadiness? readiness;
+
   @override
   State<FullBleedEventCard> createState() => _FullBleedEventCardState();
 }
@@ -83,6 +96,14 @@ class FullBleedEventCard extends StatefulWidget {
 class _FullBleedEventCardState extends State<FullBleedEventCard>
     with SingleTickerProviderStateMixin {
   final _mediaPageCtrl = PageController();
+
+  /// Which of this post's slides have settled.
+  ///
+  /// Owned here rather than inside the carousel because two things consult it
+  /// and they have to agree: the carousel, which refuses a swipe onto a blank
+  /// slide, and [_advanceSlide] below, which must not perform that same move
+  /// unasked a second later.
+  late final MediaReadiness _readiness = widget.readiness ?? MediaReadiness();
 
   FeedMusicController? _music;
 
@@ -218,6 +239,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
       _slideDone = true;
       return;
     }
+    if (!_mayLandOn(next)) {
+      // The clip has finished but the photo after it has not arrived. Hold,
+      // and ask again — the same courtesy the slide timer pays, for the same
+      // reason: moving now would land on a blank screen.
+      _slideTimer = Timer(_slideRetry, _onVideoEnded);
+      return;
+    }
     _selfDrivenSlide = true;
     _mediaPageCtrl.animateToPage(
       next,
@@ -237,11 +265,50 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
       _slideDone = true;
       return;
     }
+    if (!_mayLandOn(next)) {
+      // Both this slide and the next are still blank, and moving would trade
+      // one spinner for another — the move the carousel refuses the reader.
+      // Checked again shortly rather than abandoned: the slideshow has to
+      // resume on its own once the photo lands, and MediaReadiness opens the
+      // gate within its own ceiling even if it never does.
+      _slideTimer = Timer(_slideRetry, _advanceSlide);
+      return;
+    }
     _selfDrivenSlide = true;
     _mediaPageCtrl.animateToPage(
       next,
       duration: const Duration(milliseconds: 420),
       curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// How long to wait before asking again whether a held slide may move.
+  ///
+  /// Short, because this is a slideshow somebody is watching stall. It cannot
+  /// loop forever: [MediaReadiness] resolves every URL it tracks within its
+  /// ceiling whatever the network does, so the gate always opens.
+  static const Duration _slideRetry = Duration(milliseconds: 400);
+
+  /// Whether the carousel may move onto slide [index].
+  ///
+  /// The same question the carousel's own physics asks, deliberately through
+  /// the same two functions — a gate the reader feels and an auto-slide that
+  /// ignores it would read as the gate being broken.
+  bool _mayLandOn(int index) {
+    final pics = widget.event.pictures;
+    if (index < 0 || index >= pics.length) return true;
+
+    final width = MediaQuery.sizeOf(context).width;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    String? urlAt(int at) => warmableUrl(
+          pics[at],
+          logicalWidth: width,
+          devicePixelRatio: dpr,
+        );
+
+    return canAdvance(
+      currentResolved: _readiness.isResolved(urlAt(_mediaIndex)),
+      nextResolved: _readiness.isResolved(urlAt(index)),
     );
   }
 
@@ -612,6 +679,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
     // longer exists, and nothing else would ever release it.
     _music?.release(this);
     _mediaPageCtrl.dispose();
+    // Only the one this card made. A registry handed in belongs to whoever
+    // handed it over, and disposing it here would tear down an object they
+    // still hold.
+    if (widget.readiness == null) _readiness.dispose();
     super.dispose();
   }
 
@@ -865,6 +936,7 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
             onTap: _onCardTapped,
             cardIndex: widget.cardIndex,
             activeCardIndex: widget.activeCardIndex,
+            readiness: _readiness,
             // The scrubber has to clear the navigation bar the same way the
             // caption does. Only while the bar is actually up: with it hidden
             // the player owns the bottom edge and the controls belong on it.

@@ -156,9 +156,19 @@ class JpergImage extends StatelessWidget {
   /// Downloads and decodes [imageUrl] now, so the [JpergImage] that asks for it
   /// later paints on its first frame instead of showing a placeholder.
   ///
-  /// This is for the handful of images whose *first* appearance is worth paying
-  /// for ahead of time — the top of the feed while the splash is still up. It
-  /// is not a prefetcher: everything else should load when it is built.
+  /// For images whose *first* appearance is worth paying for ahead of time:
+  /// the top of the feed while the splash is still up, and the card or slide
+  /// one swipe away — see `feed_prefetch.dart`, which is where the feed decides
+  /// what is close enough to be worth it.
+  ///
+  /// Still not a general prefetcher. Warm what somebody is about to reach, not
+  /// what they might: every warmed image is decoded bytes held in the global
+  /// [ImageCache], and warming a whole list evicts the picture being looked at
+  /// to make room for ones nobody asked for.
+  ///
+  /// **Never pass a video URL.** An image loader handed an `.mp4` downloads the
+  /// clip in order to fail on it. Use `CloudinaryTransform.videoPoster` for the
+  /// still, which is what the feed warms for a video slide.
   ///
   /// The provider is assembled exactly as [CachedNetworkImage] assembles its
   /// own — `CachedNetworkImageProvider` wrapped by [ResizeImage] at

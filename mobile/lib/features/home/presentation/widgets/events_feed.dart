@@ -8,6 +8,8 @@ import 'package:jperg_app/features/ads/presentation/feed_promos.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/feed_item_card.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart'
+    as prefetch;
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/swipe_up_hint.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -272,8 +274,56 @@ class EventsFeedState extends State<EventsFeed> {
 
     if (item is _AdItem) _promos.fireImpression(item.adIndex);
 
-    if (pageIndex >= virtualItems.length - 2 &&
-        !widget.discoveryState.isLoadingMore) {
+    // Kept as a backstop. The drag-time check below usually gets there first,
+    // but a page reached without a drag — a keyboard shortcut, a jump — never
+    // produces a scroll update worth acting on.
+    _maybeLoadMore(virtualItems, pageIndex.toDouble());
+
+    // The next event's opening frame, decoded while this one is being read.
+    // Scanned forward rather than taken at pageIndex + 1, because the slot
+    // below may be an ad or a request — those load themselves, and the event
+    // after them is the thing a swipe is actually heading for.
+    warmEventFirstFrames(_eventsAfter(virtualItems, pageIndex));
+  }
+
+  /// The next [kFeedWarmAhead] events below [pageIndex], ads and requests
+  /// skipped.
+  List<EventDiscovery> _eventsAfter(List<_FeedItem> virtualItems, int pageIndex) {
+    final out = <EventDiscovery>[];
+    for (var i = pageIndex + 1;
+        i < virtualItems.length && out.length < prefetch.kFeedWarmAhead;
+        i++) {
+      final item = virtualItems[i];
+      if (item is _EventItem) out.add(item.event);
+    }
+    return out;
+  }
+
+  void warmEventFirstFrames(List<EventDiscovery> events) {
+    if (events.isEmpty) return;
+    prefetch.warmEventFirstFrames(context, events);
+  }
+
+  /// Ask for another page while the drag is still moving.
+  ///
+  /// `onPageChanged` fires when a swipe has *settled*, so the request used to
+  /// go out a full card after the reader's intent was obvious. A drag that is
+  /// part-way to the next card already says the one after it is wanted, and on
+  /// a slow connection that head start is the difference between a seamless
+  /// feed and a spinner.
+  void _maybeLoadMore(List<_FeedItem> virtualItems, double leadingEdge) {
+    // The trailing spinner is not somewhere the reader can go, and counting it
+    // would have the feed asking for more because of a widget that exists only
+    // because it already did.
+    final scrollable =
+        virtualItems.where((item) => item is! _LoadingItem).length;
+
+    if (prefetch.shouldLoadMore(
+      leadingEdge: leadingEdge,
+      itemCount: scrollable,
+      hasMore: widget.discoveryState.hasMore,
+      isLoading: widget.discoveryState.isLoadingMore,
+    )) {
       widget.onLoadMore();
     }
   }
@@ -332,7 +382,16 @@ class EventsFeedState extends State<EventsFeed> {
         padding: EdgeInsets.only(top: widget.topPadding),
         child: Stack(
           children: [
-            PageView.builder(
+            NotificationListener<ScrollUpdateNotification>(
+              onNotification: (_) {
+                // `page` is null until the controller is attached and laid out.
+                final edge = _pageCtrl.hasClients ? _pageCtrl.page : null;
+                if (edge != null) _maybeLoadMore(virtualItems, edge);
+                // Never swallowed: the swipe hint and the nav bar listen for
+                // these too.
+                return false;
+              },
+              child: PageView.builder(
               controller: _pageCtrl,
               scrollDirection: Axis.vertical,
               itemCount: virtualItems.length,
@@ -395,6 +454,7 @@ class EventsFeedState extends State<EventsFeed> {
                   onHide: () => _onHide(event.id),
                 );
               },
+              ),
             ),
             // Swipe-up hint — first card, first time on this device. Below the
             // feed's own overlays and pointer-transparent, so it never
