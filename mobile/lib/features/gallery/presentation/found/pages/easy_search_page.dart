@@ -13,6 +13,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:jperg_app/features/gallery/data/easy_search.dart';
+import 'package:jperg_app/features/gallery/data/face_enrolment.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
 
@@ -28,11 +29,15 @@ import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet
 /// face service (see `/similarity/match`), and not here either — this page
 /// holds them for as long as it is open and no longer.
 class EasySearchPage extends StatefulWidget {
-  const EasySearchPage({super.key});
+  const EasySearchPage({super.key, this.code});
 
-  static Future<void> push(BuildContext context) =>
+  /// An event code the caller already has, so a scan that has just happened is
+  /// not thrown away and asked for again. Null means ask here.
+  final String? code;
+
+  static Future<void> push(BuildContext context, {String? code}) =>
       Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(builder: (_) => const EasySearchPage()),
+        MaterialPageRoute<void>(builder: (_) => EasySearchPage(code: code)),
       );
 
   @override
@@ -47,6 +52,20 @@ class _EasySearchPageState extends State<EasySearchPage> {
   final List<XFile> _selfies = [];
   String? _code;
   bool _starting = false;
+
+  /// Whether to enrol these same selfies as the account's reference face.
+  ///
+  /// Off by default, and deliberately: this screen's whole proposition is a
+  /// search that keeps nothing, and a box that starts ticked would enrol
+  /// biometrics from somebody who came here specifically to avoid that. It is
+  /// an offer, not a default.
+  bool _saveFace = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _code = widget.code?.trim().isEmpty ?? true ? null : widget.code!.trim();
+  }
 
   bool get _ready => _selfies.isNotEmpty && (_code?.isNotEmpty ?? false);
 
@@ -98,6 +117,17 @@ class _EasySearchPageState extends State<EasySearchPage> {
         builder: (_) => EventScanResultPage(
           code: code,
           createSearch: () => EasySearch(code: code, faces: faces),
+          // After the search, never before it. Finding their photos in this
+          // event is the errand; saving the face for future ones is the extra,
+          // and making somebody wait on an upload to learn whether they are in
+          // the album at all gets that the wrong way round.
+          onSearchComplete: _saveFace
+              ? (resultContext) async {
+                  final problem = await saveFaceForFutureEvents(faces);
+                  if (problem == null || !resultContext.mounted) return;
+                  AppSnackBar.error(resultContext, problem);
+                }
+              : null,
         ),
       ),
     );
@@ -132,9 +162,17 @@ class _EasySearchPageState extends State<EasySearchPage> {
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 16.h),
               child: Text(
-                'Take up to $_maxSelfies clear selfies and enter the event '
-                'code. We compare them to that album and keep nothing — your '
-                'face is never saved.',
+                _saveFace
+                    // Said plainly rather than softened. They are about to
+                    // enrol a face on a screen whose whole promise was the
+                    // opposite, and the sentence has to change with the box
+                    // or the screen is lying about what it is doing.
+                    ? 'Take up to $_maxSelfies clear selfies and enter the '
+                        'event code. Your face will be saved to your account '
+                        'so you are found in future events too.'
+                    : 'Take up to $_maxSelfies clear selfies and enter the '
+                        'event code. We compare them to that album and keep '
+                        'nothing — your face is never saved.',
                 style: TextStyle(
                   color: ext.searchHintColor,
                   fontSize: 14.sp,
@@ -181,6 +219,23 @@ class _EasySearchPageState extends State<EasySearchPage> {
               ),
             ),
 
+            // ── Keep it, or do not ───────────────────────────────────────────
+            //
+            // Under the selfies, because it governs *those* selfies and is a
+            // decision taken before they are sent — not an offer made
+            // afterwards about photos already handed over on a promise of not
+            // keeping them.
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 0),
+              child: _SaveFaceCheckbox(
+                ext: ext,
+                value: _saveFace,
+                onChanged: _starting
+                    ? null
+                    : (v) => setState(() => _saveFace = v),
+              ),
+            ),
+
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
               child: AppButton(
@@ -194,6 +249,67 @@ class _EasySearchPageState extends State<EasySearchPage> {
                     : (_code?.isEmpty ?? true)
                         ? 'Add an event code to continue'
                         : 'Find my photos',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Save my face so I am found in future events."
+///
+/// Off until it is tapped. The screen it sits on exists for people who do not
+/// want their face kept, so a ticked default would collect biometrics from
+/// exactly the group who came here to avoid giving them.
+class _SaveFaceCheckbox extends StatelessWidget {
+  const _SaveFaceCheckbox({
+    required this.ext,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final AppThemeExtension ext;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.h),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The whole row is the target, so the box itself does not also
+            // handle taps — two hit targets for one decision double-fires it.
+            IgnorePointer(
+              child: Checkbox(
+                value: value,
+                onChanged: (_) {},
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                side: BorderSide(color: ext.searchHintColor, width: 1.5),
+                activeColor: ext.accentGold,
+              ),
+            ),
+            SizedBox(width: AppSpacing.sm.w),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(top: 2.h),
+                child: Text(
+                  'Save my face so I am found in future events',
+                  // A scale step, not a number picked to fit. See
+                  // test/core/brand_typography_test.dart, which fails on any
+                  // size between two steps.
+                  style: AppTypography.body.copyWith(
+                    color: ext.greetingColor,
+                    height: 1.4,
+                  ),
+                ),
               ),
             ),
           ],

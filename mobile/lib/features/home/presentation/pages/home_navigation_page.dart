@@ -15,8 +15,8 @@ import 'package:jperg_app/features/home/presentation/widgets/events_feed.dart';
 import 'package:jperg_app/features/home/presentation/widgets/home_empty_state.dart';
 import 'package:jperg_app/features/home/presentation/widgets/feed_top_bar.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/easy_search_page.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
-import 'package:jperg_app/features/gallery/presentation/found/pages/face_gate_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/features/follow/presentation/widgets/following_feed.dart';
@@ -313,28 +313,54 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   /// from the preview embedded in the same sheet. Both are the same code and
   /// take the same path as [_openQrScan].
   ///
-  /// Asks for a face first. Scanning a code answers "are there photos of me in
-  /// here?", and face matching needs a reference selfie to answer it with —
-  /// without one the scan runs, finds nothing, and reports an event that
-  /// appears to hold no photos of them. That is the same screen the Found tab
-  /// shows for the same reason, put in front of the tap instead of after it.
+  /// Opens the sheet first and asks about a face afterwards.
+  ///
+  /// It used to be the other way round: a full-screen "add your face" gate
+  /// stood in front of the sheet, so somebody holding up a phone at an event
+  /// with a code on the screen in front of them was answered with a selfie
+  /// request before they could enter it. The code is the thing they came with
+  /// and the thing that expires; the selfie can be asked for once the album is
+  /// known, which is also the moment the request makes sense — "take a selfie
+  /// so we can find you *in this event*".
+  ///
+  /// So the face decides the destination, not the admission:
+  ///
+  ///   * enrolled — straight to the event, matched against the stored face;
+  ///   * signed in, no face — easy search, carrying the code, where the
+  ///     selfies travel with the request;
+  ///   * signed out — sign-up, because easy search reads who you are from the
+  ///     token and the server would refuse the search.
   Future<void> _openUnlock() async {
-    if (await resolveFoundAccess() != FoundAccess.ready) {
-      if (!mounted) return;
-      // Comes back true once they are through it, so the scan they asked for
-      // still happens instead of being lost to the detour.
-      final passed = await FaceGatePage.show(context);
-      if (!passed) return;
-    }
-    // Covers both paths out of the gate above — taken or skipped, an await has
-    // happened and the feed may be gone.
-    if (!mounted) return;
-
     setState(() => _unlockSheetOpen = true);
     try {
       final code = await UnlockPhotosSheet.show(context);
-      if (!mounted || code == null || code.isEmpty) return;
-      _openEventByCode(code);
+      if (!mounted || code == null || code.trim().isEmpty) return;
+
+      final access = await resolveFoundAccess();
+      if (!mounted) return;
+
+      switch (access) {
+        case FoundAccess.ready:
+          _openEventByCode(code);
+        case FoundAccess.noFaceAdded:
+          // The code survives the detour — they scanned it a moment ago and
+          // being asked for it again is the thing this reordering was for.
+          await EasySearchPage.push(context, code: code.trim());
+        case FoundAccess.signedOut:
+          await promptSignUp(
+            context,
+            onAuthenticated: () async {
+              if (!mounted) return;
+              // Sign-up runs its own face step. Whichever way they came out of
+              // it, the code is still in hand.
+              if (AuthService.hasAddedFaces.value) {
+                _openEventByCode(code);
+              } else {
+                await EasySearchPage.push(context, code: code.trim());
+              }
+            },
+          );
+      }
     } finally {
       // In a finally so the glyph un-tints however the sheet went away —
       // submitted, dismissed by the handle, or tapped out of.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -29,7 +30,12 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 /// screen's job is to let them disagree. Browsing the same album later from
 /// the Found tab starts empty instead. See [PhotoSelection].
 class EventScanResultPage extends StatefulWidget {
-  const EventScanResultPage({super.key, required this.code, this.createSearch});
+  const EventScanResultPage({
+    super.key,
+    required this.code,
+    this.createSearch,
+    this.onSearchComplete,
+  });
 
   /// The scanned or typed event code. Treated as an event id, which is what
   /// the existing scan path does with it too.
@@ -44,6 +50,17 @@ class EventScanResultPage extends StatefulWidget {
   /// A builder rather than an instance because Retry runs a second search, and
   /// a search that has already streamed cannot be restarted.
   final LiveSearch Function()? createSearch;
+
+  /// Run once, when the search has finished streaming.
+  ///
+  /// For work that must not happen *before* the answer. Easy search enrols the
+  /// person's face here when they asked it to: saving a face is the extra, the
+  /// search is the errand, and doing the extra first would make somebody wait
+  /// on an upload to find out whether they are in an album at all.
+  ///
+  /// Handed this screen's context, because by the time it runs the screen that
+  /// set it has been replaced — so this is the only one left to report on.
+  final Future<void> Function(BuildContext context)? onSearchComplete;
 
   @override
   State<EventScanResultPage> createState() => _EventScanResultPageState();
@@ -138,8 +155,25 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   /// whether the result card can be shown yet.
   void _onScanState() {
     if (!mounted) return;
+    // Before the minimum-duration check below, which is cosmetic: the orb is
+    // held up so the search reads as work, and there is no reason to make the
+    // follow-up wait on an animation.
+    if (!_scan.isRunning.value) _runAfterSearch();
     if (_scan.isRunning.value || !_minimumElapsed) return;
     _showResult();
+  }
+
+  /// Fires [EventScanResultPage.onSearchComplete], once.
+  ///
+  /// Once per page, not per search: Retry builds a fresh search, and enrolling
+  /// a face again on a second attempt would upload the same selfies twice.
+  bool _afterSearchRun = false;
+
+  void _runAfterSearch() {
+    final after = widget.onSearchComplete;
+    if (_afterSearchRun || after == null) return;
+    _afterSearchRun = true;
+    unawaited(after(context));
   }
 
   /// Turns the finished scan into the card.

@@ -13,6 +13,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/auth/presentation/pages/audience_preference_page.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/gallery/data/face_enrolment.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 enum _Step { intro, scanning, confirmed }
@@ -102,7 +103,10 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
               sendTimeout: const Duration(minutes: 3),
             ),
           );
-      await sl<AuthService>().setHasAddedFaces(true);
+      // Both caches, not just the local flag — Settings › Privacy › Manage
+      // Face Data draws from AccountSettingsApi's row, which is a server
+      // answer from before this upload and would still read "no face data".
+      await markFaceAdded();
     } catch (_) {
       // Non-blocking — the "add your photos" nudge will pick this up later
       // if the upload failed, same as skipping this step outright.

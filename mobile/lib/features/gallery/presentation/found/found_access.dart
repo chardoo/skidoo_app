@@ -4,6 +4,7 @@ import 'package:jperg_app/features/auth/presentation/pages/face_capture_step_pag
 import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 import 'package:jperg_app/features/auth/presentation/pages/signup_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/gallery/presentation/found/models/found_empty_state.dart';
 
 /// Whether the current user can see Found results, and if not, why.
 ///
@@ -35,6 +36,28 @@ Future<FoundAccess> resolveFoundAccess() async {
       ? FoundAccess.ready
       : FoundAccess.noFaceAdded;
 }
+
+/// Whether the Found tab should raise the code sheet for this person.
+///
+/// Only one combination does: signed in, no face enrolled, and nothing to
+/// show. Three states look like absence and are not:
+///
+///   * **photos already found** — including somebody whose face has since been
+///     deleted. The ImageIdentification rows outlive the face that produced
+///     them, so the tab still has their photos and they came to look at them.
+///   * **matches awaiting review** — an answer, not an absence; there is a
+///     banner for it.
+///   * **a face on file and no matches yet** — the system is working. Asking
+///     them to scan a code every time an empty tab opens is nagging somebody
+///     who has already done what was asked.
+///
+/// Kept out of the widget so the rule can be read, and tested, without a
+/// Navigator and a bloc around it. [empty] is [foundEmptyState]'s answer.
+bool shouldOfferCodeSheet({
+  required FoundAccess access,
+  required FoundEmptyState empty,
+}) =>
+    access == FoundAccess.noFaceAdded && empty == FoundEmptyState.scanning;
 
 /// Headline shown when sign-up is *prompted* by a gated action, per the guest
 /// designs. Deliberately shared by the Found gate and the engagement gate so

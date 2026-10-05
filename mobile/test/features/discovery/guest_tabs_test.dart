@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/features/gallery/presentation/found/widgets/face_gate_prompt.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_join_prompt.dart';
 
 /// "Continue as guest" lands on DiscoveryPage — a different page from the
 /// signed-in HomeNavigationPage — and that page used to carry a logo +
@@ -37,22 +38,19 @@ void main() {
     testWidgets('guest Found gate renders in $name mode', (t) async {
       await t.pumpWidget(host(
         ext,
-        FaceGatePrompt(
-          reason: FaceGateReason.signedOut,
-          onPrimaryAction: () {},
-          onSignIn: () {},
-        ),
+        FoundJoinPrompt(onJoin: () {}, onSignIn: () {}),
       ));
       await t.pump();
 
-      expect(find.text('Add your face to get found'), findsOneWidget);
-      expect(find.text('Add my face'), findsOneWidget);
-      expect(find.text('Sign in'), findsOneWidget);
+      expect(find.text(kJoinPromptHeadline), findsOneWidget);
+      expect(find.text('Create an account'), findsOneWidget);
+      expect(
+          find.text('Already have an account? Sign in'), findsOneWidget);
 
       // Headline must not be painted in the other theme's ink — the bug that
       // makes a screen look blank.
       final headline =
-          t.widget<Text>(find.text('Add your face to get found'));
+          t.widget<Text>(find.text(kJoinPromptHeadline));
       expect(headline.style!.color, ext.greetingColor);
     });
   }

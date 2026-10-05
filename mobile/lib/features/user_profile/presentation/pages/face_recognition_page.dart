@@ -13,6 +13,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/gallery/data/face_enrolment.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
@@ -72,7 +73,10 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
             ),
           );
       // Stop the "add your photos" nudge now that the user has uploaded them.
-      await sl<AuthService>().setHasAddedFaces(true);
+      // Both caches, not just the local flag — Settings › Privacy › Manage
+      // Face Data draws from AccountSettingsApi's row, which is a server
+      // answer from before this upload and would still read "no face data".
+      await markFaceAdded();
       if (!mounted) return;
       AppSnackBar.success(
           context, 'Face recognition training queued successfully.');

@@ -89,7 +89,10 @@ void main() {
     await sl.reset();
   });
 
-  Future<_FakeSearch> pump(WidgetTester tester) async {
+  Future<_FakeSearch> pump(
+    WidgetTester tester, {
+    Future<void> Function(BuildContext)? onSearchComplete,
+  }) async {
     // A phone-sized surface. The default test view is 800x600, shorter than
     // any device this ships to, and the scanning orb alone is 260 tall — the
     // overflow that causes is the harness, not the screen.
@@ -106,6 +109,7 @@ void main() {
           home: EventScanResultPage(
             code: 'CODE-1',
             createSearch: () => search,
+            onSearchComplete: onSearchComplete,
           ),
         ),
       ),
@@ -191,5 +195,59 @@ void main() {
 
     expect(find.textContaining("didn't find you in this event"), findsOneWidget);
     expect(find.textContaining('This album is large'), findsNothing);
+  });
+
+  group('work that waits for the answer', () {
+    // Saving the face is the *extra*; finding the photos is the errand. It used
+    // to run before the search, which made somebody wait on an upload to learn
+    // whether they were in the album at all.
+
+    testWidgets('does not run while the search is still going', (tester) async {
+      var ran = 0;
+      await pump(tester, onSearchComplete: (_) async => ran++);
+
+      await drain(tester);
+
+      expect(ran, 0, reason: 'the search has not answered yet');
+    });
+
+    testWidgets('runs once the search closes', (tester) async {
+      var ran = 0;
+      final search = await pump(tester, onSearchComplete: (_) async => ran++);
+
+      search.isRunning.value = false;
+      await drainToResult(tester);
+
+      expect(ran, 1);
+    });
+
+    testWidgets('does not wait on the orb\'s minimum', (tester) async {
+      // The 1400ms hold is cosmetic — it makes a fast search read as work.
+      // There is no reason for the follow-up to sit behind an animation.
+      var ran = 0;
+      final search = await pump(tester, onSearchComplete: (_) async => ran++);
+
+      search.isRunning.value = false;
+      await tester.pump();
+
+      expect(ran, 1);
+      await drainToResult(tester);
+    });
+
+    testWidgets('runs once, not again on retry', (tester) async {
+      // Retry builds a fresh search. Enrolling again would upload the same
+      // selfies twice.
+      var ran = 0;
+      final search = await pump(tester, onSearchComplete: (_) async => ran++);
+
+      search.isRunning.value = false;
+      await drainToResult(tester);
+      search.isRunning.value = true;
+      await tester.pump();
+      search.isRunning.value = false;
+      await drainToResult(tester);
+
+      expect(ran, 1);
+    });
   });
 }
