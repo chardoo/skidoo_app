@@ -204,8 +204,13 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       // Build server payload using backend field names
       final serverData = <String, dynamic>{};
       if (event.name.isNotEmpty) serverData['name'] = event.name;
+      // `username`, not `uiqueName`. The old key was never in the PATCH
+      // schema, so Pydantic dropped it and the edit did nothing while the
+      // screen reported success. It is also the face-recognition person id,
+      // so the version of this that *had* worked would have orphaned the
+      // account's enrolled face on every rename.
       if (event.uniqueName.isNotEmpty)
-        serverData['uiqueName'] = event.uniqueName;
+        serverData['username'] = event.uniqueName;
       if (event.contact.isNotEmpty) serverData['contact'] = event.contact;
       if (event.countryCode.isNotEmpty)
         serverData['country_code'] = event.countryCode;

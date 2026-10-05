@@ -63,7 +63,14 @@ class UserProfileRemoteDataSourceImpl implements UserProfileRemoteDataSource {
       // picture it had just uploaded itself: the endpoint returns this on
       // every fetch, and nothing downstream ever saw it.
       'profileUrl': pick(['profile_url', 'profileUrl']),
-      'uniqueName': pick(['uniqueName', 'uiqueName', 'unique_name']),
+      // `username` first, and `uiqueName` only behind it. The second is the
+      // face-recognition person id, which the server sets to the account's
+      // email for everyone who did not sign up as a photographer — so reading
+      // it as the handle put an email address under the avatar. `username` is
+      // the column that exists to be a handle; the fallbacks are for a build
+      // talking to a server from before it.
+      'uniqueName':
+          pick(['username', 'uniqueName', 'uiqueName', 'unique_name']),
       'contact': pick(['contact', 'phone']),
       'countryCode': pick(['countryCode', 'country_code']),
       'locale': pick(['locale', 'region']),

@@ -590,8 +590,13 @@ class UserProfilePageState extends State<UserProfilePage>
                     color: ext.greetingColor, size: 26.r),
                 onPressed: () => CreateBottomSheet.show(context),
               ),
-        // The name, not the username: uiqueName doubles as the face-recognition
-        // person id and is an email on most accounts.
+        // The display name when there is one, and the handle behind it.
+        //
+        // The handle used to be `uiqueName`, which is the face-recognition
+        // person id and is the signup email on every non-photographer
+        // account — so a nameless account put an email address in the title
+        // bar. `username` is a real handle now (`appiahRichard4821`), and the
+        // server no longer offers the address as a fallback for it.
         title: Text(
           _overview.name?.isNotEmpty == true
               ? _overview.name!
