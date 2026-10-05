@@ -8,6 +8,8 @@ import 'package:jperg_app/core/utils/image_pick.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_samples_usecase.dart';
+import 'package:jperg_app/features/photographers/presentation/widgets/location_parts.dart';
+import 'package:jperg_app/features/settings/data/profile_options.dart';
 import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -96,8 +98,13 @@ class _PortfolioFormState extends State<PortfolioForm> {
       TextEditingController(text: widget.initialStudioName);
   late final TextEditingController _bioCtrl =
       TextEditingController(text: widget.initialBio);
-  late final TextEditingController _locationCtrl =
-      TextEditingController(text: widget.initialLocation);
+  /// The city half only. The country is picked, never typed — see
+  /// [_composedLocation].
+  late final TextEditingController _cityCtrl =
+      TextEditingController(text: cityOf(widget.initialLocation));
+
+  /// ISO code of the picked country, or null when nothing is chosen yet.
+  late String? _countryCode = countryCodeOf(widget.initialLocation);
   late final Set<String> _specialties = {...widget.initialSpecialties};
   late List<PhotographerSample> _keptExisting = [...widget.initialSamples];
   final List<XFile> _newSamples = [];
@@ -109,7 +116,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
     super.initState();
     _nameCtrl.addListener(_notify);
     _bioCtrl.addListener(_notify);
-    _locationCtrl.addListener(_notify);
+    _cityCtrl.addListener(_notify);
     // Let the caller see the initial snapshot too (e.g. to know whether the
     // min-samples gate is already met when prefilled in edit mode).
     WidgetsBinding.instance.addPostFrameCallback((_) => _notify());
@@ -119,9 +126,18 @@ class _PortfolioFormState extends State<PortfolioForm> {
   void dispose() {
     _nameCtrl.dispose();
     _bioCtrl.dispose();
-    _locationCtrl.dispose();
+    _cityCtrl.dispose();
     super.dispose();
   }
+
+  /// Still one "City, Country" string on the way out.
+  ///
+  /// The field was split in the UI, not in the record: `location` is a single
+  /// column and the profile, the search index and every card that prints it
+  /// read it as one line. Splitting the stored value would have been a
+  /// migration and four read sites; splitting the *input* is what was wrong.
+  String get _composedLocation =>
+      composeLocation(city: _cityCtrl.text, countryCode: _countryCode);
 
   void _notify() {
     widget.onChanged(PortfolioFormData(
@@ -129,7 +145,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
       newStudioImage: _newStudioImage,
       studioName: _nameCtrl.text.trim(),
       bio: _bioCtrl.text.trim(),
-      location: _locationCtrl.text.trim(),
+      location: _composedLocation,
       specialties: _specialties,
       keptExistingSamples: _keptExisting,
       newSampleFiles: _newSamples,
@@ -227,12 +243,29 @@ class _PortfolioFormState extends State<PortfolioForm> {
         SizedBox(height: 6.h),
         _TextInput(controller: _nameCtrl, hint: 'Username', ext: ext),
         SizedBox(height: AppSpacing.lg.h),
-        _FieldLabel('Location', ext: ext),
+        // Two controls, because the two halves are not the same kind of
+        // answer. There is no list of every town worth offering, so a city is
+        // typed; there is exactly one list of countries, so a country is
+        // picked. As one "City, Country" box this collected "accra gh",
+        // "Accra,Ghana" and "Ghana" with no city at all, and nothing
+        // downstream could tell which country any of those meant.
+        _FieldLabel('City', ext: ext),
         SizedBox(height: AppSpacing.sm.h),
         _TextInput(
-          controller: _locationCtrl,
-          hint: 'City, Country',
+          controller: _cityCtrl,
+          hint: 'e.g. Accra',
           ext: ext,
+        ),
+        SizedBox(height: AppSpacing.lg.h),
+        _FieldLabel('Country', ext: ext),
+        SizedBox(height: AppSpacing.sm.h),
+        _CountryInput(
+          value: _countryCode,
+          ext: ext,
+          onChanged: (code) => setState(() {
+            _countryCode = code;
+            _notify();
+          }),
         ),
         SizedBox(height: AppSpacing.lg.h),
 
@@ -330,6 +363,60 @@ class _FieldLabel extends StatelessWidget {
       text,
       style: TextStyle(
           color: ext.greetingColor, fontSize: 14.sp, fontWeight: FontWeight.w500),
+    );
+  }
+}
+
+/// A country, chosen from the one list there is.
+///
+/// Deliberately not a text field with suggestions: whatever is stored here is
+/// matched against country codes elsewhere, and a typed country is a value
+/// nothing matches. Drawn to sit beside [_TextInput] so the pair reads as one
+/// location control rather than two unrelated widgets.
+class _CountryInput extends StatelessWidget {
+  const _CountryInput({
+    required this.value,
+    required this.onChanged,
+    required this.ext,
+  });
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    // A stored country the list no longer offers would throw rather than
+    // render, so it falls back to no selection — the same guard the profile
+    // form's dropdown makes.
+    final current = value != null && kCountryOptions.containsKey(value)
+        ? value
+        : null;
+
+    return DropdownButtonFormField<String>(
+      initialValue: current,
+      isExpanded: true,
+      dropdownColor: ext.cardSurface,
+      style: TextStyle(color: ext.greetingColor, fontSize: 14.sp),
+      hint: Text(
+        'Select a country',
+        style: TextStyle(color: ext.searchHintColor, fontSize: 14.sp),
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: ext.searchFieldFill,
+        contentPadding:
+            EdgeInsets.symmetric(horizontal: 14.w, vertical: AppSpacing.md.h),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      items: [
+        for (final entry in kCountryOptions.entries)
+          DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+      ],
+      onChanged: onChanged,
     );
   }
 }
