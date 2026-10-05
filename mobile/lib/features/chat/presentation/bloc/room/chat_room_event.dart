@@ -412,10 +412,15 @@ class _ReadReceiptReceived extends ChatRoomEvent {
   final String readerId;
   final String? upToMessageId;
   final String? messageId;
+
+  /// The ids the server actually marked — see [WsReadReceiptEvent.messageIds].
+  final List<String> messageIds;
+
   const _ReadReceiptReceived({
     required this.readerId,
     this.upToMessageId,
     this.messageId,
+    this.messageIds = const [],
   });
 }
 

@@ -117,11 +117,16 @@ void main() {
       expect(tickColour(t, twoTicks), AppThemeExtension.light.infoBlue);
     });
 
-    testWidgets('still sending is a clock, not a tick', (t) async {
+    // A message that has not reached the server yet is one tick, not a clock.
+    // It is queued rather than dropped when the socket is down, so it is on
+    // its way, and a clock reads as stuck. One tick is the honest state:
+    // written down, nothing heard back from anyone. Two ticks still need
+    // evidence, so nothing over-promises here.
+    testWidgets('still sending is one tick, and never two', (t) async {
       await t.pumpWidget(host(bubble(_msg(isLocal: true), totalOthers: 1)));
 
-      expect(clock, findsOneWidget);
-      expect(oneTick, findsNothing);
+      expect(oneTick, findsOneWidget);
+      expect(clock, findsNothing);
       expect(twoTicks, findsNothing);
     });
   });

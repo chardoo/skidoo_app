@@ -18,6 +18,11 @@ import 'package:sqflite/sqflite.dart';
 ///   v9 – added reply_count, for the same reason one layer along: the sheet
 ///        paints from here first, and a cached comment with no count offers no
 ///        way into its thread.
+///   v10 – added chat_outbox. Sends used to be handed to the socket and
+///        forgotten: `_sendRaw` returns false when there is no connection and
+///        nobody looked, so a message composed on a dropped socket was drawn,
+///        cached, and never sent by anyone. This table is what makes "it will
+///        go when there is a connection" true rather than a hope.
 class ChatDatabase {
   static const _dbName = 'jperg_chat.db';
 
@@ -28,7 +33,7 @@ class ChatDatabase {
   /// lose chat history permanently, not just force a re-fetch.
   static const _legacyDbName = 'skidoo_chat.db';
 
-  static const _dbVersion = 9;
+  static const _dbVersion = 10;
 
   static Database? _db;
 
@@ -110,6 +115,35 @@ class ChatDatabase {
     await db.execute(
       'CREATE INDEX idx_msg_room_time ON chat_messages(room_id, created_at DESC)',
     );
+
+    await _createOutbox(db);
+  }
+
+  /// Frames composed but not yet handed to a live socket.
+  ///
+  /// The whole frame is stored, already encrypted, rather than the plaintext
+  /// and an intention to encrypt later: the ciphertext was sealed against the
+  /// session that existed when it was written, and re-deriving one at flush
+  /// time would need the recipient's keys and the bloc that owns them. The
+  /// body is opaque here on purpose.
+  ///
+  /// `client_id` is the primary key, which is what makes a re-queue
+  /// idempotent — the same message cannot be enqueued twice, and the echo
+  /// that retires the bubble deletes the row by the same id.
+  Future<void> _createOutbox(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_outbox (
+        client_id   TEXT PRIMARY KEY,
+        room_id     TEXT NOT NULL,
+        payload     TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+      )
+    ''');
+    // Flushed oldest-first so a conversation arrives in the order it was
+    // written; without the index that ordering is a scan of the queue.
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_outbox_time ON chat_outbox(created_at)',
+    );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -168,6 +202,68 @@ class ChatDatabase {
       await db.execute(
           'ALTER TABLE chat_messages ADD COLUMN reply_count INTEGER NOT NULL DEFAULT 0');
     }
+    if (oldVersion < 10) {
+      await _createOutbox(db);
+    }
+  }
+
+  // ── Outbox ─────────────────────────────────────────────────────────────────
+
+  /// Hold a frame until a socket can take it.
+  ///
+  /// Replaces on conflict so a retry of the same `client_id` overwrites rather
+  /// than throwing: the caller's job is to say "this still needs to go", not
+  /// to track whether it already said so.
+  Future<void> enqueueOutbox({
+    required String clientId,
+    required String roomId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final db = await _database;
+    await db.insert(
+      'chat_outbox',
+      {
+        'client_id': clientId,
+        'room_id': roomId,
+        'payload': jsonEncode(payload),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Everything waiting, oldest first.
+  ///
+  /// A row whose payload will not parse is dropped rather than returned: it
+  /// can never be sent, and left in place it would be retried on every single
+  /// connect for the life of the install.
+  Future<List<OutboxEntry>> pendingOutbox() async {
+    final db = await _database;
+    final rows = await db.query('chat_outbox', orderBy: 'created_at ASC');
+    final entries = <OutboxEntry>[];
+    final corrupt = <String>[];
+    for (final row in rows) {
+      final clientId = row['client_id'] as String;
+      try {
+        entries.add(OutboxEntry(
+          clientId: clientId,
+          roomId: row['room_id'] as String,
+          payload: jsonDecode(row['payload'] as String) as Map<String, dynamic>,
+        ));
+      } catch (_) {
+        corrupt.add(clientId);
+      }
+    }
+    for (final id in corrupt) {
+      await dequeueOutbox(id);
+    }
+    return entries;
+  }
+
+  Future<void> dequeueOutbox(String clientId) async {
+    final db = await _database;
+    await db
+        .delete('chat_outbox', where: 'client_id = ?', whereArgs: [clientId]);
   }
 
   // ── Rooms ──────────────────────────────────────────────────────────────────
@@ -596,6 +692,16 @@ class ChatDatabase {
       createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
       isRead: (row['is_read'] as int) == 1,
       isLocal: (row['is_local'] as int) == 1,
+      // Restored rather than stored: on an optimistic message `clientId` and
+      // `id` are the same `local_…` value, so the primary key already carries
+      // it and no column is needed.
+      //
+      // It has to come back, though. A message queued in the outbox outlives
+      // the process, and when it finally goes the echo is matched to its
+      // bubble by `client_id` — against a bubble this method rebuilt. Leaving
+      // it null meant the echo matched nothing and drew a second copy beside
+      // the one already on screen.
+      clientId: (row['is_local'] as int) == 1 ? row['id'] as String : null,
       isEncrypted: (row['is_encrypted'] as int?) == 1,
       iv: row['iv'] as String?,
       ephemeralKey: row['ephemeral_key'] as String?,
@@ -614,4 +720,17 @@ class ChatDatabase {
           : null,
     );
   }
+}
+
+/// One frame waiting on a connection. See [ChatDatabase.pendingOutbox].
+class OutboxEntry {
+  final String clientId;
+  final String roomId;
+  final Map<String, dynamic> payload;
+
+  const OutboxEntry({
+    required this.clientId,
+    required this.roomId,
+    required this.payload,
+  });
 }

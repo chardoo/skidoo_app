@@ -1069,16 +1069,18 @@ class _ChatRoomViewState extends State<_ChatRoomView> {
             builder: (context, inputState) {
               return Column(
                 children: [
-                  BlocBuilder<ChatRoomBloc, ChatRoomState>(
-                    buildWhen: (p, c) => p.isSyncing != c.isSyncing,
-                    builder: (_, state) => state.isSyncing
-                        ? LinearProgressIndicator(
-                            minHeight: 2,
-                            backgroundColor: Colors.transparent,
-                            color: ext.searchHintColor.withValues(alpha: 0.6),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
+                  // No sync bar.
+                  //
+                  // There was a 2px LinearProgressIndicator here on
+                  // `isSyncing` — true from the moment a room opens until the
+                  // history and room fetches both return. It announced work
+                  // the reader cannot act on and did not need to know about:
+                  // the cached messages are already painted beneath it, and
+                  // the composer has never waited for any of it. All it added
+                  // was a bar across the top of every room on every open.
+                  //
+                  // `isSyncing` is still on the state — the room's own code
+                  // reads it — it simply no longer draws anything.
 
                   // ── Pinned message banner ─────────────────────────────
                   BlocBuilder<ChatRoomBloc, ChatRoomState>(

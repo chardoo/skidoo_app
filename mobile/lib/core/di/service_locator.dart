@@ -512,7 +512,7 @@ Future<void> setupServiceLocator() async {
   sl.registerSingleton<ChatApiClient>(ChatApiClient(sl<AuthService>()));
   sl.registerSingleton<ChatDatabase>(ChatDatabase());
   sl.registerSingleton<ChatWebSocketService>(
-      ChatWebSocketService(sl<AuthService>()));
+      ChatWebSocketService(sl<AuthService>(), sl<ChatDatabase>()));
   // E2eeService must be registered before ChatBackgroundService (decrypt-on-arrival).
   sl.registerLazySingleton<E2eeService>(() => E2eeService());
   sl.registerSingleton<ChatBackgroundService>(ChatBackgroundService(

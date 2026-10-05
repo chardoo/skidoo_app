@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/core/utils/server_time.dart';
+import 'package:jperg_app/features/chat/data/local/chat_database.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/like_update.dart'
@@ -199,11 +200,23 @@ class WsReadReceiptEvent {
 
   /// Set for single-message acks.
   final String? messageId;
+
+  /// Exactly what the reader just marked, straight from `mark_read`.
+  ///
+  /// The server has always sent this on every read frame, bulk or single, and
+  /// it is the only field that does not need resolving against anything: the
+  /// other two are *ids to look up*, and a cursor naming a message outside the
+  /// loaded window resolves to nothing, leaving a bulk read applying to no
+  /// bubble at all. `delivery_receipt` has parsed its list from the start;
+  /// this one dropped it on the floor.
+  final List<String> messageIds;
+
   const WsReadReceiptEvent({
     required this.roomId,
     required this.readerId,
     this.upToMessageId,
     this.messageId,
+    this.messageIds = const [],
   });
 }
 
@@ -326,6 +339,10 @@ class WsChatErrorEvent {
 /// the upgrade request. Fatal close codes (4001/4003/4400) must not be retried.
 class ChatWebSocketService {
   final AuthService _authService;
+
+  /// Where a message waits when there is no socket to put it on. See
+  /// [_sendOrQueue]; the queue outlives the process, which is the point.
+  final ChatDatabase _db;
 
   WebSocketChannel? _channel;
   String? _roomId;
@@ -471,7 +488,7 @@ class ChatWebSocketService {
   static int _instanceCounter = 0;
   final int _instanceId = ++_instanceCounter;
 
-  ChatWebSocketService(this._authService);
+  ChatWebSocketService(this._authService, this._db);
 
   /// Returns true for close codes that indicate a permanent failure.
   /// The client must NOT reconnect automatically on these — re-auth or a
@@ -572,6 +589,10 @@ class ChatWebSocketService {
     // Anything read while the socket was down is told to the server now. See
     // [_pendingAcks].
     _flushPendingAcks();
+    // And anything *written* while it was down now goes out, in the order it
+    // was typed. Unawaited: it reads from disk, and nothing below depends on
+    // it — the listener attached next is what carries the echoes back.
+    unawaited(_flushOutbox());
 
     _sub = _channel!.stream.listen(
       (raw) {
@@ -796,6 +817,9 @@ class ChatWebSocketService {
                 readerId: json['reader_id'] as String,
                 upToMessageId: json['up_to_message_id'] as String?,
                 messageId: json['message_id'] as String?,
+                messageIds: (json['message_ids'] as List<dynamic>? ?? [])
+                    .whereType<String>()
+                    .toList(),
               ));
             }
           } else if (type == 'delivery_receipt') {
@@ -982,7 +1006,7 @@ class ChatWebSocketService {
     if (!payload.containsKey('content') && !payload.containsKey('image_url')) {
       return;
     }
-    _sendRaw(payload);
+    _sendOrQueue(payload, clientId: clientId, roomId: roomId);
   }
 
   /// Send an E2EE-encrypted message.
@@ -1020,7 +1044,7 @@ class ChatWebSocketService {
       if (replyToId != null) 'reply_to_id': replyToId,
       if (roomId != null) 'room_id': roomId,
     };
-    _sendRaw(payload);
+    _sendOrQueue(payload, clientId: clientId, roomId: roomId);
   }
 
   /// Send a like for an event.
@@ -1117,6 +1141,81 @@ class ChatWebSocketService {
     final queued = Map<String, String>.from(_pendingAcks);
     _pendingAcks.clear();
     queued.forEach(sendAck);
+  }
+
+  // ── Outbox ─────────────────────────────────────────────────────────────────
+
+  /// Send a message frame, or keep it until there is a socket to send it on.
+  ///
+  /// The same reasoning as [sendAck], one step further. A typing frame is
+  /// worthless by the time a reconnect would carry it and is right to drop; an
+  /// ack is data loss and is held in memory; a *message* is the thing the user
+  /// actually wrote, so it is held on disk and survives the app being killed.
+  ///
+  /// Before this, every send was fire-and-forget: [_sendRaw] returns false
+  /// when there is no connection and neither caller looked at the result. A
+  /// message composed on a dropped socket was drawn as a bubble, written to
+  /// the cache, and sent by nobody — it then *looked* sent forever, including
+  /// after a reopen, because the cache is what the room paints from.
+  ///
+  /// Dequeued on a successful write rather than on the echo. The server
+  /// stores `client_id` but does not dedupe on it, so a frame sent twice
+  /// becomes two rows and two bubbles — a worse failure than the narrow race
+  /// this leaves open (bytes accepted by the socket, server gone before it
+  /// persisted), which is a race every send already ran before any of this.
+  void _sendOrQueue(
+    Map<String, dynamic> payload, {
+    String? clientId,
+    String? roomId,
+  }) {
+    if (_sendRaw(payload)) return;
+
+    // Nothing to key the row on, so nothing that could be flushed or retired
+    // later. Every real send passes one; the guard is for callers that do not.
+    final id = clientId;
+    final room = roomId ?? _roomId;
+    if (id == null || room == null) return;
+
+    // `payload` may be mutated by _sendRaw (it adds room_id), so the copy
+    // stored is the frame as it would actually go out.
+    unawaited(_db
+        .enqueueOutbox(
+          clientId: id,
+          roomId: room,
+          payload: {...payload, 'room_id': room},
+        )
+        .catchError((Object e) =>
+            debugPrint('[WS] outbox write failed for $id: $e')));
+  }
+
+  /// Hand everything that was waiting to the socket that just came up.
+  ///
+  /// Oldest first, so a conversation written offline arrives in the order it
+  /// was typed. A frame that fails again stays in the table: the write is only
+  /// undone once the bytes are away.
+  Future<void> _flushOutbox() async {
+    List<OutboxEntry> pending;
+    try {
+      pending = await _db.pendingOutbox();
+    } catch (e) {
+      debugPrint('[WS] outbox read failed: $e');
+      return;
+    }
+    if (pending.isEmpty) return;
+    debugPrint('[WS] flushing ${pending.length} queued message(s)');
+
+    for (final entry in pending) {
+      // Re-checked every iteration: the socket can go down again halfway
+      // through a long queue, and the rest must stay on disk rather than be
+      // handed to a dead channel and deleted.
+      if (!_connected) return;
+      if (!_sendRaw(entry.payload)) return;
+      try {
+        await _db.dequeueOutbox(entry.clientId);
+      } catch (e) {
+        debugPrint('[WS] outbox delete failed for ${entry.clientId}: $e');
+      }
+    }
   }
 
   /// Returns whether the frame actually went out, so callers that cannot

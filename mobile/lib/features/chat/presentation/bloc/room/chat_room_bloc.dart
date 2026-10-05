@@ -704,6 +704,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
             readerId: event.readerId,
             upToMessageId: event.upToMessageId,
             messageId: event.messageId,
+            messageIds: event.messageIds,
           ));
         }
       },
@@ -2963,26 +2964,91 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
     }
   }
 
+  /// Apply a read frame to every message it covers.
+  ///
+  /// Reading is a watermark, not an event about one message: opening a room
+  /// with nine unread messages in it reads all nine, and the sender should
+  /// watch nine pairs of ticks turn blue at once. Three sources say which
+  /// ones, and the union of them is the answer:
+  ///
+  ///   [_ReadReceiptReceived.messageIds]  what `mark_read` actually wrote
+  ///   [_ReadReceiptReceived.upToMessageId]  a cursor; everything at or below it
+  ///   [_ReadReceiptReceived.messageId]  the single-ack form
+  ///
+  /// The list is the authority and the reason this was wrong. Resolving the
+  /// cursor means finding that id *in the loaded window*, and it is routinely
+  /// not there — it names the newest message in the room, which on the
+  /// sender's screen may be below the page they have scrolled to or simply
+  /// not fetched yet. `upToMsg` came back null, the code fell through to the
+  /// single id, and on a bulk ack that field is absent: the frame marked
+  /// nothing at all. Where it did resolve, only the one named message turned.
+  /// That is the "only that message is updated" report.
   void _onReadReceiptReceived(
     _ReadReceiptReceived event,
     Emitter<ChatRoomState> emit,
   ) {
-    final upToId = event.upToMessageId;
-    final singleId = event.messageId;
-    final readerId = event.readerId;
+    final updated = applyRead(
+      state.messages,
+      myUserId: _myUserId,
+      readerId: event.readerId,
+      messageIds: event.messageIds,
+      messageId: event.messageId,
+      upToMessageId: event.upToMessageId,
+    );
 
-    // Find the timestamp of the upTo message for bulk-ack range comparison.
-    final upToMsg = upToId != null
-        ? state.messages.where((m) => m.id == upToId).firstOrNull
+    // A repeat frame — the reader's other device echoing, or a reconnect
+    // backfill overlapping what is already known — must not emit, or it
+    // rebuilds the whole list for nothing. Mirrors the delivery handler.
+    if (updated == null) return;
+    emit(state.copyWith(messages: updated));
+  }
+
+  /// [_onReadReceiptReceived] as a function of its inputs. Null when the frame
+  /// changed nothing, so the caller can skip the emit.
+  ///
+  /// Returns a new list rather than mutating, in the style of [foldHistory].
+  @visibleForTesting
+  static List<ChatMessage>? applyRead(
+    List<ChatMessage> messages, {
+    required String myUserId,
+    required String readerId,
+    List<String> messageIds = const [],
+    String? messageId,
+    String? upToMessageId,
+  }) {
+    final named = {
+      ...messageIds,
+      if (messageId != null) messageId,
+    };
+
+    // The cursor's timestamp, for the range below it. Absent from the loaded
+    // window it simply contributes nothing and `named` carries the frame on
+    // its own — which is the whole repair. Resolving the cursor was the only
+    // mechanism before, and it routinely fails: it names the newest message
+    // in the room, which on the sender's screen is often below the page they
+    // have scrolled to or not fetched at all. `upToMsg` came back null, the
+    // code fell through to the single id, and on a bulk ack that field is
+    // absent — so the frame marked nothing whatsoever. Where it did resolve,
+    // only the one named message turned. That is the "only that message is
+    // updated" report: reading is a watermark, and nine unread messages read
+    // at once should turn nine pairs of ticks.
+    final upToMsg = upToMessageId != null
+        ? messages.where((m) => m.id == upToMessageId).firstOrNull
         : null;
 
-    final updated = state.messages.map((msg) {
+    var changed = false;
+    final updated = messages.map((msg) {
+      // Only my own messages carry ticks. Marking the reader's own messages
+      // as read-by-the-reader was work no bubble could ever show, and it made
+      // every frame look like a change.
+      if (msg.senderId != myUserId) return msg;
       if (msg.readBy.contains(readerId)) return msg;
-      final shouldMark = upToMsg != null
-          ? !msg.createdAt.isAfter(upToMsg.createdAt)
-          : singleId != null && msg.id == singleId;
-      if (!shouldMark) return msg;
 
+      final inRange = named.contains(msg.id) ||
+          (upToMsg != null && !msg.createdAt.isAfter(upToMsg.createdAt));
+      if (!inRange) return msg;
+
+      changed = true;
       // A read implies delivery. The server writes both rows for exactly this
       // reason — a client that was offline can ack straight from history
       // without ever having sent a delivery frame — so mark both here too, or
@@ -2995,7 +3061,7 @@ class ChatRoomBloc extends Bloc<ChatRoomEvent, ChatRoomState> {
       );
     }).toList();
 
-    emit(state.copyWith(messages: updated));
+    return changed ? updated : null;
   }
 
   /// Apply a delivery frame to the messages it names.

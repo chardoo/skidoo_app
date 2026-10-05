@@ -1083,15 +1083,16 @@ class _Timestamp extends StatelessWidget {
         readIndicator = Icon(Icons.done_rounded, size: 11.sp, color: tint);
       }
     } else if (isMe) {
-      // Local means still in flight — a clock, not a tick. Otherwise the
-      // participant count is unknown (a room whose roster has not loaded), and
-      // one tick is the honest answer there: the server has it, and nothing is
-      // known about anyone else. It used to draw a confident double tick.
-      readIndicator = Icon(
-        message.isLocal ? Icons.access_time_rounded : Icons.done_rounded,
-        size: 11.sp,
-        color: tint,
-      );
+      // One tick, whether the message is still in flight or the participant
+      // count is simply unknown (a room whose roster has not loaded).
+      //
+      // In flight used to draw a clock. It is now queued rather than dropped
+      // when the socket is down, and a queued message is not a *worse* state
+      // than a sent one — it is going, and the one thing a clock communicates
+      // is that something is stuck. One tick says what is actually known:
+      // written down, nothing heard back from anyone yet. Two ticks still
+      // require evidence, so nothing can over-promise from here.
+      readIndicator = Icon(Icons.done_rounded, size: 11.sp, color: tint);
     }
 
     return Row(

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_websocket_service.dart';
+import 'package:jperg_app/features/chat/data/local/chat_database.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
@@ -49,7 +50,9 @@ void main() {
     // not speak for the other.
     late ChatWebSocketService ws;
 
-    setUp(() => ws = ChatWebSocketService(AuthService()));
+    // The database is for the outbox, which subscription bookkeeping never
+    // touches — nothing in this group sends anything, so it is never opened.
+    setUp(() => ws = ChatWebSocketService(AuthService(), ChatDatabase()));
 
     test('the last holder is the one that releases it', () {
       ws.subscribeRoom('r1', holder: WsRoomHolder.feed);
