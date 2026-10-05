@@ -77,7 +77,7 @@
          core/theme/customThemeData.dart) quietly falls back to the plain
          transition — the feature looks wired up and does nothing. -->
     <application
-        android:label="jperg"
+        android:label="JPerg"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
-/// The jperg wordmark — the mark and the name, as one piece of artwork.
+/// The JPerg wordmark — the mark and the name, as one piece of artwork.
 ///
 /// Replaces the hand-built lockup this app used to draw everywhere: a rounded
 /// square holding a letter "S" (from a previous name), followed by the text
@@ -35,7 +35,7 @@ class JpergLogo extends StatelessWidget {
 
     return Semantics(
       image: true,
-      label: 'jperg',
+      label: 'JPerg',
       child: Image.asset(
         _asset,
         height: height,

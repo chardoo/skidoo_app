@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
 
-  "appName": "Jperg",
+  "appName": "JPerg",
   "@appName": { "description": "App name" },
 
   "securityWarningTitle": "Security Warning",

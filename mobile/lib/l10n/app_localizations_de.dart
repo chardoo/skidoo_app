@@ -9,7 +9,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get appName => 'Jperg';
+  String get appName => 'JPerg';
 
   @override
   String get securityWarningTitle => 'Sicherheitswarnung';

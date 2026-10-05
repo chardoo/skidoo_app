@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'Jperg';
+  String get appName => 'JPerg';
 
   @override
   String get securityWarningTitle => 'Security Warning';
