@@ -15,10 +15,19 @@ class GetAppSheet extends StatelessWidget {
   final String featureLabel;
 
   // ── Store URLs ──────────────────────────────────────────────────────────────
-  // TODO: replace placeholder IDs with real store listings once published.
+  // Keep in step with picco-v2's src/config/links.ts — the same fact written
+  // in two codebases.
+  //
+  // Both ids are the real ones: `com.skidoo.app` is the applicationId in
+  // android/app/build.gradle.kts, and `6784833698` is the Apple id App Store
+  // Connect issued for bundle `com.example.jperg`. Neither listing answers
+  // yet — an Apple id exists from the moment the record is created, and the
+  // page only appears once the app is approved — so both still 404 as of
+  // 2026-10-06. That is a publishing state, not a wrong link, and these need
+  // no further edit when it changes.
   static const _kAndroidUrl =
       'https://play.google.com/store/apps/details?id=com.skidoo.app';
-  static const _kIosUrl = 'https://apps.apple.com/app/jperg/id000000000';
+  static const _kIosUrl = 'https://apps.apple.com/app/jperg/id6784833698';
   static const _kFallbackUrl = 'https://jperg.com';
 
   static String get _storeUrl {
