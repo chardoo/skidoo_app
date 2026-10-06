@@ -16,7 +16,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get securityWarningBody =>
-      'Dieses Gerät scheint gejailbreakt oder gerootet zu sein.\n\nDie Nutzung von Jperg auf einem kompromittierten Gerät setzt Ihr Konto, Nachrichten und Zahlungsdaten einem erhöhten Risiko aus. Wir empfehlen dringend, ein sicheres, unmodifiziertes Gerät zu verwenden.';
+      'Dieses Gerät scheint gejailbreakt oder gerootet zu sein.\n\nDie Nutzung von JPerg auf einem kompromittierten Gerät setzt Ihr Konto, Nachrichten und Zahlungsdaten einem erhöhten Risiko aus. Wir empfehlen dringend, ein sicheres, unmodifiziertes Gerät zu verwenden.';
 
   @override
   String get securityWarningContinue => 'Ich verstehe, trotzdem fortfahren';

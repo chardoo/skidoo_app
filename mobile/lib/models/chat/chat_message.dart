@@ -215,7 +215,7 @@ class ChatMessage {
   bool get isAdminMessage =>
       senderRole == 'admin' || senderRole == 'superAdmin';
 
-  String get displayName => isAdminMessage ? 'Jperg Admin' : senderName;
+  String get displayName => isAdminMessage ? 'JPerg Admin' : senderName;
 
   const ChatMessage({
     required this.id,

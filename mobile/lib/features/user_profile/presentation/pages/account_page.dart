@@ -1096,7 +1096,7 @@ class _NotificationCategoriesCardState
     ),
     (
       key: 'marketing',
-      label: 'News from Jperg',
+      label: 'News from JPerg',
       blurb: 'Announcements and offers',
     ),
   ];

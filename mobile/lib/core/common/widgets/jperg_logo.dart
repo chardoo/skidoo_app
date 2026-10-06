@@ -5,7 +5,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 ///
 /// Replaces the hand-built lockup this app used to draw everywhere: a rounded
 /// square holding a letter "S" (from a previous name), followed by the text
-/// "JPERG" in whatever weight and letter-spacing each screen happened to
+/// "JPerg" in whatever weight and letter-spacing each screen happened to
 /// choose. Three screens each drew their own version, so the brand was three
 /// slightly different shapes and none of them was the real logo.
 ///

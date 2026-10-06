@@ -164,7 +164,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
         setState(() => _pushOn = false);
         AppSnackBar.error(
           context,
-          'Notifications are turned off for Jperg in your device settings. '
+          'Notifications are turned off for JPerg in your device settings. '
           'Allow them there to switch this on.',
         );
         return;

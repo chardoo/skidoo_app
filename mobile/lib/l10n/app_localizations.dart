@@ -113,7 +113,7 @@ abstract class AppLocalizations {
   /// No description provided for @securityWarningBody.
   ///
   /// In en, this message translates to:
-  /// **'This device appears to be jailbroken or rooted.\n\nRunning Jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.'**
+  /// **'This device appears to be jailbroken or rooted.\n\nRunning JPerg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.'**
   String get securityWarningBody;
 
   /// No description provided for @securityWarningContinue.

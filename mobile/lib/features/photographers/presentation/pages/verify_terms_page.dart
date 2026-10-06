@@ -161,7 +161,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                       value: _acceptedPayoutPolicy,
                       onChanged: (v) =>
                           setState(() => _acceptedPayoutPolicy = v),
-                      label: "I agree to Jperg's Payout Policy",
+                      label: "I agree to JPerg's Payout Policy",
                     ),
                   ],
                 ),

@@ -202,7 +202,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _title(ext, 'How are you finding Jperg?'),
+          _title(ext, 'How are you finding JPerg?'),
           _body(ext, 'It takes a second, and it shapes what we build next.'),
           SizedBox(height: AppSpacing.lg.h),
           Row(
@@ -255,7 +255,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
           _body(
             ext,
             _asksForFeature
-                ? 'Tell us what would make Jperg better for you.'
+                ? 'Tell us what would make JPerg better for you.'
                 : 'Tell us what to fix, and we will look at it.',
           ),
           SizedBox(height: AppSpacing.md.h),

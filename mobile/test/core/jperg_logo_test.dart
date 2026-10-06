@@ -72,6 +72,12 @@ void main() {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       final source = entity.readAsStringSync();
       // The badge's letter, and the wordmark that used to sit beside it.
+      //
+      // Only the all-caps spelling. `'JPerg'` is the brand's correct casing
+      // and a perfectly ordinary way to write the name in a sentence — the
+      // app name string and this widget's own semantics label are both that
+      // — so matching it here would flag legitimate text. The old lockup was
+      // specifically `'JPERG'`, which nothing should be writing any more.
       if (RegExp("'S',").hasMatch(source) || source.contains("'JPERG'")) {
         offenders.add(entity.path);
       }

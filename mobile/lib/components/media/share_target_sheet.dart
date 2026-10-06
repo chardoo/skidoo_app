@@ -52,7 +52,7 @@ class ShareTargetSheet extends StatelessWidget {
     this.previewSubtitle,
   });
 
-  /// Send it to somebody on Jperg.
+  /// Send it to somebody on JPerg.
   final VoidCallback onInApp;
 
   /// The link, out through the OS share sheet.
@@ -161,7 +161,7 @@ class ShareTargetSheet extends StatelessWidget {
                 _Destination(
                   ext: ext,
                   icon: Icons.near_me_rounded,
-                  title: 'Send in Jperg',
+                  title: 'Send in JPerg',
                   detail: 'To someone you are chatting with',
                   semanticLabel: 'Send to someone in the app',
                   featured: true,

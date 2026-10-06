@@ -12,7 +12,7 @@ import 'package:video_player/video_player.dart';
 
 // ── Public widget ─────────────────────────────────────────────────────────────
 
-/// A fully-featured, reusable video player for Jperg.
+/// A fully-featured, reusable video player for JPerg.
 ///
 /// Handles play/pause, seek ±10 s, mute/unmute, draggable progress bar,
 /// full-screen, auto-play, looping, carousel coordination, TickerMode-based
