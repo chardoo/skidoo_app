@@ -251,7 +251,10 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       ),
       body: Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
+          // The card's width is whatever this leaves it, so the gutter is the
+          // only thing setting it. At `xxl` each side the card sat narrow in
+          // the middle of the screen with the title wrapping early.
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
           child: _buildState(ext),
         ),
       ),
