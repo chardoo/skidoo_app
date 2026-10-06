@@ -9,14 +9,14 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'JPerg';
+  String get appName => 'Jperg';
 
   @override
   String get securityWarningTitle => 'Security Warning';
 
   @override
   String get securityWarningBody =>
-      'This device appears to be jailbroken or rooted.\n\nRunning JPerg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.';
+      'This device appears to be jailbroken or rooted.\n\nRunning Jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.';
 
   @override
   String get securityWarningContinue => 'I understand, continue anyway';

@@ -29,7 +29,7 @@ class RoomAvatar extends StatelessWidget {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     // An official room is badged rather than shown with a face — knowing it is
-    // JPerg matters more than which admin happens to be in it.
+    // Jperg matters more than which admin happens to be in it.
     if (room.hasAdminParticipant) {
       return _IconAvatar(
         icon: Icons.shield_rounded,

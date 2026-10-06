@@ -56,7 +56,7 @@ void main() {
     testWidgets('it opens on the stars', (t) async {
       await open(t, _Recorder());
 
-      expect(find.text('How are you finding JPerg?'), findsOneWidget);
+      expect(find.text('How are you finding Jperg?'), findsOneWidget);
     });
 
     testWidgets('a happy score is asked what to build', (t) async {
@@ -85,7 +85,7 @@ void main() {
       await open(t, _Recorder(), startOnFeature: true);
 
       expect(find.text('What should we build next?'), findsOneWidget);
-      expect(find.text('How are you finding JPerg?'), findsNothing);
+      expect(find.text('How are you finding Jperg?'), findsNothing);
     });
   });
 

@@ -176,7 +176,7 @@ class ContactInfoPage extends StatelessWidget {
     final role = peer?.userRole ?? '';
     if (role.isEmpty) return null;
     if (role == 'photographer') return 'Photographer';
-    if (role == 'admin' || role == 'superAdmin') return 'JPerg Admin';
+    if (role == 'admin' || role == 'superAdmin') return 'Jperg Admin';
     return null;
   }
 }

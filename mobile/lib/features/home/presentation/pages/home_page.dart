@@ -213,7 +213,7 @@ class _HomeViewState extends State<_HomeView> {
                     SizedBox(height: 10.h),
                     Text(
                       'Add a few selfies so we can automatically find you in '
-                      'event galleries and unlock the full JPerg experience.',
+                      'event galleries and unlock the full Jperg experience.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: ext.searchHintColor,

@@ -85,7 +85,7 @@ class SharedLinkContent {
         DeepLinkKind.picture => 'Photo',
         DeepLinkKind.photographer => 'Photographer',
         DeepLinkKind.request => 'Request',
-        _ => 'Open in JPerg',
+        _ => 'Open in Jperg',
       };
 }
 

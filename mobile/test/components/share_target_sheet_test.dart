@@ -73,7 +73,7 @@ void main() {
     testWidgets('every destination names itself', (t) async {
       await openSheet(t);
 
-      expect(find.text('Send in JPerg'), findsOneWidget);
+      expect(find.text('Send in Jperg'), findsOneWidget);
       expect(find.text('Share a link'), findsOneWidget);
       expect(find.text('Save the photo'), findsOneWidget);
     });
@@ -142,11 +142,11 @@ void main() {
     testWidgets('in app closes the sheet, then routes', (t) async {
       final taken = await openSheet(t);
 
-      await t.tap(find.text('Send in JPerg'));
+      await t.tap(find.text('Send in Jperg'));
       await t.pumpAndSettle();
 
       expect(taken, ['in-app']);
-      expect(find.text('Send in JPerg'), findsNothing, reason: 'sheet closed');
+      expect(find.text('Send in Jperg'), findsNothing, reason: 'sheet closed');
     });
 
     testWidgets('the link closes the sheet, then routes', (t) async {
