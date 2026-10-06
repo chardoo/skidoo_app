@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:jperg_app/core/common/widgets/in_app_web_view_page.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/validators/validators.dart';
 import 'package:jperg_app/features/auth/presentation/bloc/signup/signup_bloc.dart';
@@ -15,6 +14,7 @@ import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
 import 'package:jperg_app/core/common/widgets/app_phone_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
@@ -24,7 +24,6 @@ const _kTealDark = Color(0xFF16795B);
 
 // Remote privacy policy — opened in a WebView so it stays up to date without
 // shipping an app update.
-const _kPrivacyPolicyUrl = 'https://www.piccotechnologies.com/privacy';
 
 class SignUpPage extends StatelessWidget {
   static const routeName = '/signup';
@@ -366,37 +365,15 @@ class _SignUpViewState extends State<_SignUpView>
                               SizedBox(height: AppSpacing.lg.h),
 
                               // ── Privacy policy consent ─────────────────────
+                              // Both documents, where this offered only the
+                              // privacy policy — and at a URL that does not
+                              // resolve. See [LegalLinks].
                               Center(
-                                child: Wrap(
-                                  alignment: WrapAlignment.center,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text(
-                                      'By creating an account, you agree to our ',
-                                      style: TextStyle(
-                                          color: ext.searchHintColor,
-                                          fontSize: 12.sp),
-                                    ),
-                                    Semantics(
-                                      button: true,
-                                      label: 'Privacy Policy',
-                                      child: GestureDetector(
-                                        onTap: () => InAppWebViewPage.open(
-                                          context,
-                                          url: _kPrivacyPolicyUrl,
-                                          title: 'Privacy Policy',
-                                        ),
-                                        child: Text(
-                                          'Privacy Policy',
-                                          style: TextStyle(
-                                            color: _kTeal,
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                child: LegalLinksRow(
+                                  prefix: 'By creating an account, you agree '
+                                      'to our',
+                                  color: ext.searchHintColor,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                               SizedBox(height: AppSpacing.xl.h),

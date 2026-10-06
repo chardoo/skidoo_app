@@ -15,6 +15,7 @@ import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_sca
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/gallery/data/face_enrolment.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 enum _Step { intro, scanning, confirmed }
 
@@ -171,7 +172,16 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
       onSkip: _finish,
       child: Builder(builder: (context) {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
-        return Center(child: DottedCircle(color: ext.accentGold, size: 140.w));
+        // The subtitle above says the selfie is stored privately and never
+        // shared. This is where somebody can go and check that.
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            DottedCircle(color: ext.accentGold, size: 140.w),
+            SizedBox(height: AppSpacing.xl.h),
+            const LegalLinksRow(),
+          ],
+        );
       }),
     );
   }

@@ -10,6 +10,7 @@ import 'package:jperg_app/features/photographers/presentation/widgets/creator_st
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 /// "Verify and accept terms" — part of a photographer's portfolio setup,
 /// done on demand from the Account page (see `portfolio_edit_page.dart`),
@@ -163,6 +164,11 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
                           setState(() => _acceptedPayoutPolicy = v),
                       label: "I agree to Jperg's Payout Policy",
                     ),
+
+                    // Three boxes asking somebody to agree to documents they
+                    // had no way to read from here.
+                    SizedBox(height: AppSpacing.md.h),
+                    const LegalLinksRow(prefix: 'Read them first:'),
                   ],
                 ),
               ),

@@ -18,6 +18,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 class FaceRecognitionPage extends StatefulWidget {
   const FaceRecognitionPage({super.key});
@@ -138,6 +139,11 @@ class _FaceRecognitionPageState extends State<FaceRecognitionPage> {
                         fontSize: 14.sp,
                         height: 1.5),
                   ),
+                  // A face is the one thing here somebody cannot change
+                  // later, so what happens to it is readable before the
+                  // camera opens rather than after.
+                  SizedBox(height: AppSpacing.sm.h),
+                  const LegalLinksRow(alignment: WrapAlignment.start),
                 ],
               ),
             ),

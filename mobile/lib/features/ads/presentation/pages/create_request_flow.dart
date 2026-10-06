@@ -520,10 +520,10 @@ class _NewRequestStepState extends State<_NewRequestStep> {
           // town could only be reached by photographers outside town.
           _Field(
             ext: ext,
-            label: 'Location',
+            label: 'Event location ',
             child: _Input(
               controller: _location,
-              hint: 'Where is the shoot? e.g. Labadi Beach Hotel, Accra',
+              hint: 'event location? e.g. Labadi Beach Hotel, Accra',
               ext: ext,
               onChanged: (_) => setState(_sync),
             ),

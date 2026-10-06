@@ -8,6 +8,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 /// Answers to the questions this app actually gets asked, and a way to reach a
 /// person when the answer is not here.
@@ -151,6 +152,22 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
                       label: 'Contact us',
                       subtitle: _supportEmail,
                       onTap: _contact,
+                    ),
+                  ],
+                ),
+                // Two of the FAQs answer questions about data and refunds in a
+                // sentence each; the documents behind them belong on the same
+                // screen rather than only in Settings' own list.
+                SettingsSection(
+                  title: 'Legal',
+                  children: [
+                    SettingsRow(
+                      label: 'Privacy Policy',
+                      onTap: () => LegalLinks.openPrivacy(context),
+                    ),
+                    SettingsRow(
+                      label: 'Terms & Conditions',
+                      onTap: () => LegalLinks.openTerms(context),
                     ),
                   ],
                 ),

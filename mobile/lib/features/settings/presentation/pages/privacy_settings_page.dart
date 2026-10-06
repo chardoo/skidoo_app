@@ -10,6 +10,7 @@ import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/settings/presentation/pages/face_data_page.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 /// Who can see you, and what the app is allowed to work out about you.
 ///
@@ -241,6 +242,12 @@ class _PrivacySettingsPageState extends State<PrivacySettingsPage> {
                       ),
                     ],
                   ),
+
+                  // The screen about privacy, with no way to read the privacy
+                  // policy on it.
+                  SizedBox(height: AppSpacing.xxl.h),
+                  const Center(child: LegalLinksRow()),
+                  SizedBox(height: AppSpacing.lg.h),
                 ],
               ),
             ),

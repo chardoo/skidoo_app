@@ -16,6 +16,7 @@ import 'package:jperg_app/features/gallery/data/easy_search.dart';
 import 'package:jperg_app/features/gallery/data/face_enrolment.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/event_scan_result_page.dart';
 import 'package:jperg_app/features/home/presentation/widgets/unlock_photos_sheet.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 /// Find your photos from one event without saving your face.
 ///
@@ -179,6 +180,14 @@ class _EasySearchPageState extends State<EasySearchPage> {
                   height: 1.5,
                 ),
               ),
+            ),
+
+            // The sentence above makes a promise about a face either being
+            // kept or not kept. The document that promise lives in is one
+            // tap away from it.
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
+              child: const LegalLinksRow(alignment: WrapAlignment.start),
             ),
 
             // ── The album ────────────────────────────────────────────────────

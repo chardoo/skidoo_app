@@ -13,6 +13,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/settings/data/account_settings_api.dart';
 import 'package:jperg_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/config/legal_links.dart';
 
 /// Your face data: what it is for, how to add it, and how to be rid of it.
 ///
@@ -187,6 +188,17 @@ class _FaceDataPageState extends State<FaceDataPage> {
                           ),
                         ),
                       ],
+
+                      // This screen is where somebody decides whether to hand
+                      // over a face, so it is where the policy describing what
+                      // happens to it has to be reachable. It was not linked
+                      // anywhere near here.
+                      SizedBox(height: AppSpacing.xxl.h),
+                      const Center(
+                        child: LegalLinksRow(
+                          prefix: 'How we handle your data:',
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -11,7 +11,16 @@ import 'package:jperg_app/features/gallery/presentation/found/pages/easy_search_
 /// has taken a selfie, the thing still will not go, and nothing on screen says
 /// the code is what is wanted.
 void main() {
-  Future<void> pumpPage(WidgetTester tester) => tester.pumpWidget(
+  /// The default test view is 800x600 — wider than any phone and shorter than
+  /// all of them. This screen is built for the design size it declares below,
+  /// and a 3-column grid in an 800px-wide view gives tiles 250px tall, which
+  /// is a shape no device produces. Pinned so a layout assertion here means
+  /// something about a real phone.
+  Future<void> pumpPage(WidgetTester tester, {Size size = const Size(390, 844)}) {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    return tester.pumpWidget(
         ScreenUtilInit(
           designSize: const Size(390, 844),
           builder: (_, __) => MaterialApp(
@@ -21,6 +30,15 @@ void main() {
           ),
         ),
       );
+  }
+
+  testWidgets('it fits a short phone without overflowing', (tester) async {
+    // A 360x640 Android, the smallest ordinary screen: the explainer, the
+    // code row, the keep-my-face box, the button and the legal links are all
+    // fixed height, and only the selfie grid can give way.
+    await pumpPage(tester, size: const Size(360, 640));
+    expect(tester.takeException(), isNull);
+  });
 
   AppButton submitButton(WidgetTester tester) =>
       tester.widget<AppButton>(find.byType(AppButton));
