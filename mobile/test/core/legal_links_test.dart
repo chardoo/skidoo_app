@@ -81,9 +81,17 @@ void main() {
   });
 
   group('screens that must offer them', () {
-    /// Sign-up and the three biometric screens are the obligations: two store
+    /// Sign-up and the biometric screens are the obligations: two store
     /// reviews turn on them, and a face is the one thing here somebody cannot
-    /// take back. Settings and Help are where people actually go looking.
+    /// take back. Help & Support is where somebody goes looking for a
+    /// document, and is the one place in Settings that carries them.
+    ///
+    /// Settings itself and the Privacy screen are deliberately not on this
+    /// list. They had the same two links a row apart from Help & Support —
+    /// the pair under Dark Mode read as settings nobody could set, and the
+    /// pair at the foot of the Privacy screen read as part of the switches
+    /// above them. Removing them takes nothing away: every obligation below
+    /// still holds, and the documents are still two taps from Settings.
     const required = <String, String>{
       'lib/features/auth/presentation/pages/signup_page.dart':
           'the moment an account is agreed to',
@@ -95,10 +103,6 @@ void main() {
           'selfies compared against one album',
       'lib/features/settings/presentation/pages/face_data_page.dart':
           'managing stored face data',
-      'lib/features/settings/presentation/pages/privacy_settings_page.dart':
-          'the screen about privacy',
-      'lib/features/settings/presentation/pages/settings_page.dart':
-          'where people look for them',
       'lib/features/settings/presentation/pages/help_support_page.dart':
           'where people look for them',
       'lib/features/photographers/presentation/pages/verify_terms_page.dart':

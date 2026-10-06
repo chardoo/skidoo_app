@@ -126,9 +126,20 @@ class Styles {
       indicatorColor: isDarkTheme
           ? const Color(0xFF2C2C2A)
           : const Color.fromARGB(255, 195, 197, 201),
+      // Secondary text, and it has to be readable in both themes. These were
+      // a near-black for dark and pure white for light — each one the ground
+      // it sits on, so anything drawn in it was invisible either way. The
+      // light half is what hid "How we handle your data:" on Manage Face Data
+      // and "Read them first:" on the verify-terms screen; signup escaped it
+      // only by passing its own colour, which is the workaround this removes
+      // the need for.
+      //
+      // Same values as AppThemeExtension.searchHintColor, which is the token
+      // the rest of the app already uses for exactly this: #6B6A63 is ~4.9:1
+      // on the light ground and passes AA.
       hintColor: isDarkTheme
-          ? const Color(0xFF1F1F1D)
-          : const Color.fromARGB(255, 255, 255, 255),
+          ? const Color(0xFF93928A)
+          : const Color(0xFF6B6A63),
       dialogTheme: DialogThemeData(
         backgroundColor:
             isDarkTheme ? const Color(0xFF1C1C1E) : Colors.white,

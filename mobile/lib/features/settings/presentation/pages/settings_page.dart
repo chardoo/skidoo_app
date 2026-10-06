@@ -20,7 +20,6 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/theme_cubit.dart';
-import 'package:jperg_app/core/config/legal_links.dart';
 
 /// Settings, as a list of things rather than a page of everything.
 ///
@@ -196,20 +195,12 @@ class SettingsPage extends StatelessWidget {
                           label: 'Help & Support',
                           onTap: () => _open(context, const HelpSupportPage()),
                         ),
-                        // Settings is where people look for these, and they
-                        // were not anywhere in the app outside sign-up. Rows
-                        // rather than a footer link, so they are findable by
-                        // scrolling the list somebody is already scrolling.
-                        SettingsRow(
-                          icon: Icons.shield_outlined,
-                          label: 'Privacy Policy',
-                          onTap: () => LegalLinks.openPrivacy(context),
-                        ),
-                        SettingsRow(
-                          icon: Icons.description_outlined,
-                          label: 'Terms & Conditions',
-                          onTap: () => LegalLinks.openTerms(context),
-                        ),
+                        // The two documents are one row further in, under Help
+                        // & Support, and not also here. Preferences is where
+                        // somebody changes how the app behaves; a policy is
+                        // not a preference, and listing it twice in the same
+                        // screen made the pair under Dark Mode look like
+                        // settings nobody could set.
                       ],
                     ),
                     SettingsSection(
