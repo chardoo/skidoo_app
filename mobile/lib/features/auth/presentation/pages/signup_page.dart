@@ -220,9 +220,15 @@ class _SignUpViewState extends State<_SignUpView>
                           // Validate as the user types, not only on submit: the
                           // password rules are strict enough that discovering them
                           // one failure at a time — after each rejected submit — is
-                          // a guessing game. onUserInteraction keeps a pristine
-                          // form quiet, so nothing is flagged before it is typed.
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          // a guessing game.
+                          //
+                          // That setting lives on each field below and **must
+                          // not** be moved up here. `onUserInteraction` on a
+                          // Form validates every field as soon as any one of
+                          // them is touched, so typing the first character of
+                          // the email put an error under the four fields that
+                          // had not been typed into yet. See
+                          // [AppTextField.autovalidateMode].
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,6 +309,8 @@ class _SignUpViewState extends State<_SignUpView>
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 validator: Validators.emailValidator,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                               ),
                               SizedBox(height: 14.h),
 
@@ -315,6 +323,8 @@ class _SignUpViewState extends State<_SignUpView>
                                 prefixIcon: Icons.person_outline_rounded,
                                 textInputAction: TextInputAction.next,
                                 validator: Validators.nameValidator,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                               ),
                               SizedBox(height: 14.h),
 
@@ -325,6 +335,8 @@ class _SignUpViewState extends State<_SignUpView>
                                     .signupPhoneNumber,
                                 hint: 'e.g. 241234567',
                                 validator: Validators.nationalPhoneValidator,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                               ),
                               SizedBox(height: 14.h),
 
@@ -335,6 +347,8 @@ class _SignUpViewState extends State<_SignUpView>
                                     .signupPassword,
                                 textInputAction: TextInputAction.next,
                                 validator: Validators.signupPasswordValidator,
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                               ),
                               SizedBox(height: 14.h),
 
@@ -344,6 +358,12 @@ class _SignUpViewState extends State<_SignUpView>
                                 label: AppLocalizations.of(context)!
                                     .signupConfirmPassword,
                                 textInputAction: TextInputAction.done,
+                                // Still correct once this field validates on
+                                // its own: every field rebuilds whenever any
+                                // of them changes, so editing the password
+                                // above re-runs this comparison and clears a
+                                // stale "do not match" — while a confirm field
+                                // nobody has touched stays quiet.
                                 validator: (v) {
                                   if (v != _passwordController.text) {
                                     return AppLocalizations.of(context)!
@@ -351,6 +371,8 @@ class _SignUpViewState extends State<_SignUpView>
                                   }
                                   return Validators.signupPasswordValidator(v);
                                 },
+                                autovalidateMode:
+                                    AutovalidateMode.onUserInteraction,
                               ),
                               SizedBox(height: AppSpacing.xxxl.h),
 

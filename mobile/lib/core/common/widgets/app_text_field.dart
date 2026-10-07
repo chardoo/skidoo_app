@@ -88,6 +88,7 @@ class AppTextField extends StatefulWidget {
     this.keyboardType = TextInputType.text,
     this.textInputAction = TextInputAction.next,
     this.validator,
+    this.autovalidateMode = AutovalidateMode.disabled,
     this.maxLines = 1,
     this.minLines,
     this.maxLength,
@@ -117,6 +118,24 @@ class AppTextField extends StatefulWidget {
   final TextInputType keyboardType;
   final TextInputAction textInputAction;
   final String? Function(String?)? validator;
+
+  /// When this field starts complaining. **It belongs here and not on the
+  /// enclosing [Form].**
+  ///
+  /// The two are not the same setting. On a field, `onUserInteraction` means
+  /// "stay quiet until *this* field has been edited". On a [Form] it means
+  /// "once *any* field has been edited, validate *all* of them" — because
+  /// `FormState._hasInteractedByUser` is `_fields.any(...)`, and the
+  /// `_validate()` it then runs writes an `errorText` onto every field it
+  /// owns, whatever that field's own mode says. A sign-up form set that way
+  /// put an error under four untouched empty fields the moment the first
+  /// character was typed into the first one.
+  ///
+  /// Defaults to [AutovalidateMode.disabled] — errors on submit only — which
+  /// is what a bare `FormField` does and therefore what every call site that
+  /// does not ask for anything already got.
+  final AutovalidateMode autovalidateMode;
+
   final int? maxLines;
   final int? minLines;
   final int? maxLength;
@@ -190,6 +209,7 @@ class _AppTextFieldState extends State<AppTextField> {
     return FormField<String>(
       initialValue: widget.controller.text,
       validator: widget.validator,
+      autovalidateMode: widget.autovalidateMode,
       builder: (state) {
         _fieldState = state;
         final hasError = state.hasError;
@@ -342,6 +362,7 @@ class AppPasswordField extends StatefulWidget {
     this.hint,
     this.textInputAction = TextInputAction.done,
     this.validator,
+    this.autovalidateMode = AutovalidateMode.disabled,
   });
 
   final TextEditingController controller;
@@ -349,6 +370,10 @@ class AppPasswordField extends StatefulWidget {
   final String? hint;
   final TextInputAction textInputAction;
   final String? Function(String?)? validator;
+
+  /// See [AppTextField.autovalidateMode] — in particular why this is a
+  /// per-field setting and not one on the enclosing [Form].
+  final AutovalidateMode autovalidateMode;
 
   @override
   State<AppPasswordField> createState() => _AppPasswordFieldState();
@@ -369,6 +394,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
       keyboardType: TextInputType.visiblePassword,
       textInputAction: widget.textInputAction,
       validator: widget.validator,
+      autovalidateMode: widget.autovalidateMode,
       suffix: Semantics(
         button: true,
         label: 'Show or hide password',

@@ -129,8 +129,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               child: Form(
                 // Same reasoning as sign-up and the reset flow: the rules are
                 // strict, so show which one is unmet while the user is still
-                // typing rather than after they submit.
-                autovalidateMode: AutovalidateMode.onUserInteraction,
+                // typing rather than after they submit. And for the same
+                // reason as sign-up, that setting belongs on each field and
+                // not here — on a Form it flags every field the moment any one
+                // of them is touched, so typing the current password
+                // complained about the two still-empty ones below. See
+                // [AppTextField.autovalidateMode].
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,6 +155,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       label: 'Current Password',
                       validator: _currentValidator,
                       textInputAction: TextInputAction.next,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                     ),
                     SizedBox(height: AppSpacing.lg.h),
                     AppPasswordField(
@@ -158,6 +163,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       label: 'New Password',
                       validator: _nextValidator,
                       textInputAction: TextInputAction.next,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                     ),
                     SizedBox(height: AppSpacing.lg.h),
                     // Not in the dialog, and the room to add it is half the
@@ -169,6 +175,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       label: 'Confirm New Password',
                       validator: _confirmValidator,
                       textInputAction: TextInputAction.done,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                     ),
                     if (_error != null) ...[
                       SizedBox(height: AppSpacing.lg.h),

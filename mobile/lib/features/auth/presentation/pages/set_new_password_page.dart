@@ -92,8 +92,11 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
               padding: EdgeInsets.symmetric(horizontal: 28.w),
               child: Form(
                 // Same reasoning as sign-up: the rules are strict, so show
-                // which one is unmet while the user is still typing.
-                autovalidateMode: AutovalidateMode.onUserInteraction,
+                // which one is unmet while the user is still typing — and,
+                // also as on sign-up, that setting goes on each field rather
+                // than here, or typing the new password flags the confirm
+                // field nobody has reached yet. See
+                // [AppTextField.autovalidateMode].
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,6 +123,7 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
                       label: 'New Password',
                       validator: Validators.signupPasswordValidator,
                       textInputAction: TextInputAction.next,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                     ),
                     SizedBox(height: AppSpacing.lg.h),
                     AppPasswordField(
@@ -127,6 +131,7 @@ class _SetNewPasswordPageState extends State<SetNewPasswordPage> {
                       label: 'Confirm New Password',
                       validator: _confirmValidator,
                       textInputAction: TextInputAction.done,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                     ),
                     if (_error != null) ...[
                       SizedBox(height: AppSpacing.lg.h),

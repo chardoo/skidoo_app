@@ -132,6 +132,7 @@ class AppPhoneField extends StatefulWidget {
     this.initialIso2 = 'GH',
     this.textInputAction = TextInputAction.next,
     this.validator,
+    this.autovalidateMode = AutovalidateMode.disabled,
   });
 
   final TextEditingController controller;
@@ -140,6 +141,10 @@ class AppPhoneField extends StatefulWidget {
   final String initialIso2;
   final TextInputAction textInputAction;
   final String? Function(String?)? validator;
+
+  /// See [AppTextField.autovalidateMode] — in particular why this is a
+  /// per-field setting and not one on the enclosing [Form].
+  final AutovalidateMode autovalidateMode;
 
   @override
   State<AppPhoneField> createState() => _AppPhoneFieldState();
@@ -193,6 +198,7 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
     return FormField<String>(
       initialValue: widget.controller.text,
       validator: widget.validator,
+      autovalidateMode: widget.autovalidateMode,
       builder: (state) {
         final hasError = state.hasError;
         final accent =
