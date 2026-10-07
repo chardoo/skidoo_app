@@ -277,15 +277,17 @@ void main() {
       }
     });
 
-    testWidgets('a launch asks, with nobody signed in', (t) async {
-      // The headline of this group. The ask used to be signed-in only, so a
-      // guest was never asked at all — and a guest who is never asked is one
-      // the app cannot reach when their photos are found, which is the single
-      // notification they are here for.
+    testWidgets('Home asks', (t) async {
+      // The headline of this group, and it has been wrong in both directions.
+      // It was signed-in only, so a guest was never asked. The fix for that
+      // asked at cold start for everybody, which put the system dialog over
+      // onboarding on a fresh install — no account, and nothing yet said what
+      // the notifications were for. Home is the answer to both: signed in by
+      // construction, and after the app has shown what it does.
       t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       final backend = _FakeBackend(permission: PushPermission.undecided);
 
-      unawaited(serviceFor(backend).promptAtLaunch());
+      unawaited(serviceFor(backend).promptOnHome());
       await t.pump(PushNotificationService.launchPromptDelay);
       await t.pump();
 
@@ -302,7 +304,7 @@ void main() {
       await service.init();
       background(t);
 
-      unawaited(service.promptAtLaunch());
+      unawaited(service.promptOnHome());
       await t.pump(PushNotificationService.launchPromptDelay);
       await t.pump();
       expect(backend.calls, isNot(contains('requestPermission')),
@@ -329,7 +331,7 @@ void main() {
       await service.init();
       background(t);
 
-      unawaited(service.promptAtLaunch());
+      unawaited(service.promptOnHome());
       await t.pump(PushNotificationService.launchPromptDelay);
       // Long enough for the in-flight wait to time out and give up.
       await t.pump(const Duration(minutes: 3));
@@ -360,20 +362,49 @@ void main() {
       expect(backend.calls.where((c) => c == 'requestPermission'), hasLength(1));
     });
 
-    test('the launch asks, and does not gate the ask on being signed in', () {
-      // main() is not reachable from a test, and this is the line the whole
-      // group exists to protect: it was `if (!signedIn) return;` above the
-      // prompt, so every guest launch skipped it silently. Nothing else here
-      // would notice it coming back.
-      final source = File('lib/main.dart').readAsStringSync();
-
-      expect(source, contains('promptAtLaunch()'),
-          reason: 'the cold start has to ask');
+    test('startup never asks, and Home is the only caller', () {
+      // Asserted against the source because neither `main()` nor the route
+      // table is reachable from a test, and this is the line the group exists
+      // to protect. The prompt has moved twice already; it must not move back.
+      //
+      // Asking from startup put the system dialog over onboarding on a fresh
+      // install — somebody with no account, who had not been told what the
+      // notifications were for, deciding whether to allow them. iOS spends the
+      // ask when it is put, so the "no" that collects cannot be asked again,
+      // only sent to Settings.
+      final main = File('lib/main.dart').readAsStringSync();
       expect(
-        source,
-        isNot(contains('if (!signedIn) return')),
-        reason: 'the ask must not be signed-in only — a guest who is never '
-            'asked cannot be told their photos were found',
+        main,
+        isNot(contains('promptOnHome()')),
+        reason: 'startup must not ask — a fresh install is on onboarding, '
+            'with no account and no reason yet to say yes',
+      );
+      expect(main, isNot(contains('promptAtLaunch()')),
+          reason: 'the old cold-start entry point is gone');
+
+      // And it is asked somewhere: deleting the call is as broken as calling
+      // it too early, and nothing else in this file would notice.
+      final home = File(
+        'lib/features/home/presentation/pages/home_page.dart',
+      ).readAsStringSync();
+      expect(home, contains('promptOnHome()'),
+          reason: 'Home is where the ask belongs');
+
+      // Exactly one caller in the whole app, so "when is this asked" has one
+      // answer. A second call site is how it ends up back on a launch path.
+      final callers = Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))
+          .where((f) =>
+              !f.path.endsWith('services/push_notification_service.dart'))
+          .where((f) => f.readAsStringSync().contains('promptOnHome()'))
+          .map((f) => f.path)
+          .toList();
+      expect(
+        callers,
+        ['lib/features/home/presentation/pages/home_page.dart'],
+        reason: 'one caller only',
       );
     });
 
@@ -383,7 +414,7 @@ void main() {
       await service.init();
       t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
 
-      unawaited(service.promptAtLaunch());
+      unawaited(service.promptOnHome());
       await t.pump(PushNotificationService.launchPromptDelay);
       await t.pump();
       expect(backend.calls, contains('requestPermission'));

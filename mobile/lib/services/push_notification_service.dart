@@ -248,18 +248,28 @@ class PushNotificationService {
     }
   }
 
-  /// Ask at cold start, and keep meaning to until the question has been put.
+  /// Ask once Home is on screen, and keep meaning to until it has been asked.
   ///
-  /// Called from `main()` for every launch, signed in or not. It used to be
-  /// signed-in only, on the reasoning that iOS allows one ask and it is better
-  /// spent on somebody with an account — true as far as it goes, but it left
-  /// every guest unasked, and a guest who is never asked is a guest the app
-  /// cannot reach when their photos are found, which is the one notification
-  /// they are here for.
+  /// **Called from Home, and from nowhere else. Never from `main()`.**
   ///
-  /// Deliberately not awaited by the caller and impossible to throw: this runs
-  /// beside app startup and must never be able to take it down.
-  Future<void> promptAtLaunch() async {
+  /// It was called at cold start for every launch, signed in or not. That put
+  /// the system dialog over onboarding on a fresh install: somebody who had
+  /// opened the app for the first time, had no account, and had not yet been
+  /// told what the notifications would be *for*, was asked to allow them. The
+  /// reasoning had been that a guest who is never asked cannot be told their
+  /// photos were found — true, but the fix for that is to ask a guest when
+  /// they have a reason to say yes, not to ask everybody before anybody has
+  /// one.
+  ///
+  /// It matters more than a normal mistimed dialog because the ask is spent:
+  /// iOS presents it once, and a "no" from somebody who did not yet know what
+  /// they were declining cannot be re-asked — only sent to Settings. Asking on
+  /// Home means the person has an account and has seen what the app does.
+  ///
+  /// Home is behind `_AuthGuard` and the splash only routes there with a
+  /// token, so reaching here already means signed in; there is no second check
+  /// for it. Deliberately not awaited by the caller and impossible to throw.
+  Future<void> promptOnHome() async {
     _wantsPrompt = true;
     try {
       await Future<void>.delayed(launchPromptDelay);

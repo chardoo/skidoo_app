@@ -189,20 +189,16 @@ void main() async {
   unawaited(() async {
     await PushNotificationService.instance.init();
 
-    // The ask, for everybody, signed in or not.
+    // No permission prompt here. It is asked for on Home — see
+    // [PushNotificationService.promptOnHome], which is the only caller.
     //
-    // Started before the reconcile below rather than after it, and on its own
-    // future: reconcile talks to the SDK and the Keychain, and anything it
-    // throws used to take the rest of this closure with it — including the
-    // prompt, which then never happened and left nothing in the log saying
-    // why. The two have no reason to be sequential; only one of them can
-    // raise a dialog and it is this one.
+    // Asking from here asked on every launch, signed in or not, which on a
+    // fresh install put the system dialog over onboarding: no account, and no
+    // idea yet what the notifications were for. The ask is spent when it is
+    // put, so a "no" collected there cannot be asked again.
     //
-    // `promptIfUndecided` underneath means a second launch does not re-ask
-    // somebody who already said no, and does not reopen the system settings
-    // page at them. See PushPermission for why that distinction is load
-    // bearing.
-    unawaited(PushNotificationService.instance.promptAtLaunch());
+    // `init` stays — registering with the SDK and reconciling the token below
+    // raise no dialog and have to happen whether or not anybody is asked.
 
     // Everything a push needs, asserted together: attached to this account,
     // opted in unless the master switch says otherwise, and not left opted

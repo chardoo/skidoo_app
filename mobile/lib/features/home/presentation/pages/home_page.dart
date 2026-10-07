@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/navigation/chrome_visibility.dart';
@@ -22,6 +24,7 @@ import 'package:jperg_app/features/user_profile/presentation/pages/user_profile_
 import 'package:jperg_app/features/user_profile/presentation/pages/face_recognition_page.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/services/push_notification_service.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_rooms_page.dart';
 import 'package:jperg_app/components/common/navbar.dart';
 import 'package:jperg_app/core/utils/video_pause_notifier.dart';
@@ -102,6 +105,21 @@ class _HomeViewState extends State<_HomeView> {
     // Nudge the user to add their reference photos (first login + every 4 days)
     // until they've done so. Deferred so the home tree is laid out first.
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybePromptAddFaces());
+
+    // The notification permission, asked here and nowhere else.
+    //
+    // This used to run from `main()` on every launch, so a fresh install met
+    // the system dialog on top of onboarding — before an account existed and
+    // before anything had said what the notifications were for. Reaching Home
+    // means signed in (it is behind `_AuthGuard`), and it is the first screen
+    // where "we will tell you when your photos are found" is a promise the
+    // person has seen the app make.
+    //
+    // Unawaited and self-contained: it waits for the foreground itself and
+    // swallows its own failures, so nothing about building Home depends on it.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(PushNotificationService.instance.promptOnHome()),
+    );
   }
 
   /// Shows the "add your photos" prompt when the user hasn't added faces and it
