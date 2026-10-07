@@ -172,15 +172,28 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
       onSkip: _finish,
       child: Builder(builder: (context) {
         final ext = Theme.of(context).extension<AppThemeExtension>()!;
-        // The subtitle above says the selfie is stored privately and never
-        // shared. This is where somebody can go and check that.
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            DottedCircle(color: ext.accentGold, size: 140.w),
-            SizedBox(height: AppSpacing.xl.h),
-            const LegalLinksRow(),
-          ],
+        // Full width on purpose, and the Column does not centre without it.
+        //
+        // [OnboardingStepScaffold] lays its steps out in a
+        // `CrossAxisAlignment.start` column — right for the title and subtitle
+        // — and the body goes in as `Expanded(child: …)`, which stretches the
+        // *main* axis only. The body is also wrapped in a scroll view by
+        // default, so its width constraint is loose: the Column shrank to the
+        // width of the widest thing in it (the legal links) and the start
+        // alignment then parked that block against the left margin. The face
+        // was centred the whole time — inside a box that was not.
+        return SizedBox(
+          width: double.infinity,
+          // The subtitle above says the selfie is stored privately and never
+          // shared. This is where somebody can go and check that.
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              DottedCircle(color: ext.accentGold, size: 140.w),
+              SizedBox(height: AppSpacing.xl.h),
+              const LegalLinksRow(),
+            ],
+          ),
         );
       }),
     );
