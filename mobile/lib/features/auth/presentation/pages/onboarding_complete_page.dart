@@ -5,13 +5,17 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_ready_page.dart';
 
-/// Final onboarding screen — "You're all set, {name}!" — reached from
-/// `follow_suggestions_page.dart`, the same for every role. Portfolio setup
-/// + verification are no longer part of onboarding; a photographer does
-/// those later, on demand, from the Account page. No progress bar, per the
-/// design (`totalSteps: 0` renders an empty one via the shared scaffold
-/// rather than duplicating its layout for a one-off screen).
+/// Final onboarding screen — "You're all set, {name}!" — and the end of both
+/// branches of the wizard: from `follow_suggestions_page.dart` for somebody
+/// here to discover, and from `verify_terms_page.dart` for somebody who chose
+/// to share their work. Face capture is step 1 either way, so the scanning
+/// line below is as true for a creator as for anybody else.
+///
+/// No progress bar, per the design (`totalSteps: 0` renders an empty one via
+/// the shared scaffold rather than duplicating its layout for a one-off
+/// screen).
 class OnboardingCompletePage extends StatefulWidget {
   const OnboardingCompletePage({super.key});
 
@@ -34,7 +38,9 @@ class _OnboardingCompletePageState extends State<OnboardingCompletePage> {
   void initState() {
     super.initState();
     sl<AuthService>().getName().then((v) {
-      if (mounted) setState(() => _name = v);
+      // First name only. "You're all set, Kwame Mensah!" reads like a letter
+      // from a bank; the design says "Kwame".
+      if (mounted) setState(() => _name = CreatorReadyPage.firstNameOf(v));
     });
   }
 

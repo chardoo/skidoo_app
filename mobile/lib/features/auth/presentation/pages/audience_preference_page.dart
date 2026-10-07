@@ -2,22 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/usecases/usecase.dart';
-import 'package:jperg_app/core/utils/snackbar_utils.dart';
-import 'package:jperg_app/features/auth/domain/usecases/become_photographer_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/interests_page.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_setup_entry.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/portfolio_edit_page.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 
 enum _Audience { discover, share }
 
-/// Onboarding step 2/4 (or 2/6 for photographers) — also the real role
-/// selection now: picking "I'm here to discover" keeps today's default
-/// `user` role (local preference only, same as before); picking "Share my
-/// work" calls [BecomePhotographerUseCase] to actually upgrade the account
-/// before continuing, so the wizard can branch into the photographer-only
-/// portfolio/verification steps afterward.
+/// Onboarding step 2 of 4 — the fork in the wizard.
+///
+/// "I'm here to discover" continues into interests and creators-to-follow.
+/// "Share my work" goes to the portfolio and verification steps instead, and
+/// gets neither of those: a creator's feed is ranked on what they shoot, and
+/// asking somebody who came here to upload which photography they enjoy is a
+/// question for a different person.
+///
+/// Both branches were the same branch until now. Whichever was picked, this
+/// pushed [InterestsPage] — so "Share my work" delivered the discover flow,
+/// and the portfolio and verification screens, which exist and are finished,
+/// could only be reached afterwards from Account & Security.
+///
+/// The answer is still recorded in [AuthService.setAudiencePreference], but
+/// the navigation no longer depends on reading it back.
 class AudiencePreferencePage extends StatefulWidget {
   const AudiencePreferencePage({super.key});
 
@@ -29,29 +37,33 @@ class _AudiencePreferencePageState extends State<AudiencePreferencePage> {
   _Audience? _selected;
   bool _submitting = false;
 
+  /// Records the answer, then takes the matching branch.
+  ///
+  /// The account is *not* upgraded here. It used to be — Continue called
+  /// `BecomePhotographerUseCase` and `setRole('photographer')` on the spot —
+  /// which made a photographer out of anybody who tapped the second option,
+  /// with no portfolio, no ID on file and nothing agreed to, and then walked
+  /// them through a flow that asked for none of it.
+  ///
+  /// The role moves when the verification is submitted, which is where the
+  /// server moves it too (see the comment in `photographer/samples.py`, and
+  /// the same reasoning on the Account & Security path). Somebody who starts
+  /// the portfolio and changes their mind stays an ordinary user.
   Future<void> _continue() async {
     final selected = _selected;
     if (selected == null || _submitting) return;
     setState(() => _submitting = true);
 
-    if (selected == _Audience.share) {
-      try {
-        await sl<BecomePhotographerUseCase>().call(const NoParams());
-        await sl<AuthService>().setRole('photographer');
-      } catch (e) {
-        if (mounted) {
-          setState(() => _submitting = false);
-          AppSnackBar.error(context, 'Could not switch to a creator account: $e');
-        }
-        return;
-      }
-    }
-
-    await sl<AuthService>()
-        .setAudiencePreference(selected == _Audience.discover ? 'discover' : 'share');
+    await sl<AuthService>().setAudiencePreference(
+        selected == _Audience.discover ? 'discover' : 'share');
     if (!mounted) return;
+
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const InterestsPage()),
+      MaterialPageRoute(
+        builder: (_) => selected == _Audience.share
+            ? const PortfolioEditPage(entry: CreatorSetupEntry.onboarding)
+            : const InterestsPage(),
+      ),
     );
   }
 

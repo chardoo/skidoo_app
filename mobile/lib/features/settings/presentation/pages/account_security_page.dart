@@ -17,6 +17,7 @@ import 'package:jperg_app/features/settings/presentation/pages/change_password_p
 import 'package:jperg_app/features/photographers/presentation/widgets/premium_tier_row.dart';
 import 'package:jperg_app/features/settings/presentation/widgets/settings_section.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_setup_entry.dart';
 
 /// How you get in, and how you stop being able to.
 ///
@@ -113,7 +114,8 @@ class _AccountSecurityPageState extends State<AccountSecurityPage> {
   Future<void> _becomeCreator() async {
     final done = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-          builder: (_) => const PortfolioEditPage(isCreatorSetup: true)),
+          builder: (_) =>
+              const PortfolioEditPage(entry: CreatorSetupEntry.settings)),
     );
     // The role itself needs no reloading — it is watched now, and the wizard
     // set it on its way through. This is for the rest of the settings, which

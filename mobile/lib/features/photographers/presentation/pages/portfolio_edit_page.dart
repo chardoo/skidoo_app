@@ -16,27 +16,32 @@ import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/features/photographers/presentation/pages/creator_setup_entry.dart';
+import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 
-/// Account-section "Portfolio" screen — a photographer's portfolio setup,
-/// done on demand from Account rather than automatically during onboarding.
-/// The first time (detected by an empty portfolio), saving chains into
-/// [VerifyTermsPage] to complete setup; on later visits (portfolio already
-/// has content) it's just an edit-and-save screen. Plain AppBar chrome,
-/// matching `face_recognition_page.dart`'s convention — no step-progress
-/// bar, this isn't part of the onboarding wizard.
+/// A photographer's portfolio — the first-time setup and every later edit.
+///
+/// Reached three ways, and [CreatorSetupEntry] is which:
+///
+///  * from Account, to change a portfolio that already exists;
+///  * from Account & Security's "Become a Creator", as step one of two;
+///  * from "Share my work" in the signup wizard, as step 3 of 4.
+///
+/// Saving chains into [VerifyTermsPage] for both setup entries (and on a
+/// first-ever save from the edit entry, detected by an empty portfolio); on
+/// later visits it is just edit-and-save. The first-time heuristic below
+/// cannot tell the three apart on its own, because a photographer whose
+/// portfolio is genuinely empty looks identical to somebody starting out.
 class PortfolioEditPage extends StatefulWidget {
-  const PortfolioEditPage({super.key, this.isCreatorSetup = false});
+  const PortfolioEditPage({
+    super.key,
+    this.entry = CreatorSetupEntry.editing,
+  });
 
-  /// True when this is step one of becoming a creator, rather than a
-  /// photographer editing a portfolio they already have.
-  ///
-  /// It changes the chrome — "Become a Creator" with the step indicator — and
-  /// what saving does: it chains into verification and reports back whether
-  /// the whole wizard finished, so the screen that opened it knows the role
-  /// moved. The first-time heuristic below cannot answer this on its own,
-  /// because a photographer whose portfolio is genuinely empty would look
-  /// identical to somebody starting out.
-  final bool isCreatorSetup;
+  /// Why this screen is open — see [CreatorSetupEntry]. It decides the chrome
+  /// (plain app bar, the two-step row, or the wizard's four dots) and where
+  /// verification goes afterwards.
+  final CreatorSetupEntry entry;
 
   @override
   State<PortfolioEditPage> createState() => _PortfolioEditPageState();
@@ -175,18 +180,22 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
       AppCacheSignals.portfolio.bump();
       AccountSettingsApi.invalidate();
       if (!mounted) return;
-      if (widget.isCreatorSetup || _isFirstTimeSetup) {
+      if (widget.entry.isSetup || _isFirstTimeSetup) {
         // pushReplacement, so Back from verification does not land on a form
         // that has already been saved. `finished` is what VerifyTermsPage
         // reports once the whole wizard is through.
         final finished =
             await Navigator.of(context).pushReplacement<bool, void>(
           MaterialPageRoute(
-            builder: (_) =>
-                VerifyTermsPage(isCreatorSetup: widget.isCreatorSetup),
+            builder: (_) => VerifyTermsPage(entry: widget.entry),
           ),
         );
-        if (mounted) Navigator.of(context).pop(finished ?? false);
+        // Not from onboarding: the wizard's last screen clears the stack
+        // itself, so there is nothing here to pop back to and no caller
+        // waiting on an answer.
+        if (mounted && !widget.entry.isOnboarding) {
+          Navigator.of(context).pop(finished ?? false);
+        }
       } else {
         AppSnackBar.success(context, 'Portfolio updated.');
         Navigator.of(context).pop();
@@ -200,9 +209,58 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
     }
   }
 
+  /// The form and its button — the same on every entry, so only the chrome
+  /// around it changes.
+  ///
+  /// The button flows under the sample grid rather than being pinned to the
+  /// bottom of the screen, which is how the design draws it on all three:
+  /// the grid grows as photos are added, and a pinned button would float away
+  /// from the thing it acts on.
+  Widget _form(AppThemeExtension ext) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PortfolioForm(
+            initialProfilePhotoUrl: _profilePhotoUrl,
+            initialStudioImageUrl: _studioImageUrl,
+            initialStudioName: _studioName,
+            initialLocation: _location,
+            initialBio: _bio,
+            initialSpecialties: _specialties,
+            initialSamples: _originalSamples,
+            onChanged: (data) => setState(() => _data = data),
+          ),
+          SizedBox(height: AppSpacing.xxl.h),
+          AppButton(
+            fullWidth: true,
+            isLoading: _saving,
+            onPressed: (_data?.meetsMinimumSamples ?? false) ? _save : null,
+            label: widget.entry.isSetup || _isFirstTimeSetup
+                ? 'Continue'
+                : 'Save',
+          ),
+          SizedBox(height: AppSpacing.md.h),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    // Step 3 of the signup wizard, wearing the wizard's chrome rather than an
+    // app bar — the four dots are the only thing telling somebody mid-signup
+    // how much is left, and a screen that drops them reads as a dead end.
+    if (widget.entry.isOnboarding) {
+      return OnboardingStepScaffold(
+        currentStep: 3,
+        totalSteps: 4,
+        title: 'Set up your portfolio',
+        subtitle: 'This is what shows on your public profile',
+        child: _loading
+            ? Center(child: CircularProgressIndicator(color: ext.accentGold))
+            : _form(ext),
+      );
+    }
+
     final page = Scaffold(
       backgroundColor: ext.homeBackground,
       appBar: AppBar(
@@ -213,7 +271,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.isCreatorSetup ? 'Become a Creator' : 'Portfolio',
+              widget.entry.isSetup ? 'Become a Creator' : 'Portfolio',
               style: TextStyle(
                   color: ext.greetingColor,
                   fontFamily: AppTypography.displayFontFamily,
@@ -226,7 +284,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
             ],
           ],
         ),
-        centerTitle: widget.isCreatorSetup,
+        centerTitle: widget.entry.isSetup,
       ),
       body: SafeArea(
         child: _loading
@@ -236,7 +294,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (widget.isCreatorSetup) ...[
+                    if (widget.entry.isSetup) ...[
                       const Center(child: CreatorSteps(current: 0)),
                       SizedBox(height: AppSpacing.lg.h),
                       Text(
@@ -258,25 +316,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
                       ),
                       SizedBox(height: AppSpacing.lg.h),
                     ],
-                    PortfolioForm(
-                      initialProfilePhotoUrl: _profilePhotoUrl,
-                      initialStudioImageUrl: _studioImageUrl,
-                      initialStudioName: _studioName,
-                      initialLocation: _location,
-                      initialBio: _bio,
-                      initialSpecialties: _specialties,
-                      initialSamples: _originalSamples,
-                      onChanged: (data) => setState(() => _data = data),
-                    ),
-                    SizedBox(height: AppSpacing.xxl.h),
-                    AppButton(
-                      fullWidth: true,
-                      isLoading: _saving,
-                      onPressed:
-                          (_data?.meetsMinimumSamples ?? false) ? _save : null,
-                      label: _isFirstTimeSetup ? 'Continue' : 'Save',
-                    ),
-                    SizedBox(height: AppSpacing.md.h),
+                    _form(ext),
                   ],
                 ),
               ),
