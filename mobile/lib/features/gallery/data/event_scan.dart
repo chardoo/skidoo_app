@@ -8,6 +8,54 @@ import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/auth_service.dart';
 
+/// The code named no event the viewer may open.
+///
+/// Three situations answer this, deliberately as one: a code nobody ever
+/// issued, an album since deleted, and an unpublished draft belonging to
+/// somebody else. A QR printed on a poster has to stop working the moment the
+/// photographer deletes the album, and saying *which* of the three it is would
+/// tell a stranger that an album exists.
+///
+/// It is a distinct type because the screen cannot otherwise tell it apart
+/// from a search that ran and found nothing — and those two want opposite
+/// sentences. "We didn't find you in this event" is actively misleading in
+/// front of somebody holding a wrong code: it says the event is real and they
+/// are not in it.
+class EventNotFound implements Exception {
+  const EventNotFound([this.message = 'That event does not exist']);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+/// What went wrong, in the server's own words where it offered any.
+///
+/// Both searches are raw `http` rather than Dio — SSE needs the streamed body
+/// — so nothing unwraps the error envelope for them, and both used to report
+/// the bare status code. "Scan failed: 404" is not a sentence to put in front
+/// of somebody, and it threw away the one thing the server had said.
+Future<Object> failureFrom(http.StreamedResponse response) async {
+  String message = '';
+  try {
+    final body = await response.stream.bytesToString();
+    final decoded = jsonDecode(body);
+    if (decoded is Map && decoded['error'] is Map) {
+      message = (decoded['error']['message'] ?? '').toString();
+    }
+  } catch (_) {
+    // A body that is not the envelope tells us nothing the status has not.
+  }
+
+  if (response.statusCode == 404) {
+    return message.isEmpty ? const EventNotFound() : EventNotFound(message);
+  }
+  return message.isEmpty
+      ? 'That search could not be run just now. Please try again.'
+      : message;
+}
+
 /// One run of a live photo search, whichever endpoint is doing the looking.
 ///
 /// Two of them exist and they differ only in how the person is described to the
@@ -156,7 +204,7 @@ class EventScan implements LiveSearch {
 
       final response = await _http.send(request);
       if (response.statusCode != 200) {
-        _finish(error: 'Scan failed: ${response.statusCode}');
+        _finish(error: await failureFrom(response));
         return;
       }
 

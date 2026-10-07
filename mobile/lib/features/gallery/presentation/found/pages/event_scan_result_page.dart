@@ -89,6 +89,11 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   bool _loading = true;
   String? _error;
 
+  /// True when the code named no event at all, rather than the search failing
+  /// or finding nothing. It changes what the error offers: another attempt at
+  /// a code that does not exist answers the same every time.
+  bool _missingEvent = false;
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +131,7 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       _scan = _build();
       _loading = true;
       _error = null;
+      _missingEvent = false;
       _album = null;
     });
     _scan.isRunning.addListener(_onScanState);
@@ -184,6 +190,22 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
   /// that can disagree.
   Future<void> _showResult() async {
     if (!_loading) return;
+
+    // A code that names no event is not an empty album, and this is the only
+    // place the two can still be told apart. The query below would succeed and
+    // return nothing — exactly what a real event this person is in none of
+    // looks like — and the screen would answer "We didn't find you in this
+    // event", which says the event is real.
+    final failure = _scan.error.value;
+    if (failure is EventNotFound) {
+      setState(() {
+        _loading = false;
+        _missingEvent = true;
+        _error = failure.message;
+      });
+      return;
+    }
+
     try {
       final page = await sl<GetFoundPhotosUseCase>().albums(
         // `all`, not the default: the rows the scan just wrote are pending
@@ -290,7 +312,14 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       return AppErrorView(
         message: _error!,
         icon: Icons.qr_code_scanner_rounded,
-        onRetry: _restart,
+        // A wrong code wants a different code, not the same one again — so
+        // the button goes back to the scanner rather than re-running it.
+        retryLabel: _missingEvent ? 'Try another code' : 'Retry',
+        onRetry: _missingEvent
+            ? (Navigator.of(context).canPop()
+                ? () => Navigator.of(context).pop()
+                : null)
+            : _restart,
       );
     }
 

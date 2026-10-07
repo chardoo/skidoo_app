@@ -134,7 +134,10 @@ class EasySearch implements LiveSearch {
 
       final response = await _http.send(request);
       if (response.statusCode != 200) {
-        _finish(error: 'Search failed: ${response.statusCode}');
+        // The server's words, and a typed [EventNotFound] for a code that
+        // names nothing — see `failureFrom`. Typing a wrong code is the
+        // likeliest way this fails, and it used to read as "no photos of you".
+        _finish(error: await failureFrom(response));
         return;
       }
 
