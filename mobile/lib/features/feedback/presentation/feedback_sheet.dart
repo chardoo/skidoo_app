@@ -129,6 +129,43 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
     });
   }
 
+  /// Skip closes the sheet. It never thanks anybody.
+  ///
+  /// It used to call [_send], which ends on the thanks step whatever it did or
+  /// did not send — so skipping produced "Thank you. We read every one of
+  /// these." over a message nobody had written. From Settings that is the
+  /// whole interaction: `startOnFeature` means there is no score either, so
+  /// the sheet submitted nothing at all and then thanked the person for it.
+  ///
+  /// A score already given is still sent. Skipping the words is not
+  /// withdrawing the stars — they are a complete answer on their own, which is
+  /// why Skip is offered there rather than only a close button — but it is
+  /// sent on the way out rather than as something to confirm, because nothing
+  /// here is news to the person who just gave it.
+  Future<void> _skip() async {
+    if (_sending) return;
+
+    final hasScore = !widget.startOnFeature && _rating > 0;
+    if (hasScore) {
+      setState(() => _sending = true);
+      final ok = await _api.submit(kind: FeedbackKind.rating, rating: _rating);
+      // Same rule as [_send]: a failed send is not an answer, so the prompt
+      // comes back rather than the opinion being lost.
+      await (ok
+          ? FeedbackPrompt.noteAnswered()
+          : FeedbackPrompt.noteDismissed());
+      if (!mounted) return;
+      setState(() => _sending = false);
+    } else {
+      // Nothing given and nothing written: a dismissal, so the repeat window
+      // starts now.
+      await FeedbackPrompt.noteDismissed();
+      if (!mounted) return;
+    }
+
+    Navigator.of(context).maybePop();
+  }
+
   void _close() {
     Navigator.of(context).maybePop();
     if (_step != _Step.thanks) {
@@ -273,9 +310,9 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
             children: [
               Expanded(
                 child: TextButton(
-                  // Skipping is a real answer when the stars were the point:
-                  // the score is already worth having on its own.
-                  onPressed: _sending ? null : _send,
+                  // [_skip], not [_send]: they were the same handler, so Skip
+                  // ended on the thanks step like a submission.
+                  onPressed: _sending ? null : _skip,
                   child: Text(
                     'Skip',
                     style:

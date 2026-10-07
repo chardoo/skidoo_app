@@ -196,4 +196,76 @@ void main() {
       expect(prefs.getInt('feedback.lastAsked'), isNotNull);
     });
   });
+
+  group('skipping', () {
+    /// As a real sheet, so "it closed" is a thing that can be asked.
+    Future<void> openModal(WidgetTester t, _Recorder api,
+        {bool startOnFeature = false}) async {
+      await t.pumpWidget(host(Builder(
+        builder: (ctx) => ElevatedButton(
+          onPressed: () => showModalBottomSheet<void>(
+            context: ctx,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) =>
+                FeedbackSheet(api: api, startOnFeature: startOnFeature),
+          ),
+          child: const Text('open'),
+        ),
+      )));
+      await t.tap(find.text('open'));
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('from Settings it closes, and thanks nobody', (t) async {
+      // The reported bug. Skip and Send were the same handler, and that
+      // handler ends on the thanks step whatever it sent — so skipping from
+      // Settings submitted nothing at all and then said "Thank you. We read
+      // every one of these." about a message that was never written.
+      final api = _Recorder();
+      await openModal(t, api, startOnFeature: true);
+
+      await t.tap(find.text('Skip'));
+      await t.pumpAndSettle();
+
+      expect(find.text('Thank you'), findsNothing);
+      expect(find.text('We read every one of these.'), findsNothing);
+      expect(find.text('What should we build next?'), findsNothing,
+          reason: 'the sheet should be gone, not merely not thanking');
+      expect(api.sent, isEmpty, reason: 'nothing was written to send');
+    });
+
+    testWidgets('after stars it closes, having kept the score', (t) async {
+      // Skipping the words is not withdrawing the stars — they are a whole
+      // answer on their own, which is why Skip is offered rather than only a
+      // close button. It still must not read as a submission.
+      final api = _Recorder();
+      await openModal(t, api);
+
+      await t.tap(find.bySemanticsLabel('5 stars'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('Skip'));
+      await t.pumpAndSettle();
+
+      expect(find.text('Thank you'), findsNothing);
+      expect(find.text('What should we build next?'), findsNothing);
+      expect(api.sent, [
+        {'kind': 'rating', 'rating': 5, 'message': null}
+      ]);
+    });
+
+    testWidgets('skipping with nothing to send is a dismissal', (t) async {
+      // Not recorded as answered: nobody answered anything, so the prompt is
+      // due to come back rather than be retired.
+      final api = _Recorder();
+      await openModal(t, api, startOnFeature: true);
+
+      await t.tap(find.text('Skip'));
+      await t.pumpAndSettle();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('feedback.answered'), isNot(true));
+      expect(prefs.getInt('feedback.lastAsked'), isNotNull);
+    });
+  });
 }
