@@ -40,7 +40,10 @@ const List<_Country> _kCountries = [
   _Country('Sweden', 'SE', '+46'),
   _Country('Norway', 'NO', '+47'),
   _Country('Denmark', 'DK', '+45'),
-  _Country('United Arab Emirates', 'AE', '+971'),
+  // 'United Arab Emirates' in full is 384pt with the flag and dial beside
+  // it — wider than the menu fits on a phone, so it was the one name that
+  // had to elide. UAE is the ordinary short form.
+  _Country('UAE', 'AE', '+971'),
   _Country('Saudi Arabia', 'SA', '+966'),
   _Country('India', 'IN', '+91'),
   _Country('China', 'CN', '+86'),
@@ -52,11 +55,69 @@ const List<_Country> _kCountries = [
   _Country('Mexico', 'MX', '+52'),
 ];
 
+/// The names in the dial-code menu, for the test that checks they still fit.
+///
+/// The list is private because nothing outside this file chooses from it; this
+/// is the one fact about it worth asserting elsewhere — see
+/// `country_menu_fits_test`.
+@visibleForTesting
+List<String> get countryNamesForTest =>
+    _kCountries.map((c) => c.name).toList(growable: false);
+
 String _flagEmoji(String iso2) => iso2
     .toUpperCase()
     .codeUnits
     .map((c) => String.fromCharCode(0x1F1E6 + c - 0x41))
     .join();
+
+/// How wide the country menu opens.
+///
+/// Wide enough for the longest name in [_kCountries] — "United Kingdom" at
+/// 196pt — beside a flag and a dial code, on one line, with room to spare.
+/// Fixed rather than measured because the list is 36 entries written in this
+/// file: measuring them would be a layout pass to rediscover something known
+/// at compile time. `country_menu_fits_test` measures them anyway, and fails
+/// if a name is added that no longer fits.
+double get _kMenuWidth => 320.w;
+
+/// One country, as three columns rather than one sentence.
+class _CountryRow extends StatelessWidget {
+  const _CountryRow({required this.country, required this.textColor});
+
+  final _Country country;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    return Row(
+      children: [
+        Text(_flagEmoji(country.iso2), style: TextStyle(fontSize: 16.sp)),
+        SizedBox(width: AppSpacing.md.w),
+        // Elides rather than wraps. A name too long for the menu is one line
+        // ending in an ellipsis, which keeps every row the same height — the
+        // wrapping is what made the list look ragged.
+        Expanded(
+          child: Text(
+            country.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: textColor, fontSize: 14.sp),
+          ),
+        ),
+        SizedBox(width: AppSpacing.sm.w),
+        // Quieter than the name, and last: the name is what somebody scans
+        // for, the code is what they are checking once they have found it.
+        Text(
+          country.dial,
+          // 12, not 13: the scale in AppTypography has no 13, and
+          // brand_typography_test refuses sizes between two steps.
+          style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+        ),
+      ],
+    );
+  }
+}
 
 /// A phone input with a country dial-code dropdown, styled like [AppTextField]
 /// (theme-aware fill/border/focus). The full E.164 number (e.g.
@@ -256,11 +317,23 @@ class _DialCodeDropdown extends StatelessWidget {
                           style: TextStyle(color: textColor, fontSize: 14.sp)),
                     ))
                 .toList(),
+            // The menu is as wide as the names in it, not as wide as the
+            // button that opens it.
+            //
+            // A dropdown's menu takes the button's width by default, and this
+            // button is deliberately tiny — it shows a flag and a dial code.
+            // So every name was folded into two and three lines: the flag
+            // alone on one row, "Cameroon" under it, "(+237)" under that.
+            // Thirteen countries in, the list read as a column of fragments.
+            menuWidth: _kMenuWidth,
             items: _kCountries
                 .map((c) => DropdownMenuItem<String>(
                       value: c.iso2,
-                      child: Text('${_flagEmoji(c.iso2)}  ${c.name} (${c.dial})',
-                          style: TextStyle(color: textColor)),
+                      // One line each, laid out in columns rather than run
+                      // together as a sentence: the name takes the room it
+                      // needs and elides if it runs out, and the dial codes
+                      // line up down the right where they can be compared.
+                      child: _CountryRow(country: c, textColor: textColor),
                     ))
                 .toList(),
             onChanged: (v) {
