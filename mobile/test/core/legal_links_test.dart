@@ -57,8 +57,26 @@ void main() {
     });
 
     test('both documents live on the host that serves them', () {
-      expect(LegalLinks.privacy, 'https://jperg.com/privacy');
-      expect(LegalLinks.terms, 'https://jperg.com/terms');
+      for (final url in [LegalLinks.privacy, LegalLinks.terms]) {
+        final uri = Uri.parse(url);
+        expect(uri.scheme, 'https');
+        expect(uri.host, 'jperg.com');
+      }
+      expect(Uri.parse(LegalLinks.privacy).path, '/privacy');
+      expect(Uri.parse(LegalLinks.terms).path, '/terms');
+    });
+
+    test('and ask the site to serve them without the site around them', () {
+      // The app opens these in a WebView that draws its own title bar, and
+      // `?embed=1` is what tells picco-v2 to leave off its header and footer —
+      // otherwise the reader gets a menu offering "Sign up" and "Get the app"
+      // while holding the app open. See `isEmbedded` in picco-v2.
+      //
+      // Asserted on the parsed query rather than the whole URL so that adding
+      // another parameter later does not fail this for no reason.
+      for (final url in [LegalLinks.privacy, LegalLinks.terms]) {
+        expect(Uri.parse(url).queryParameters['embed'], '1', reason: url);
+      }
     });
 
     test('nothing hard-codes a legal path of its own', () {

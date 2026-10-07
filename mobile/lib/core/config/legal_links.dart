@@ -19,8 +19,18 @@ import 'package:jperg_app/core/common/widgets/in_app_web_view_page.dart';
 class LegalLinks {
   const LegalLinks._();
 
-  static const String privacy = 'https://jperg.com/privacy';
-  static const String terms = 'https://jperg.com/terms';
+  /// `?embed=1` asks the site to serve the document on its own — no site
+  /// header, no footer.
+  ///
+  /// Without it the in-app browser showed its own title bar and close button,
+  /// and then the full website under it: the logo and a menu offering "Sign
+  /// in", "Sign up" and "Get the app" to somebody who is holding the app open,
+  /// followed by the marketing footer at the end of the policy.
+  ///
+  /// Ignored by any build of the site that predates it, so these can ship in
+  /// either order — see `isEmbedded` in picco-v2.
+  static const String privacy = 'https://jperg.com/privacy?embed=1';
+  static const String terms = 'https://jperg.com/terms?embed=1';
 
   /// Opens the privacy policy in the in-app browser.
   ///
