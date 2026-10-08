@@ -37,9 +37,9 @@ Future<FoundAccess> resolveFoundAccess() async {
       : FoundAccess.noFaceAdded;
 }
 
-/// Whether the Found tab should raise the code sheet for this person.
+/// Whether the Found tab should offer the "add your face" panel.
 ///
-/// Only one combination does: signed in, no face enrolled, and nothing to
+/// Exactly one combination does: signed in, no face enrolled, and nothing to
 /// show. Three states look like absence and are not:
 ///
 ///   * **photos already found** — including somebody whose face has since been
@@ -47,13 +47,21 @@ Future<FoundAccess> resolveFoundAccess() async {
 ///     them, so the tab still has their photos and they came to look at them.
 ///   * **matches awaiting review** — an answer, not an absence; there is a
 ///     banner for it.
-///   * **a face on file and no matches yet** — the system is working. Asking
-///     them to scan a code every time an empty tab opens is nagging somebody
-///     who has already done what was asked.
+///   * **the filters hid everything** — offer to clear them, not to enrol.
+///
+/// An enrolled person with no matches is not here either: for them the tab is
+/// working and says so, which is [FoundScanningState].
+///
+/// This used to decide whether to *raise the code sheet by itself*, one frame
+/// after the screen built, over a screen that said "Scanning for your face" to
+/// somebody with no face. Two things were wrong with that: the sentence was
+/// false, and a sheet nobody asked for is a sheet to dismiss. The same moment
+/// now draws [FoundAddFaceState], whose button opens that sheet — so the code
+/// is still the first thing asked for, by somebody who meant to ask.
 ///
 /// Kept out of the widget so the rule can be read, and tested, without a
 /// Navigator and a bloc around it. [empty] is [foundEmptyState]'s answer.
-bool shouldOfferCodeSheet({
+bool shouldOfferFacePanel({
   required FoundAccess access,
   required FoundEmptyState empty,
 }) =>

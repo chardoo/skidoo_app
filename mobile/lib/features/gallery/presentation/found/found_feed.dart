@@ -28,6 +28,7 @@ import 'package:jperg_app/features/gallery/presentation/found/pages/review_found
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_review_banner.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
+import 'package:jperg_app/features/gallery/presentation/found/widgets/found_add_face_state.dart';
 
 /// "Found" tab — the photos the user was face-recognized in, grouped by event
 /// into album sections with a six-tile preview each.
@@ -70,14 +71,6 @@ class _FoundFeedState extends State<FoundFeed> {
   /// Whether this tab was on screen at the last dependency change — see
   /// [didChangeDependencies].
   bool _wasVisible = false;
-
-  /// Whether the code sheet has already been offered this visit.
-  ///
-  /// Reset when the tab comes back on screen, not never: coming back to Found
-  /// later is a fresh intention to find something, and the offer should stand
-  /// again. Within one visit it is once, or a sheet raised from a build would
-  /// reopen the moment it was dismissed.
-  bool _codePrompted = false;
 
   /// Photos found of this person that they have not answered for. Empty until
   /// the first check, so the banner appears rather than reserving space for
@@ -142,8 +135,6 @@ class _FoundFeedState extends State<FoundFeed> {
     super.didChangeDependencies();
     final visible = TickerMode.valuesOf(context).enabled;
     if (visible && !_wasVisible) {
-      // A fresh visit, so the code offer stands again.
-      _codePrompted = false;
       _checkAccess();
     }
     _wasVisible = visible;
@@ -165,7 +156,7 @@ class _FoundFeedState extends State<FoundFeed> {
   /// to add a face while the photos they already had sat behind the gate.
   ///
   /// So: signed in means fetch. What is missing only decides what to do about
-  /// an *empty* answer, which is [_promptForCodeIfNothingToShow]'s job.
+  /// an *empty* answer, which is [shouldOfferFacePanel]'s job.
   Future<void> _checkAccess() async {
     final access = await resolveFoundAccess();
     if (!mounted) return;
@@ -177,24 +168,6 @@ class _FoundFeedState extends State<FoundFeed> {
       return;
     }
     context.read<FoundBloc>().add(const FoundPhotosRequested());
-  }
-
-  /// Raise the code sheet, if [shouldOfferCodeSheet] says this is the moment.
-  ///
-  /// Once per visit. It is decided during a build, and a sheet that reopened
-  /// on every rebuild could not be dismissed.
-  void _promptForCodeIfNothingToShow(FoundEmptyState empty) {
-    final access = _access;
-    if (_codePrompted ||
-        access == null ||
-        !shouldOfferCodeSheet(access: access, empty: empty)) {
-      return;
-    }
-    _codePrompted = true;
-    // Out of the build it was decided in.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scanCode(context);
-    });
   }
 
   void _reload() => context.read<FoundBloc>().add(const FoundPhotosRequested());
@@ -355,13 +328,19 @@ class _FoundFeedState extends State<FoundFeed> {
           pendingCount: _pending.total,
           filtersActive: state.filters.isActive,
         );
-        // Decided here because this is where the answer is known — the sheet
-        // depends on the list having come back empty, not just on the account.
-        _promptForCodeIfNothingToShow(empty);
-
         if (empty == FoundEmptyState.scanning) {
-          // Stays behind the sheet above, so dismissing it leaves a way back
-          // in rather than a blank tab.
+          // Two screens, not one. Somebody with no face on file was being told
+          // "Scanning for your face — we'll notify you once we do", which
+          // described work that was not happening and promised a notification
+          // that could never arrive. Decided here because this is where the
+          // answer is known: it depends on the list having come back empty,
+          // not just on the account.
+          if (shouldOfferFacePanel(access: _access!, empty: empty)) {
+            // The button opens the code sheet, not the camera — the album has
+            // to be known before a selfie means anything. See
+            // [FoundAddFaceState] and `_scanCode`.
+            return FoundAddFaceState(onTakeSelfie: () => _scanCode(context));
+          }
           return FoundScanningState(
             onEnterCode: () => _scanCode(context),
           );
