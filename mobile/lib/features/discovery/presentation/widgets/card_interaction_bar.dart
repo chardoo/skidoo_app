@@ -7,6 +7,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/cache/comment_counts.dart';
+import 'package:jperg_app/core/common/reaction_feedback.dart';
 
 class CardInteractionBar extends StatelessWidget {
   const CardInteractionBar({
@@ -84,7 +85,7 @@ class CardInteractionBar extends StatelessWidget {
             // [ReactionPop]. A tap fired from here as well put two
             // acknowledgements on one gesture, which feels like a stutter
             // rather than a firmer tap.
-            onTap: onLike,
+            onTap: ReactionFeedback.arming(onLike),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -127,7 +128,7 @@ class CardInteractionBar extends StatelessWidget {
           // ── Dislike ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Dislike',
-            onTap: onDislike,
+            onTap: ReactionFeedback.arming(onDislike),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -260,7 +261,7 @@ class CardInteractionBar extends StatelessWidget {
           // ── Bookmark ──────────────────────────────────────────────────────
           _AnimatedActionBtn(
             semanticLabel: 'Save',
-            onTap: onSave,
+            onTap: ReactionFeedback.arming(onSave),
             child: ReactionPop(
               active: saved,
               child: Icon(

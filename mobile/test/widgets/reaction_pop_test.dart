@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jperg_app/core/common/reaction_feedback.dart';
 import 'package:jperg_app/core/common/widgets/reaction_pop.dart';
 
 /// What a like does when it lands: it pops, the device taps, and the platform
@@ -92,6 +93,9 @@ void main() {
     await pumpPop(tester, active);
     expect(feedback(), isEmpty, reason: 'nothing fires on first build');
 
+    // A tap, said out loud. Feedback answers a finger, not a value — see
+    // ReactionFeedback.arm.
+    ReactionFeedback.arm();
     active.value = true;
     await tester.pumpAndSettle();
 
@@ -105,6 +109,7 @@ void main() {
     await pumpPop(tester, active);
     calls.clear();
 
+    ReactionFeedback.arm();
     active.value = false;
     await tester.pumpAndSettle();
 

@@ -37,6 +37,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/common/reaction_feedback.dart';
 
 /// Which of [newIds] are really *new*, and so should play the entrance fade.
 ///
@@ -1345,7 +1346,9 @@ class _LikeButton extends StatelessWidget {
         button: true,
         label: 'Like',
         child: InkWell(
-          onTap: onTap,
+          // Armed, so the heart answers this thumb and not a reaction
+          // arriving down the socket from somebody else in the room.
+          onTap: ReactionFeedback.arming(onTap),
           borderRadius: BorderRadius.circular(AppRadius.xl.r),
           child: Padding(
             padding: EdgeInsets.symmetric(

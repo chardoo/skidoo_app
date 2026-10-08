@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/reaction_pop.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/common/reaction_feedback.dart';
 
 /// Single comment/reply row — model-agnostic.
 /// Accepts pre-computed [CommentRowData]; contains no BLoC or model imports.
@@ -164,7 +165,7 @@ class CommentItemWidget extends StatelessWidget {
                                   ? 'Unlike, ${data.likeCount} likes'
                                   : 'Like, ${data.likeCount} likes',
                               child: GestureDetector(
-                                onTap: data.onLike,
+                                onTap: ReactionFeedback.armingOrNull(data.onLike),
                                 // The tap target is the icon plus its count,
                                 // and a transparent box behind both — a 14sp
                                 // heart on its own is a smaller target than a
