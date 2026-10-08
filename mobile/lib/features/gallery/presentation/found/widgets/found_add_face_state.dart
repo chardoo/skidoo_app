@@ -27,6 +27,10 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 /// asking them for an account, and for putting the camera ahead of the code.
 /// Neither applies here: a guest still gets [FoundJoinPrompt], and the code
 /// still comes first.
+/// The design's button width, on its 390pt frame: the pill spans roughly half
+/// the screen. Named so the widget test can assert it rather than restate it.
+const double kTakeSelfieButtonWidth = 190;
+
 class FoundAddFaceState extends StatelessWidget {
   const FoundAddFaceState({super.key, required this.onTakeSelfie});
 
@@ -73,22 +77,33 @@ class FoundAddFaceState extends StatelessWidget {
               style: AppTypography.caption.copyWith(color: ext.searchHintColor),
             ),
             SizedBox(height: AppSpacing.xxxl.h),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onTakeSelfie,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ext.accentGold,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.pill.r),
-                  ),
+            // About half the width, as the design draws it — not the
+            // wall-to-wall pill this shipped as. It is one small errand, and a
+            // button stretched across the screen reads as the only thing left
+            // to do on a tab somebody may just be passing through.
+            //
+            // A minimum rather than a fixed width: it holds this shape for
+            // this label, and a longer translation pushes it wider instead of
+            // being clipped. Padding alone could not do it — the width would
+            // then follow the font, and the test font is square-glyphed, so
+            // nothing here could be measured honestly.
+            ElevatedButton(
+              onPressed: onTakeSelfie,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ext.accentGold,
+                foregroundColor: Colors.white,
+                minimumSize: Size(kTakeSelfieButtonWidth.w, 48.h),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xxl.w,
+                  vertical: AppSpacing.md.h,
                 ),
-                child: Text(
-                  'Take a selfie',
-                  style: AppTypography.bodyBold.copyWith(color: Colors.white),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.pill.r),
                 ),
+              ),
+              child: Text(
+                'Take a selfie',
+                style: AppTypography.bodyBold.copyWith(color: Colors.white),
               ),
             ),
           ],

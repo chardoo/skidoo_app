@@ -53,6 +53,42 @@ void main() {
       expect(find.textContaining('notify you'), findsNothing);
     });
 
+    testWidgets('the button is about half the width, not the whole of it',
+        (tester) async {
+      // It shipped wall-to-wall. The design draws a pill across roughly half
+      // the frame, and a button spanning the screen reads as the only thing
+      // left to do on a tab somebody may just be passing through.
+      //
+      // The *declared* size, not the rendered one: flutter_test substitutes a
+      // font whose every glyph is a square of the font size, so "Take a
+      // selfie" measures 185pt here against roughly half that on a device.
+      // Asserting what it renders to would be asserting the test font.
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(host(FoundAddFaceState(onTakeSelfie: () {})));
+      await tester.pump();
+
+      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      final size = button.style!.minimumSize!.resolve({})!;
+      expect(size.width, kTakeSelfieButtonWidth);
+      expect(size.height, 48);
+      expect(kTakeSelfieButtonWidth / 390, lessThan(0.6),
+          reason: 'half the frame, not the whole of it');
+    });
+
+    testWidgets('nothing stretches it to the full width', (tester) async {
+      // The shape the bug had: a SizedBox(width: double.infinity) around it.
+      await tester.pumpWidget(host(FoundAddFaceState(onTakeSelfie: () {})));
+      await tester.pump();
+
+      final boxes = tester
+          .widgetList<SizedBox>(find.byType(SizedBox))
+          .where((b) => b.width == double.infinity);
+      expect(boxes, isEmpty);
+    });
+
     testWidgets('the button is what opens the flow', (tester) async {
       // What it opens is the code sheet, not the camera — a selfie only means
       // something once the album is known. Asserted at the call site rather
