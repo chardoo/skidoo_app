@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/core/common/widgets/app_button.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/easy_search_page.dart';
 
 /// Both halves are required, and the button says which one is missing.
@@ -80,5 +81,45 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text('0 / 4'), findsOneWidget);
+  });
+
+  group('the save-my-face row', () {
+    const label = 'Save my face so I am found in future events';
+
+    /// The label wraps to three lines at phone widths, so "level" means level
+    /// with its **first** line — not with the centre of the block, which is a
+    /// third of the way down a paragraph and nowhere near the box.
+    void expectLevelWithFirstLine(WidgetTester tester) {
+      final box = tester.getRect(find.byType(Checkbox));
+      final text = tester.getRect(find.text(label));
+      final line = AppTypography.sm * 1.4; // the label's line height
+
+      expect(text.height, greaterThan(line * 1.5),
+          reason: 'this label is expected to wrap — if it stopped wrapping, '
+              'the first-line check below is no longer the interesting one');
+
+      final firstLineCentre = text.top + line / 2;
+      expect((box.center.dy - firstLineCentre).abs(), lessThan(1.0),
+          reason: 'the checkbox and the first line of its label should share '
+              'a centre, within a pixel');
+    }
+
+    testWidgets('the box is level with the first line of its label',
+        (tester) async {
+      // It was not. `CrossAxisAlignment.start` lines the box up with the top
+      // of the text *block*, and the label's 1.4 line height puts a fifth of
+      // an em of leading above the letters — so the words sat low against the
+      // box. A 2px nudge on the text had been added to compensate, which
+      // moved the words rather than the box, and by a guessed amount.
+      await pumpPage(tester);
+      expectLevelWithFirstLine(tester);
+    });
+
+    testWidgets('it stays level on a narrow phone', (tester) async {
+      // The alignment is derived from the line height rather than hard-coded,
+      // so it has to hold wherever the text wraps differently.
+      await pumpPage(tester, size: const Size(320, 640));
+      expectLevelWithFirstLine(tester);
+    });
   });
 }

@@ -283,41 +283,63 @@ class _SaveFaceCheckbox extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
 
+  /// The label's line height, and the box's own.
+  ///
+  /// Shared so the two cannot drift: the checkbox is centred on one line of
+  /// this text, so a change to either number has to be a change to both.
+  static const double _lineHeight = 1.4;
+
   @override
   Widget build(BuildContext context) {
+    // One line of the label, which is the box the checkbox is centred in.
+    final lineBox = AppTypography.sm * _lineHeight;
+
     return InkWell(
       onTap: onChanged == null ? null : () => onChanged!(!value),
       borderRadius: BorderRadius.circular(AppRadius.md.r),
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 8.h),
         child: Row(
+          // `start`, so a label that wraps keeps the box on its first line
+          // rather than floating it down beside the middle of a paragraph.
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // The whole row is the target, so the box itself does not also
             // handle taps — two hit targets for one decision double-fires it.
+            //
+            // Centred inside one line of the label rather than aligned to the
+            // top of it. `start` on its own lines the box up with the top of
+            // the text *block*, and a 1.4 line height puts a fifth of an em of
+            // leading above the letters — so the words sat low against the
+            // box. That was being corrected with a 2px nudge on the text,
+            // which is a different-sized error rather than a fix: it moved
+            // the words instead of the box, and the amount was guessed rather
+            // than derived from the line it was compensating for.
             IgnorePointer(
-              child: Checkbox(
-                value: value,
-                onChanged: (_) {},
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                side: BorderSide(color: ext.searchHintColor, width: 1.5),
-                activeColor: ext.accentGold,
+              child: SizedBox(
+                height: lineBox,
+                child: Center(
+                  child: Checkbox(
+                    value: value,
+                    onChanged: (_) {},
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: BorderSide(color: ext.searchHintColor, width: 1.5),
+                    activeColor: ext.accentGold,
+                  ),
+                ),
               ),
             ),
             SizedBox(width: AppSpacing.sm.w),
             Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(top: 2.h),
-                child: Text(
-                  'Save my face so I am found in future events',
-                  // A scale step, not a number picked to fit. See
-                  // test/core/brand_typography_test.dart, which fails on any
-                  // size between two steps.
-                  style: AppTypography.body.copyWith(
-                    color: ext.greetingColor,
-                    height: 1.4,
-                  ),
+              child: Text(
+                'Save my face so I am found in future events',
+                // A scale step, not a number picked to fit. See
+                // test/core/brand_typography_test.dart, which fails on any
+                // size between two steps.
+                style: AppTypography.body.copyWith(
+                  color: ext.greetingColor,
+                  height: _lineHeight,
                 ),
               ),
             ),
