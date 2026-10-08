@@ -29,6 +29,7 @@ import 'package:jperg_app/features/gallery/presentation/found/widgets/found_revi
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_scanning_state.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_add_face_state.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 
 /// "Found" tab — the photos the user was face-recognized in, grouped by event
 /// into album sections with a six-tile preview each.
@@ -72,6 +73,21 @@ class _FoundFeedState extends State<FoundFeed> {
   /// [didChangeDependencies].
   bool _wasVisible = false;
 
+  /// What the list on screen was fetched for, so returning to the tab can tell
+  /// a visit that needs new data from one that does not.
+  ///
+  /// Tapping Found used to refetch every single time. The activation hook
+  /// exists to re-resolve the *gate* — somebody may have deleted their face on
+  /// another device — and that check is local and instant, but it shared a
+  /// method with the fetch and dragged a round trip along behind it. At ~280ms
+  /// each that is a visible reload of a list that had not moved.
+  ///
+  /// Null until the first fetch. [_foundRevision] is [AppCacheSignals
+  /// .foundPhotos] as it stood when that fetch ran: a scan that writes new
+  /// matches bumps it, and that is a real reason to ask again.
+  FoundAccess? _fetchedFor;
+  int? _fetchedRevision;
+
   /// Photos found of this person that they have not answered for. Empty until
   /// the first check, so the banner appears rather than reserving space for
   /// something that may not be there.
@@ -85,6 +101,11 @@ class _FoundFeedState extends State<FoundFeed> {
     // it would keep showing matches for a face the server no longer has, until
     // the next app launch.
     AuthService.hasAddedFaces.addListener(_checkAccess);
+    // A live search writes identification rows and bumps this. Without it the
+    // only thing that refetched was the blanket refresh on every tab visit —
+    // so making that conditional means subscribing to the thing it was
+    // accidentally covering.
+    AppCacheSignals.foundPhotos.addListener(_onFoundPhotosChanged);
     _loadPending();
   }
 
@@ -143,6 +164,7 @@ class _FoundFeedState extends State<FoundFeed> {
   @override
   void dispose() {
     AuthService.hasAddedFaces.removeListener(_checkAccess);
+    AppCacheSignals.foundPhotos.removeListener(_onFoundPhotosChanged);
     super.dispose();
   }
 
@@ -157,7 +179,7 @@ class _FoundFeedState extends State<FoundFeed> {
   ///
   /// So: signed in means fetch. What is missing only decides what to do about
   /// an *empty* answer, which is [shouldOfferFacePanel]'s job.
-  Future<void> _checkAccess() async {
+  Future<void> _checkAccess({bool force = false}) async {
     final access = await resolveFoundAccess();
     if (!mounted) return;
     setState(() => _access = access);
@@ -165,12 +187,45 @@ class _FoundFeedState extends State<FoundFeed> {
       // No account, so nothing can be pending and nothing can be listed. A dot
       // pointing at a tab that now shows a sign-up prompt is a lie.
       FoundFeed.pendingCount.value = 0;
+      _fetchedFor = null;
       return;
     }
-    context.read<FoundBloc>().add(const FoundPhotosRequested());
+    if (force || _needsFetch(access)) _reload(access);
   }
 
-  void _reload() => context.read<FoundBloc>().add(const FoundPhotosRequested());
+  /// Whether the list on screen is answering the right question.
+  ///
+  /// Three things make it stale, and nothing else does:
+  ///
+  ///   * **it was never fetched** — the first visit of the session;
+  ///   * **the gate moved** — they enrolled, or deleted their face, so the
+  ///     empty state below is about to be the wrong one;
+  ///   * **a search wrote new rows** — [AppCacheSignals.foundPhotos] bumped.
+  ///
+  /// Everything else is somebody tapping back to a tab they were just on, and
+  /// the right answer there is the one already drawn. Pull-to-refresh and the
+  /// review screen still ask directly, which is what [force] is for.
+  bool _needsFetch(FoundAccess access) =>
+      _fetchedFor == null ||
+      _fetchedFor != access ||
+      _fetchedRevision != AppCacheSignals.foundPhotos.value;
+
+  /// A scan found something, so the list genuinely has changed.
+  void _onFoundPhotosChanged() {
+    if (!mounted) return;
+    final access = _access;
+    if (access == null || access == FoundAccess.signedOut) return;
+    _reload(access);
+    unawaited(_loadPending());
+  }
+
+  void _reload([FoundAccess? access]) {
+    // Recorded before the request rather than after it: a bump that lands
+    // while this one is in flight must not be mistaken for one it covered.
+    _fetchedFor = access ?? _access;
+    _fetchedRevision = AppCacheSignals.foundPhotos.value;
+    context.read<FoundBloc>().add(const FoundPhotosRequested());
+  }
 
   /// Scan a photographer's code, then run the same live search the unlock
   /// sheet runs.
@@ -209,11 +264,12 @@ class _FoundFeedState extends State<FoundFeed> {
     }
 
     // Whatever they confirmed in there belongs in this list — and if they
-    // enrolled on the way through, the gate has moved too.
+    // enrolled on the way through, the gate has moved too. One call: this
+    // used to re-resolve access (which fetched) and then fetch again, so
+    // every scan paid for two round trips to ask one question.
     if (mounted) {
-      await _checkAccess();
+      await _checkAccess(force: true);
       if (!mounted) return;
-      _reload();
       unawaited(_loadPending());
     }
   }
