@@ -134,7 +134,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         // opened system settings instead.
         emit(state.copyWith(
           isMuted: true,
-          errorMessage: 'Notifications are turned off for Jperg in your device '
+          errorMessage: 'Notifications are turned off for jperg in your device '
               'settings. Allow them there to switch this on.',
         ));
         return;

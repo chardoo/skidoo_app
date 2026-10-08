@@ -142,7 +142,7 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
               value: _acceptedPayoutPolicy,
               onChanged: (v) => setState(() => _acceptedPayoutPolicy = v),
               children: [
-                const TextSpan(text: "I agree to Jperg's "),
+                const TextSpan(text: "I agree to jperg's "),
                 // There is no separate payout document to link: the payout
                 // policy is section 6.3 of the Terms. Pointing at a URL that
                 // does not exist would be worse than pointing at the section

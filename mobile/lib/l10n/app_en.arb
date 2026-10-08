@@ -1,12 +1,12 @@
 {
   "@@locale": "en",
 
-  "appName": "Jperg",
+  "appName": "jperg",
   "@appName": { "description": "App name" },
 
   "securityWarningTitle": "Security Warning",
   "@securityWarningTitle": {},
-  "securityWarningBody": "This device appears to be jailbroken or rooted.\n\nRunning Jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.",
+  "securityWarningBody": "This device appears to be jailbroken or rooted.\n\nRunning jperg on a compromised device exposes your account, messages, and payment data to elevated risk. We strongly recommend using a secure, unmodified device.",
   "@securityWarningBody": {},
   "securityWarningContinue": "I understand, continue anyway",
   "@securityWarningContinue": {},

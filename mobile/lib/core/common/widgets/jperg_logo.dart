@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
-/// The Jperg wordmark — the mark and the name, as one piece of artwork.
+/// The jperg wordmark — the mark and the name, as one piece of artwork.
 ///
 /// Replaces the hand-built lockup this app used to draw everywhere: a rounded
 /// square holding a letter "S" (from a previous name), followed by the text
-/// "Jperg" in whatever weight and letter-spacing each screen happened to
+/// "jperg" in whatever weight and letter-spacing each screen happened to
 /// choose. Three screens each drew their own version, so the brand was three
 /// slightly different shapes and none of them was the real logo.
 ///
@@ -35,7 +35,7 @@ class JpergLogo extends StatelessWidget {
 
     return Semantics(
       image: true,
-      label: 'Jperg',
+      label: 'jperg',
       child: Image.asset(
         _asset,
         height: height,

@@ -47,7 +47,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   /// from the design at #FAC775.
   ///
   /// It is *not* a leftover of the old amber [accentGold] (#F5A623, replaced
-  /// by green in the Jperg rebrand): the current designs pair it with the new
+  /// by green in the jperg rebrand): the current designs pair it with the new
   /// green in the same export — private photos read green, public ones amber —
   /// so the two are a semantic pair, not two eras of one brand colour.
   final Color publicAmber;
@@ -115,7 +115,7 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   /// dark veil whatever the app is set to.
   final Color mediaBackdropVeil;
 
-  /// Values sampled directly from the Jperg product designs (folders 1 and 4).
+  /// Values sampled directly from the jperg product designs (folders 1 and 4).
   /// The palette is a **warm neutral** one — R, G and B sit within a few
   /// points of each other with a slight warm bias — not the green-tinted set
   /// this used to carry. That tint was why dark mode read as "dark green"

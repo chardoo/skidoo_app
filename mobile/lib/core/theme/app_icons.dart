@@ -43,7 +43,7 @@ class AppIcons {
 
   /// "Hand this to another app" — the button that opens the system share
   /// sheet, as opposed to [share], which sends something to someone inside
-  /// Jperg.
+  /// jperg.
   ///
   /// From the icon font rather than the set, and different on each platform,
   /// because this one names a piece of the operating system: iOS draws a box

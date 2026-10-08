@@ -109,7 +109,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
       setState(() {
         _cameraReady = false;
         _cameraError = e is CameraException && _isPermissionDenial(e.code)
-            ? 'Camera access is off for Jperg. Turn it on in Settings to '
+            ? 'Camera access is off for jperg. Turn it on in Settings to '
                 'take a selfie.'
             : 'The camera could not be started.';
       });

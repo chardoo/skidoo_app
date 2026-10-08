@@ -95,7 +95,7 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
       scheme: 'mailto',
       path: _supportEmail,
       queryParameters: {
-        'subject': 'Jperg support${_version.isEmpty ? '' : ' — app $_version'}',
+        'subject': 'jperg support${_version.isEmpty ? '' : ' — app $_version'}',
       },
     );
     try {
@@ -174,7 +174,7 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
                 if (_version.isNotEmpty)
                   Center(
                     child: Text(
-                      'Jperg $_version',
+                      'jperg $_version',
                       style: TextStyle(
                         color: ext.searchHintColor,
                         fontSize: 12.sp,
