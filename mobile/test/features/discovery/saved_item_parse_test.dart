@@ -67,4 +67,68 @@ void main() {
       expect(item.title, isNull);
     });
   });
+
+  /// A bookmarked photo has to be able to find the album it came from.
+  ///
+  /// Tapping one used to do nothing at all — the Saved screen returned on
+  /// anything that was not an event — and the album is what lets it open *at
+  /// that photo* rather than at the top of a grid. The server has always sent
+  /// `eventId` on a hydrated picture; this is the field that was dropped.
+  group('a saved picture carries its album', () {
+    test('eventId is read off the hydrated asset', () {
+      final item = SavedItem.fromJson({
+        'id': 'rec-p1',
+        'assetType': 'picture',
+        'assetId': 'pic-9',
+        'asset': {
+          'id': 'pic-9',
+          'url': 'https://cdn/9.jpg',
+          'eventId': 'evt-42',
+        },
+      });
+      expect(item.assetType, 'picture');
+      expect(item.assetId, 'pic-9');
+      expect(item.parentEventId, 'evt-42');
+      expect(item.thumbnailUrl, 'https://cdn/9.jpg');
+    });
+
+    test('snake_case event_id too', () {
+      final item = SavedItem.fromJson({
+        'id': 'rec-p2',
+        'asset_type': 'picture',
+        'asset_id': 'pic-10',
+        'asset': {'url': 'https://cdn/10.jpg', 'event_id': 'evt-43'},
+      });
+      expect(item.parentEventId, 'evt-43');
+    });
+
+    test('a picture the server could not hydrate has no album', () {
+      // The row stays in the list with no asset attached when the photo is no
+      // longer visible — see visible_picture_ids in saved_items.py. The screen
+      // falls back to opening the photo alone, so null here is a real state
+      // rather than a parse failure.
+      final item = SavedItem.fromJson({
+        'id': 'rec-p3',
+        'assetType': 'picture',
+        'assetId': 'pic-11',
+        'asset': null,
+      });
+      expect(item.assetType, 'picture');
+      expect(item.parentEventId, isNull);
+    });
+
+    test('an event is not given itself as a parent', () {
+      // `firstOf(asset, ['eventId'...])` would happily read an event's own id
+      // back out of it. An event is its own album, not a child of one.
+      final item = SavedItem.fromJson({
+        'id': 'rec-e1',
+        'assetType': 'event',
+        'assetId': 'evt-50',
+        'asset': {
+          'event': {'id': 'evt-50', 'eventName': 'Gala'}
+        },
+      });
+      expect(item.parentEventId, isNull);
+    });
+  });
 }

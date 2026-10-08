@@ -14,12 +14,21 @@ class SavedItem {
   /// Thumbnail URL (first picture URL for events, direct URL for photos).
   final String? thumbnailUrl;
 
+  /// For a saved **picture**, the album it belongs to. Null for a saved event,
+  /// which is its own album.
+  ///
+  /// The server has always sent this — `Picture.eventId`, on the hydrated
+  /// asset — and it was the field being dropped here that left a bookmarked
+  /// photo with no way back to where it lives.
+  final String? parentEventId;
+
   const SavedItem({
     required this.savedItemId,
     required this.assetType,
     required this.assetId,
     this.title,
     this.thumbnailUrl,
+    this.parentEventId,
   });
 
   factory SavedItem.fromJson(Map<String, dynamic> json) {
@@ -70,6 +79,11 @@ class SavedItem {
       assetId: assetId,
       title: title,
       thumbnailUrl: thumb,
+      // Only meaningful for a picture: on an event this is the event's own id
+      // read back out of itself, which is not a parent.
+      parentEventId: assetType.toLowerCase() == 'picture'
+          ? firstOf(asset, ['eventId', 'event_id'])
+          : null,
     );
   }
 }

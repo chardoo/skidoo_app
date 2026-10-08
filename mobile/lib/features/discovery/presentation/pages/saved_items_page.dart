@@ -12,6 +12,8 @@ import 'package:jperg_app/features/discovery/data/datasources/client_saved_data_
 import 'package:jperg_app/features/discovery/data/datasources/discovery_remote_data_source.dart';
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/pages/event_pictures_page.dart';
+import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
+import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/widgets/animations/app_animations.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -145,12 +147,36 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
     if (mounted) setState(() {});
   }
 
+  /// Opens a saved item: an album at its first photo, a photo at itself.
+  ///
+  /// A bookmarked picture used to be a tap that did nothing. The guard below
+  /// returned on anything that was not an event, and the app does save
+  /// pictures — the bookmark on a photo rail writes `assetType: 'picture'`
+  /// (see [ApiSavedPhotoStore]) — so the one kind of saved item somebody is
+  /// most likely to have was the kind this screen ignored.
+  ///
+  /// A photo opens *inside its own album*, at itself, rather than dropping
+  /// somebody at the top of a grid to go looking for the thing they just
+  /// tapped. That is what the profile's liked and bookmarked grids already do
+  /// — see `UserProfilePage._openTile` — and this reuses the same two moves:
+  /// fetch the parent event, find the photo in it by id.
   Future<void> _openEvent(SavedItem item) async {
     debugPrint(
         '[SavedItems] tap assetType="${item.assetType}" assetId="${item.assetId}" title="${item.title}"');
-    // Only handle event assets.
-    if (item.assetType.toLowerCase() != 'event') {
-      debugPrint('[SavedItems] skipping — assetType is not event');
+
+    final type = item.assetType.toLowerCase();
+    if (type == 'picture') {
+      await _openPicture(item);
+      return;
+    }
+    if (type != 'event') {
+      // Requests and campaigns are savable server-side but have no screen
+      // here. Silence was the old behaviour for *everything*, which is how
+      // pictures went unnoticed; say so rather than letting a tap die.
+      debugPrint('[SavedItems] no screen for assetType "${item.assetType}"');
+      if (mounted) {
+        AppSnackBar.error(context, 'That item cannot be opened here.');
+      }
       return;
     }
     final eventId = item.assetId;
@@ -212,6 +238,86 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
         ),
       );
     }
+  }
+
+  /// A bookmarked photo, opened at itself inside its own album.
+  ///
+  /// The album is what makes this better than showing the one photo alone:
+  /// swiping from a saved photo should walk the event it came from, the way
+  /// it does everywhere else a photo is opened.
+  ///
+  /// `parentEventId` comes from the saved record — the server hydrates a
+  /// saved picture with its `eventId` and always has; the client simply was
+  /// not reading it. Without it there is no album to open, so the photo is
+  /// shown on its own rather than refusing the tap.
+  Future<void> _openPicture(SavedItem item) async {
+    final eventId = item.parentEventId;
+
+    if (eventId == null || eventId.isEmpty) {
+      debugPrint('[SavedItems] picture has no parent event — opening alone');
+      _openPhotoAlone(item);
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final event = await _remoteDs.getEventById(eventId);
+      final photos = photosOfEvent(event);
+      if (!mounted) return;
+
+      // The album came back without the photo in it: it may have been taken
+      // down, or made private since it was saved. Its own URL still works, so
+      // that is what opens.
+      final index = photos.indexWhere((p) => p.id == item.assetId);
+      if (photos.isEmpty || index < 0) {
+        debugPrint('[SavedItems] photo not in its album — opening alone');
+        _openPhotoAlone(item);
+        return;
+      }
+
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => FoundPhotoViewerPage(photos: photos, initialIndex: index),
+      ));
+    } catch (e) {
+      debugPrint('[SavedItems] could not open the album: $e');
+      if (!mounted) return;
+      // The album could not be fetched; the photo itself still opens. Same
+      // fallback UserProfilePage makes, and for the same reason: a tap that
+      // does nothing is the worst answer available.
+      _openPhotoAlone(item);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// The saved photo by itself, when its album cannot be reached.
+  void _openPhotoAlone(SavedItem item) {
+    final url = item.thumbnailUrl;
+    if (url == null || url.isEmpty) {
+      if (mounted) AppSnackBar.error(context, 'Could not open that photo.');
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => FoundPhotoViewerPage(
+        photos: [
+          Photo(
+            item.assetId, // id
+            item.title ?? '', // eventName
+            item.assetId, // imageId
+            url,
+            '', // userId — unknown without the album
+            0, // price
+            '', // eventDate
+            null, // identification
+            // Saved from somewhere it was visible, and shown to the person who
+            // saved it. The badge is about who else can see it, and without
+            // the album there is nothing truthful to say — so it claims
+            // nothing rather than claiming public.
+            false,
+          ),
+        ],
+      ),
+    ));
   }
 
   Future<void> _unsave(SavedItem item) async {
