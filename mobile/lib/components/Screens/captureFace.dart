@@ -34,6 +34,12 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.nv21
           : ImageFormatGroup.bgra8888,
+      // Stills only. `enableAudio` defaults to true, which asks for the
+      // microphone on a screen that photographs a face — see
+      // SelfieCaptureScreen, where that cost somebody the whole flow. This
+      // screen is currently unreferenced; the flag is here so it cannot
+      // reintroduce the same prompt if it is ever wired back up.
+      enableAudio: false,
     );
     _initializeControllerFuture = _controller.initialize();
   }

@@ -65,8 +65,6 @@
 	     audience this string will ever have. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Jperg does not use your location. This notice is required because the notification service bundled with the app includes location-based features, which Jperg keeps switched off.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Jperg needs access to your microphone for video recording.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Jperg needs permission to save images to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -38,6 +38,10 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   bool _cameraReady = false;
   bool _checking = false;
   String? _errorHint;
+
+  /// Why there is no preview, when there is no preview. Null while the camera
+  /// is still starting, which is the only state the spinner should mean.
+  String? _cameraError;
   // After a failed detection, let the user bypass the ML check.
   XFile? _lastCapturedFile;
 
@@ -74,6 +78,12 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
         cam,
         ResolutionPreset.high,
         imageFormatGroup: fmt,
+        // This screen takes a still photo and nothing else, but `enableAudio`
+        // defaults to true — so initialising the camera asked for the
+        // microphone as well, on a screen called "Take a Selfie". Declining
+        // it is the reasonable answer to that question, and it failed the
+        // whole initialise: camera granted, mic refused, preview never came.
+        enableAudio: false,
       );
       await ctrl.initialize();
       if (!mounted) {
@@ -83,10 +93,33 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
       setState(() {
         _ctrl = ctrl;
         _cameraReady = true;
+        _cameraError = null;
       });
-    } catch (_) {
-      // Camera unavailable — preview stays hidden, user sees error.
+    } catch (e) {
+      // Say so, rather than spinning.
+      //
+      // This swallowed everything and left `_cameraReady` false, and the only
+      // thing drawn in that state is a progress indicator — so every failure
+      // here looked identical to a camera still starting up, for as long as
+      // somebody was willing to wait. A refused permission is the common one
+      // and is not transient: no amount of waiting fixes it, and nothing on
+      // the screen said what to do.
+      debugPrint('[Selfie] camera unavailable: $e');
+      if (!mounted) return;
+      setState(() {
+        _cameraReady = false;
+        _cameraError = e is CameraException && _isPermissionDenial(e.code)
+            ? 'Camera access is off for Jperg. Turn it on in Settings to '
+                'take a selfie.'
+            : 'The camera could not be started.';
+      });
     }
+  }
+
+  /// The plugin's permission-denied codes, across both platforms.
+  static bool _isPermissionDenial(String code) {
+    final c = code.toLowerCase();
+    return c.contains('permission') || c.contains('denied');
   }
 
   @override
@@ -148,6 +181,17 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
           // ── Camera preview ────────────────────────────────────────────────
           if (_cameraReady && _ctrl != null)
             ClipRect(child: CameraPreview(_ctrl!))
+          else if (_cameraError != null)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
+                child: Text(
+                  _cameraError!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                ),
+              ),
+            )
           else
             const Center(
               child: CircularProgressIndicator(
