@@ -39,14 +39,21 @@ void main() {
 
   group('legal URLs', () {
     test('no screen points at the host that does not resolve', () {
+      // Web links only. The failure this guards is an SSL error on every path
+      // of that host, which is a property of its *web server* — mail to the
+      // same domain is routed by MX records and is unaffected, so Help &
+      // Support's `info@piccotechnologies.com` is not what this is about. The
+      // check used to match the bare domain anywhere, which made it broader
+      // than the rule it enforces.
+      final webLink = RegExp(r'https?://[^\s'
+          "'"
+          r'"]*piccotechnologies\.com');
       final offenders = <String>[];
       for (final file in dartFiles()) {
         final source = file.readAsStringSync();
         // legal_links.dart names it in a comment explaining why it is gone.
         if (file.path.endsWith('core/config/legal_links.dart')) continue;
-        if (source.contains('piccotechnologies.com')) {
-          offenders.add(file.path);
-        }
+        if (webLink.hasMatch(source)) offenders.add(file.path);
       }
       expect(
         offenders,
@@ -54,6 +61,17 @@ void main() {
         reason: 'piccotechnologies.com fails on SSL for every path — use '
             'LegalLinks.privacy / LegalLinks.terms',
       );
+    });
+
+    test('support mail goes to a mailbox somebody reads', () {
+      // `support@jperg.com` was never collected. The company's own address is,
+      // and it is the one the Terms and the Privacy Policy already publish.
+      final source =
+          File('lib/features/settings/presentation/pages/help_support_page.dart')
+              .readAsStringSync();
+
+      expect(source, contains('info@piccotechnologies.com'));
+      expect(source, isNot(contains("'support@jperg.com'")));
     });
 
     test('both documents live on the host that serves them', () {

@@ -1,17 +1,24 @@
-/// When the Found tab offers the code sheet instead of sitting empty.
+/// When the Found tab asks for a face instead of sitting empty.
 ///
-/// The old tab answered "no face on file" with an "Add your face to get found"
-/// panel for everybody who lacked one — including people who had photos
+/// The original tab answered "no face on file" with an "Add your face to get
+/// found" panel for everybody who lacked one — including people who had photos
 /// already, because it refused to even fetch the list without an enrolment.
-/// The rule now turns on what is actually on screen, and most of what is
-/// asserted here is the states that must *not* raise a sheet.
+/// That panel was deleted; the rule now turns on what is actually on screen,
+/// and most of what is asserted here is the states that must *not* ask.
+///
+/// For a while the same condition raised the code sheet by itself over a
+/// screen reading "Scanning for your face", which for somebody with no face
+/// was false in every clause. The condition is unchanged — these assertions
+/// carried over intact — but what it now decides is which of two empty states
+/// to draw. The sheet is still how a code is entered; it is opened by the
+/// panel's button rather than by the screen appearing.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_empty_state.dart';
 
 void main() {
   bool offer(FoundAccess access, FoundEmptyState empty) =>
-      shouldOfferCodeSheet(access: access, empty: empty);
+      shouldOfferFacePanel(access: access, empty: empty);
 
   group('it is offered', () {
     test('to someone signed in, unenrolled, with nothing found', () {
@@ -41,7 +48,7 @@ void main() {
 
     test('when the filters hid everything', () {
       // The tab is empty because they narrowed it, and the fix is to clear the
-      // chips. Offering a code sheet would answer a question nobody asked.
+      // chips. Asking for a face would answer a question nobody asked.
       expect(
         offer(FoundAccess.noFaceAdded, FoundEmptyState.filteredOut),
         isFalse,
@@ -49,8 +56,8 @@ void main() {
     });
 
     test('to someone enrolled with no matches yet', () {
-      // The system is working for them. Prompting a scan on every empty tab
-      // would be nagging somebody who has already done what was asked.
+      // The system is working for them, and FoundScanningState says so.
+      // Asking again for a face they have already given is nagging.
       expect(offer(FoundAccess.ready, FoundEmptyState.scanning), isFalse);
     });
 
@@ -66,7 +73,7 @@ void main() {
         expect(
           offer(FoundAccess.ready, empty),
           isFalse,
-          reason: 'enrolled users are never offered the sheet ($empty)',
+          reason: 'enrolled users are never asked for a face ($empty)',
         );
       }
     });
