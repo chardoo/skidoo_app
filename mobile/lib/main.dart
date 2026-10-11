@@ -96,6 +96,23 @@ void main() async {
   // `runApp`, on the stretch where the screen is still the OS launch image.
   // They read different keys and depend on nothing here, so they belong in the
   // same batch.
+  // Started here and awaited below, so they overlap the batch without taking
+  // a position in it.
+  //
+  // They were in the list, read as `results[7]` and `results[8]`. Two
+  // positions were then inserted above them by other work, so `results[8]`
+  // became a `Future<void>`'s null and `null as bool` threw — in `main`,
+  // before `runApp`, which is a black screen and no second chance. A list of
+  // Object? indexed by hand is a shared mutable counter disguised as code, and
+  // nothing about it fails until it fails completely.
+  //
+  // [OnboardingStep]: how far into the signup wizard this account got. A token
+  // means the account exists; it does not mean the wizard finished.
+  final onboardingStepFuture = authService.getOnboardingStep();
+  // Whether they chose to look around without an account — its own answer,
+  // because `hasSeenOnboarding` means only that the carousel played.
+  final isGuestFuture = authService.getIsGuest();
+
   final results = await Future.wait<Object?>([
     // [0] Jailbreak / root detection (skip on web — plugin not supported)
     Future<bool>(() async {
@@ -122,14 +139,12 @@ void main() async {
     // [6] Same, for the avatar: without it the first frame draws initials for
     //     an account whose picture is already on disk.
     authService.primeProfileUrl(),
-    // [7] How far into the signup wizard this account got. A token means the
-    //     account exists; it does not mean the wizard finished, and the two
-    //     were being treated as the same fact. See [OnboardingStep].
-    authService.getOnboardingStep(),
-    // [8] Whether they chose to look around without an account. Its own
-    //     answer, because `hasSeenOnboarding` was being asked to give it and
-    //     means something else — see [AuthService.setIsGuest].
-    authService.getIsGuest(),
+    //     And the name behind those initials, for an account with no picture
+    //     — otherwise the avatar opens on '?' and corrects itself a moment
+    //     later; and who they are, so a profile screen can tell on its first
+    //     frame whether it is looking at its own account.
+    authService.primeName(),
+    authService.primeUserId(),
   ]);
 
   final isDeviceCompromised = results[0] as bool;
@@ -137,8 +152,8 @@ void main() async {
   final expiration = results[2] as String;
   final hasSeenOnboarding = results[3] as bool;
   final hasFaces = results[4] as bool;
-  final onboardingStep = results[7] as OnboardingStep?;
-  final isGuest = results[8] as bool;
+  final onboardingStep = await onboardingStepFuture;
+  final isGuest = await isGuestFuture;
 
   // Whether the stored expiry has passed. Logged only — deliberately NOT used
   // to decide anything.

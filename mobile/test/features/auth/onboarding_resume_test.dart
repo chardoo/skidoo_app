@@ -129,6 +129,19 @@ void main() {
       });
     }
 
+    test('and face capture only marks inside the wizard', () {
+      // The Found gate opens the same screen standalone — capture, upload,
+      // pop. Marking there would send a long-settled account back into signup
+      // on its next launch, from a screen it had merely visited.
+      final source = File(
+        'lib/features/auth/presentation/pages/face_capture_step_page.dart',
+      ).readAsStringSync();
+      final guard = source.indexOf('!widget.standalone');
+      final mark = source.indexOf('setOnboardingStep');
+      expect(guard, isNot(-1), reason: 'the mark must be guarded');
+      expect(guard, lessThan(mark));
+    });
+
     test('and the creator steps only mark inside the wizard', () {
       // Both screens are also reached from Account & Security and from an
       // ordinary portfolio edit. Neither is a signup to come back to.

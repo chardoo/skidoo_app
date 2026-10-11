@@ -55,9 +55,13 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
   @override
   void initState() {
     super.initState();
-    // Marks where the wizard has got to, so closing the app here comes
-    // back here. See [OnboardingStep].
-    sl<AuthService>().setOnboardingStep(OnboardingStep.face);
+    // Only as a wizard step. The Found gate opens this same screen as a
+    // single errand — capture, upload, pop — and marking there would send a
+    // long-settled account back into signup on its next launch. The creator
+    // steps guard the same way, for the same reason.
+    if (!widget.standalone) {
+      sl<AuthService>().setOnboardingStep(OnboardingStep.face);
+    }
     sl<AuthService>().getName().then((v) {
       if (mounted) setState(() => _name = v);
     });
