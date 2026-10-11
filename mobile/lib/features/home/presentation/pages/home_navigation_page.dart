@@ -69,6 +69,22 @@ class HomeNavigationPage extends StatefulWidget {
   /// lands new photos in the Found tab. Cleared after being handled.
   static final pillTabRequest = ValueNotifier<int?>(null);
 
+  /// Whether the pill showing inside Home stands on dark media.
+  ///
+  /// Feed and Following wrap themselves in [DarkMediaSurface] and are dark
+  /// whatever the app's theme is; Found does not and is light in light mode.
+  /// The navigation bar has to know which, and cannot work it out: it lives in
+  /// the Scaffold's `bottomNavigationBar`, outside the body, so it is not
+  /// under the surface and the pill is private state in here.
+  ///
+  /// Without this the bar read the *outer* tab — Home being index 0 — and
+  /// treated all three pills as dark, which in light mode put white icons on
+  /// the light pill of the Found tab, where they were all but invisible.
+  ///
+  /// The default matches [_selectedTab]'s, so the first frame is right before
+  /// anything has been selected.
+  static final groundIsDark = ValueNotifier<bool>(true);
+
   /// Bumped when Home is tapped while Home is already the tab you are on.
   ///
   /// The feed showing at that moment goes back to its first card and refetches
@@ -151,7 +167,12 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
       _selectedTab = pendingTab;
       HomeNavigationPage.pillTabRequest.value = null;
     }
+    _publishGround();
   }
+
+  /// Tells the navigation bar what it is standing on. See [groundIsDark].
+  void _publishGround() =>
+      HomeNavigationPage.groundIsDark.value = _selectedTab != 0;
 
   /// Home was tapped while already on Home: start the feed that is showing
   /// over again.
@@ -176,6 +197,10 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
   void dispose() {
     HomeNavigationPage.pillTabRequest.removeListener(_onPillTabRequest);
     HomeNavigationPage.feedResetRequest.removeListener(_onFeedReset);
+    // A static outlives the shell that owns it, and a stale value here would
+    // be read by whatever bar came next — the bug FeedNavBarScope's own notes
+    // record for FeedChrome.visible. Back to the default it started at.
+    HomeNavigationPage.groundIsDark.value = true;
     super.dispose();
   }
 
@@ -190,6 +215,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
         // exists.
         if (isGuest && _selectedTab >= _guestTabs.length) _selectedTab = 1;
       });
+      _publishGround();
     }
     if (!isGuest) {
       _checkLocation();
@@ -310,6 +336,7 @@ class _HomeNavigationPageState extends State<HomeNavigationPage> {
     // Found never hides its header — arriving on it from a feed whose chrome
     // was away brings the tabs back on its own. See [_headerVisible].
     setState(() => _selectedTab = index);
+    _publishGround();
   }
 
   void _measureHeaderHeight() {

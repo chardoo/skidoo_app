@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jperg_app/components/common/navbar.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 
 /// The floating pill was drawn in hardcoded black whatever the theme, with
 /// white icons on it — a black slab on a #F7F7F2 page, and the one piece of
@@ -277,5 +278,103 @@ void main() {
       FlutterError.onError = previous;
       expect(errors, isEmpty, reason: 'tab \$tab overflowed: \${errors.join()}');
     }
+  });
+
+  // ── Home is three pills, and only two of them are dark ──────────────────
+  //
+  // The bar asked whether the *outer* tab was Home and took that as "over dark
+  // media". Home holds Found, Feed and Following; only the last two wrap
+  // themselves in DarkMediaSurface. So on Found in light mode the bar wore the
+  // dark treatment — Colors.white70 icons on a light pill, which is almost
+  // exactly the pill's own colour. Reported from a device: "bottom nav icons
+  // should be grey in light mode".
+
+  group('on the Found pill in light mode', () {
+    setUp(() => HomeNavigationPage.groundIsDark.value = false);
+    tearDown(() => HomeNavigationPage.groundIsDark.value = true);
+
+    testWidgets('the pill is light', (t) async {
+      await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+
+      expect(pill(t).color!.computeLuminance(), greaterThan(0.5),
+          reason: 'Found is not a dark island; the bar should not pretend it is');
+    });
+
+    testWidgets('the inactive icons are grey, not white', (t) async {
+      await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+
+      final inactive = tabGlyphs(t)
+          .where((i) => i.color != AppThemeExtension.light.accentGold);
+
+      expect(inactive, hasLength(3));
+      for (final icon in inactive) {
+        expect(icon.color, AppThemeExtension.light.searchHintColor,
+            reason: 'white on a light pill is all but invisible');
+        expect(icon.color, isNot(Colors.white70));
+      }
+    });
+
+    testWidgets('and they are actually readable against it', (t) async {
+      // The real complaint, measured rather than named: whatever colour is
+      // chosen has to be far enough from the pill to be seen on it.
+      await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+
+      final ground = pill(t).color!.computeLuminance();
+      final glyph = tabGlyphs(t)
+          .firstWhere((i) => i.color != AppThemeExtension.light.accentGold)
+          .color!
+          .computeLuminance();
+
+      expect((ground - glyph).abs(), greaterThan(0.25),
+          reason: 'the icons were within a hair of the pill they sit on');
+    });
+
+    testWidgets('the selected tab is still the accent', (t) async {
+      await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+      expect(labelColour(t, 'Home'), AppThemeExtension.light.accentGold);
+    });
+  });
+
+  group('the other two pills are unchanged', () {
+    testWidgets('Feed and Following keep the dark treatment', (t) async {
+      // They wrap themselves in DarkMediaSurface and are dark whatever the
+      // app theme is, which is what the bar was right about all along.
+      HomeNavigationPage.groundIsDark.value = true;
+      await t.pumpWidget(host(AppThemeExtension.light, selected: 0));
+
+      expect(pill(t).color!.computeLuminance(), lessThan(0.2));
+      final inactive = tabGlyphs(t)
+          .where((i) => i.color != AppThemeExtension.light.accentGold);
+      for (final icon in inactive) {
+        expect(icon.color, Colors.white70);
+      }
+    });
+  });
+
+  group('dark mode is dark whatever the pill', () {
+    testWidgets('even on Found', (t) async {
+      // The ground only overrides *upwards*, towards dark. An app in dark mode
+      // has no light pill to put grey icons on.
+      HomeNavigationPage.groundIsDark.value = false;
+      addTearDown(() => HomeNavigationPage.groundIsDark.value = true);
+
+      await t.pumpWidget(host(AppThemeExtension.dark, selected: 0));
+
+      expect(pill(t).color!.computeLuminance(), lessThan(0.2));
+    });
+  });
+
+  group('away from Home the pill cannot be stale', () {
+    testWidgets('a leftover dark ground does not follow other tabs', (t) async {
+      // The notifier is a static that outlives the shell — the exact bug
+      // FeedNavBarScope records for FeedChrome.visible. Here it is harmless
+      // because it is only consulted on the Home tab.
+      HomeNavigationPage.groundIsDark.value = true;
+      addTearDown(() => HomeNavigationPage.groundIsDark.value = true);
+
+      await t.pumpWidget(host(AppThemeExtension.light, selected: 3));
+
+      expect(pill(t).color!.computeLuminance(), greaterThan(0.5));
+    });
   });
 }

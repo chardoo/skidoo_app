@@ -9,6 +9,7 @@ import 'package:jperg_app/core/navigation/chrome_visibility.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
 
 /// How far the pill floats above the bottom of the screen.
 ///
@@ -131,9 +132,29 @@ class AppNavbar extends StatelessWidget {
     // instead. With extendBody:true the feed runs right under it, which in
     // light mode put a white pill with grey icons on top of full-bleed dark
     // media. The feed is a dark island by design; the bar has to join it.
-    final onDark = selectedIndex == _feedTabIndex ||
-        Theme.of(context).brightness == Brightness.dark;
+    //
+    // Being on the Home tab is not the same as being on dark media, which is
+    // what this used to ask. Home holds three pills and only two of them —
+    // Feed and Following — wrap themselves in DarkMediaSurface; Found does
+    // not, and is light in light mode. So the bar wore the dark treatment
+    // over Found too, putting white icons on a light pill where they were all
+    // but invisible. [HomeNavigationPage.groundIsDark] is the pill's own
+    // answer, and the bar has to listen for it: the pill changing is a
+    // setState inside the body, which does not rebuild a bar that is outside
+    // it.
+    final appIsDark = Theme.of(context).brightness == Brightness.dark;
 
+    return ValueListenableBuilder<bool>(
+      valueListenable: HomeNavigationPage.groundIsDark,
+      builder: (context, groundIsDark, _) {
+        final onDark =
+            appIsDark || (selectedIndex == _feedTabIndex && groundIsDark);
+        return _bar(context, ext, onDark);
+      },
+    );
+  }
+
+  Widget _bar(BuildContext context, AppThemeExtension ext, bool onDark) {
     return SafeArea(
       top: false,
       // The bottom gap is worked out rather than taken, which is why this side
