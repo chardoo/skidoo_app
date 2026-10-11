@@ -6,6 +6,7 @@ import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_sca
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_ready_page.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// Final onboarding screen — "You're all set, {name}!" — and the end of both
 /// branches of the wizard: from `follow_suggestions_page.dart` for somebody
@@ -37,6 +38,9 @@ class _OnboardingCompletePageState extends State<OnboardingCompletePage> {
   @override
   void initState() {
     super.initState();
+    // Marks where the wizard has got to, so closing the app here comes
+    // back here. See [OnboardingStep].
+    sl<AuthService>().setOnboardingStep(OnboardingStep.done);
     sl<AuthService>().getName().then((v) {
       // First name only. "You're all set, Kwame Mensah!" reads like a letter
       // from a bank; the design says "Kwame".
@@ -44,7 +48,14 @@ class _OnboardingCompletePageState extends State<OnboardingCompletePage> {
     });
   }
 
+  /// The one thing that ends the wizard.
+  ///
+  /// Not reaching this screen — tapping through it. Somebody whose battery
+  /// died on the last step has done all the work and is owed the sentence
+  /// saying so, rather than being dropped into a feed wondering whether any
+  /// of it saved. So the marker survives until the button.
   void _goHome() {
+    sl<AuthService>().clearOnboardingStep();
     Navigator.of(context).pushNamedAndRemoveUntil(HomePage.routeName, (route) => false);
   }
 

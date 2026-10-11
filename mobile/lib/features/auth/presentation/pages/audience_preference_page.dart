@@ -8,6 +8,7 @@ import 'package:jperg_app/features/photographers/presentation/pages/portfolio_ed
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 enum _Audience { discover, share }
 
@@ -36,6 +37,14 @@ class AudiencePreferencePage extends StatefulWidget {
 class _AudiencePreferencePageState extends State<AudiencePreferencePage> {
   _Audience? _selected;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Marks where the wizard has got to, so closing the app here comes back
+    // here. See [OnboardingStep].
+    sl<AuthService>().setOnboardingStep(OnboardingStep.audience);
+  }
 
   /// Records the answer, then takes the matching branch.
   ///

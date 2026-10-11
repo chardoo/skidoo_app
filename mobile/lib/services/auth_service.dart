@@ -5,6 +5,7 @@ import 'package:jperg_app/core/session/session_reset.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/notification_prefs_service.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// Platform-adaptive credential store.
 ///
@@ -96,6 +97,8 @@ class AuthService {
   static const _kHasAddedFaces = 'auth.has_added_faces';
   static const _kLastFacePrompt = 'auth.last_face_prompt';
   static const _kHasSeenOnboarding = 'auth.has_seen_onboarding';
+  static const _kOnboardingStep = 'auth.onboarding_step';
+  static const _kIsGuest = 'auth.is_guest';
   static const _kHasSeenSwipeHint = 'auth.has_seen_swipe_hint';
   static const _kFeedMusicMuted = 'auth.feed_music_muted';
   static const _kAudiencePreference = 'auth.audience_preference';
@@ -253,6 +256,31 @@ class AuthService {
   Future<bool> getHasSeenOnboarding() async =>
       (await _read(_kHasSeenOnboarding)) == 'true';
 
+  /// How far into the signup wizard somebody got — see [OnboardingStep].
+  ///
+  /// Written as each step comes on screen rather than as one is finished, so
+  /// the phone being put down mid-step returns to that step rather than the
+  /// one before it. Cleared by [clearOnboardingStep] when they tap through the
+  /// last screen, which is the only thing that ends the wizard.
+  Future<void> setOnboardingStep(OnboardingStep step) =>
+      _write(_kOnboardingStep, step.id);
+
+  Future<OnboardingStep?> getOnboardingStep() async =>
+      OnboardingStep.fromId(await _read(_kOnboardingStep));
+
+  Future<void> clearOnboardingStep() => _delete(_kOnboardingStep);
+
+  /// Whether this person chose to look around without an account.
+  ///
+  /// Its own answer, because `hasSeenOnboarding` was being asked to give it
+  /// and cannot: that flag means "the carousel has played", which is equally
+  /// true of somebody who read it and quit at the sign-up form. Both arrived
+  /// at the next launch with no token and the carousel seen, so both were put
+  /// on the guest feed — one of them having never asked to be.
+  Future<void> setIsGuest() => _write(_kIsGuest, 'true');
+  Future<bool> getIsGuest() async => (await _read(_kIsGuest)) == 'true';
+  Future<void> clearIsGuest() => _delete(_kIsGuest);
+
   /// The last account to hold a session on this device.
   ///
   /// Deliberately **not** cleared by [removeToken]: it is what tells the next
@@ -357,6 +385,12 @@ class AuthService {
       _delete(_kLastFacePrompt),
       _delete(_kPendingInterests),
       _delete(_kAudiencePreference),
+      // The wizard belongs to the account that was in it. Left behind, the
+      // next person to sign in on this phone resumes a stranger's signup.
+      _delete(_kOnboardingStep),
+      // And signing out is not a request to browse anonymously — it returns
+      // to the gate, which is where [_kIsGuest] being absent sends them.
+      _delete(_kIsGuest),
     ]);
   }
 
@@ -411,6 +445,8 @@ class AuthService {
       _delete(_kLastAccountId),
       _delete(_kAudiencePreference),
       _delete(_kPendingInterests),
+      _delete(_kOnboardingStep),
+      _delete(_kIsGuest),
     ]);
   }
 }

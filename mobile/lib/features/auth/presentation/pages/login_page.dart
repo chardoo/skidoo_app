@@ -17,6 +17,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 // The teal gradient logo/CTA is the auth flow's fixed brand accent — it stays
@@ -91,6 +92,12 @@ class _LoginViewState extends State<_LoginView>
   /// pushes this by *name* and a named route cannot carry a callback. Asking
   /// the navigator is the same question with an answer that is already true.
   void _continueAsGuest() {
+    // Written down, because this is the only thing that distinguishes
+    // somebody who chose to look around from somebody who read the carousel
+    // and quit at this form. Both used to arrive at the next launch with no
+    // token and the carousel seen, and both were put on the guest feed — one
+    // of them having never asked to be.
+    sl<AuthService>().setIsGuest();
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();

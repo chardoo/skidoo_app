@@ -24,6 +24,8 @@ import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page
 import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/features/splash/presentation/pages/splash_page.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
+import 'package:jperg_app/features/auth/presentation/pages/onboarding_resume_page.dart';
 
 // ── Root application widget ───────────────────────────────────────────────────
 
@@ -38,11 +40,22 @@ class MyApp extends StatelessWidget {
   /// finishing the last slide) — mobile-only, gates the cold-start route.
   final bool hasSeenOnboarding;
 
+  /// How far into the signup wizard this account got, or null if it finished
+  /// — see [OnboardingStep]. A token says the account exists; it does not say
+  /// the wizard was ever completed, and routing treated those as one fact.
+  final OnboardingStep? onboardingStep;
+
+  /// True when they chose "Continue as guest". Distinct from
+  /// [hasSeenOnboarding], which only means the carousel has played.
+  final bool isGuest;
+
   const MyApp({
     super.key,
     required this.token,
     this.isDeviceCompromised = false,
     this.hasSeenOnboarding = false,
+    this.onboardingStep,
+    this.isGuest = false,
   });
 
   @override
@@ -65,6 +78,8 @@ class MyApp extends StatelessWidget {
           token: token,
           isDeviceCompromised: isDeviceCompromised,
           hasSeenOnboarding: hasSeenOnboarding,
+          onboardingStep: onboardingStep,
+          isGuest: isGuest,
           themeMode: themeMode,
         ),
       ),
@@ -79,12 +94,16 @@ class _MobileApp extends StatelessWidget {
     required this.token,
     required this.isDeviceCompromised,
     required this.hasSeenOnboarding,
+    required this.onboardingStep,
+    required this.isGuest,
     required this.themeMode,
   });
 
   final String token;
   final bool isDeviceCompromised;
   final bool hasSeenOnboarding;
+  final OnboardingStep? onboardingStep;
+  final bool isGuest;
   final ThemeMode themeMode;
 
   @override
@@ -97,6 +116,8 @@ class _MobileApp extends StatelessWidget {
         token: token,
         isDeviceCompromised: isDeviceCompromised,
         hasSeenOnboarding: hasSeenOnboarding,
+        onboardingStep: onboardingStep,
+        isGuest: isGuest,
         themeMode: themeMode,
       ),
     );
@@ -110,12 +131,16 @@ class _AppMaterial extends StatelessWidget {
     required this.token,
     required this.isDeviceCompromised,
     required this.hasSeenOnboarding,
+    required this.onboardingStep,
+    required this.isGuest,
     required this.themeMode,
   });
 
   final String token;
   final bool isDeviceCompromised;
   final bool hasSeenOnboarding;
+  final OnboardingStep? onboardingStep;
+  final bool isGuest;
   final ThemeMode themeMode;
 
   @override
@@ -174,11 +199,15 @@ class _AppMaterial extends StatelessWidget {
         onGenerateRoute: (settings) {
           final WidgetBuilder? builder = switch (settings.name) {
             SplashPage.routeName => (_) => SplashPage(
-                  nextRoute: token.isNotEmpty
-                      ? HomePage.routeName
-                      : !hasSeenOnboarding
-                          ? OnboardingPage.routeName
-                          : DiscoveryPage.routeName,
+                  nextRoute: firstRouteFor(
+                    token: token,
+                    hasSeenOnboarding: hasSeenOnboarding,
+                    onboardingStep: onboardingStep,
+                    isGuest: isGuest,
+                  ),
+                ),
+            OnboardingResumePage.routeName => (_) => _AuthGuard(
+                  child: OnboardingResumePage(step: onboardingStep),
                 ),
             OnboardingPage.routeName => (_) =>
                 const _GuestGuard(child: OnboardingPage()),
@@ -423,4 +452,43 @@ class _SecurityWarningPage extends StatelessWidget {
     );
     return page;
   }
+}
+
+/// The first screen of a cold start.
+///
+/// Four questions, and until now the first two were being asked as one.
+///
+/// **A token is not a finished signup.** `VerifyCodeUseCase` establishes the
+/// session the moment a code is accepted, before the wizard has asked for a
+/// face, a preference, a portfolio or an ID — so "has a token" was answering
+/// "is set up", and anybody who closed the app mid-wizard was dropped at Home
+/// with the whole thing abandoned. [onboardingStep] is the real answer, and it
+/// outranks the token: the account exists, but it is not finished.
+///
+/// **Having seen the carousel is not having chosen to be a guest.** Those were
+/// also one flag. Somebody who read the slides and quit at the sign-up form
+/// arrived back on the guest feed having never asked for it, because the only
+/// thing distinguishing them from a real guest — the tap on "Continue as
+/// guest" — was never written down. [isGuest] is written there now, and the
+/// fallback for everybody else is the gate they stopped at.
+/// Public for the test that pins this table — the decision is the whole of
+/// the behaviour, and it is worth being able to ask it directly rather than
+/// booting an app to find out.
+String firstRouteFor({
+  required String token,
+  required bool hasSeenOnboarding,
+  required OnboardingStep? onboardingStep,
+  required bool isGuest,
+}) {
+  if (token.isNotEmpty) {
+    // Signed in, wizard unfinished — the step they were on, not Home.
+    return onboardingStep != null
+        ? OnboardingResumePage.routeName
+        : HomePage.routeName;
+  }
+  if (!hasSeenOnboarding) return OnboardingPage.routeName;
+  // Chose to look around; put them back where they chose to be.
+  if (isGuest) return DiscoveryPage.routeName;
+  // Saw the carousel, chose nothing. The gate is where they stopped.
+  return SignUpPage.routeName;
 }

@@ -16,6 +16,7 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/gallery/data/face_enrolment.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/config/legal_links.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 enum _Step { intro, scanning, confirmed }
 
@@ -54,6 +55,9 @@ class _FaceCaptureStepPageState extends State<FaceCaptureStepPage> {
   @override
   void initState() {
     super.initState();
+    // Marks where the wizard has got to, so closing the app here comes
+    // back here. See [OnboardingStep].
+    sl<AuthService>().setOnboardingStep(OnboardingStep.face);
     sl<AuthService>().getName().then((v) {
       if (mounted) setState(() => _name = v);
     });

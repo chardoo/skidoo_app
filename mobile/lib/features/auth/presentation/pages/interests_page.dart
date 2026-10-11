@@ -11,6 +11,8 @@ import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_sca
 import 'package:jperg_app/features/follow/presentation/pages/follow_suggestions_page.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 class InterestsPage extends StatelessWidget {
   static const routeName = '/interests';
@@ -19,6 +21,11 @@ class InterestsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Marks where the wizard has got to, so closing the app here comes
+    // back here. A write-through rather than state: this page has none,
+    // and the marker is about the screen being shown, not about it
+    // having been built once. See [OnboardingStep].
+    sl<AuthService>().setOnboardingStep(OnboardingStep.interests);
     return BlocProvider(
       create: (_) => sl<InterestsBloc>(),
       child: const _InterestsView(),

@@ -15,6 +15,7 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -121,6 +122,14 @@ void main() async {
     // [6] Same, for the avatar: without it the first frame draws initials for
     //     an account whose picture is already on disk.
     authService.primeProfileUrl(),
+    // [7] How far into the signup wizard this account got. A token means the
+    //     account exists; it does not mean the wizard finished, and the two
+    //     were being treated as the same fact. See [OnboardingStep].
+    authService.getOnboardingStep(),
+    // [8] Whether they chose to look around without an account. Its own
+    //     answer, because `hasSeenOnboarding` was being asked to give it and
+    //     means something else — see [AuthService.setIsGuest].
+    authService.getIsGuest(),
   ]);
 
   final isDeviceCompromised = results[0] as bool;
@@ -128,6 +137,8 @@ void main() async {
   final expiration = results[2] as String;
   final hasSeenOnboarding = results[3] as bool;
   final hasFaces = results[4] as bool;
+  final onboardingStep = results[7] as OnboardingStep?;
+  final isGuest = results[8] as bool;
 
   // Whether the stored expiry has passed. Logged only — deliberately NOT used
   // to decide anything.
@@ -241,5 +252,7 @@ void main() async {
     token: token,
     isDeviceCompromised: isDeviceCompromised,
     hasSeenOnboarding: hasSeenOnboarding,
+    onboardingStep: onboardingStep,
+    isGuest: isGuest,
   ));
 }

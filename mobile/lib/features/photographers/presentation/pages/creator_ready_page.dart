@@ -9,6 +9,9 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// "You're all set, Kwame!" — the end of becoming a creator.
 ///
@@ -51,6 +54,9 @@ class CreatorReadyPage extends StatelessWidget {
   }
 
   void _done(BuildContext context) {
+    // Same rule as the discover branch's last screen: the wizard ends when
+    // somebody taps through it, not when they arrive. See [OnboardingStep].
+    sl<AuthService>().clearOnboardingStep();
     // Everything the wizard pushed goes with it. Coming back to a portfolio
     // form they have already submitted would read as it not having worked.
     Navigator.of(context).popUntil((route) => route.isFirst);

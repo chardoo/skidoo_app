@@ -7,6 +7,9 @@ import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/auth/presentation/pages/onboarding_complete_page.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// Final onboarding step — "Creators to follow" (4/4), the same for every
 /// role. Photographer-only portfolio setup + verification no longer happen
@@ -33,6 +36,9 @@ class _FollowSuggestionsPageState extends State<FollowSuggestionsPage> {
   @override
   void initState() {
     super.initState();
+    // Marks where the wizard has got to, so closing the app here comes
+    // back here. See [OnboardingStep].
+    sl<AuthService>().setOnboardingStep(OnboardingStep.follow);
     _load();
   }
 

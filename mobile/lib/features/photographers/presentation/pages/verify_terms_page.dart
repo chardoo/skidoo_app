@@ -14,6 +14,7 @@ import 'package:jperg_app/core/config/legal_links.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_setup_entry.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/features/auth/presentation/pages/onboarding_complete_page.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// "Verify and accept terms" — the last step of becoming a photographer.
 ///
@@ -40,6 +41,16 @@ class VerifyTermsPage extends StatefulWidget {
 }
 
 class _VerifyTermsPageState extends State<VerifyTermsPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Only as a wizard step. The same screen is reached from Account &
+    // Security and from an ordinary portfolio edit, and neither of those is a
+    // signup to come back to. See [OnboardingStep].
+    if (widget.entry.isOnboarding) {
+      sl<AuthService>().setOnboardingStep(OnboardingStep.verify);
+    }
+  }
 
   bool _acceptedTerms = false;
   bool _confirmedUploadRights = false;

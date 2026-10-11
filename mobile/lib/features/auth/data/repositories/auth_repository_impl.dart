@@ -97,6 +97,10 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await Future.wait([
         _authService.setToken(user.token),
+        // They have an account now. Browsing anonymously was a state they
+        // were in, not a preference to carry into it — and left set, signing
+        // out later would drop them straight back onto the guest feed.
+        _authService.clearIsGuest(),
         _authService.setUniqueName(user.uniqueName),
         _authService.setId(user.id),
         _authService.setEmail(user.email),

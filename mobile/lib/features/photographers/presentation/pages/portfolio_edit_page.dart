@@ -18,6 +18,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_setup_entry.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
+import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// A photographer's portfolio — the first-time setup and every later edit.
 ///
@@ -84,6 +85,12 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
   @override
   void initState() {
     super.initState();
+    // Only as a wizard step. The same screen is reached from Account &
+    // Security and from an ordinary portfolio edit, and neither of those is a
+    // signup to come back to. See [OnboardingStep].
+    if (widget.entry.isOnboarding) {
+      sl<AuthService>().setOnboardingStep(OnboardingStep.portfolio);
+    }
     _load();
   }
 
