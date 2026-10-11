@@ -56,17 +56,26 @@ void main() {
     expect(controllers(), isNotEmpty);
   });
 
-  test('iOS does not declare a microphone it never uses', () {
-    // The usage string said "for video recording", which the app does not do:
-    // every pickVideo is ImageSource.gallery, and just_audio only plays. A
-    // declared purpose string is what App Review reads as an intention to
-    // use the hardware.
+  test('the iOS microphone string does not claim the app records audio', () {
+    // The key itself has to stay. `camera_avfoundation` links
+    // AVCaptureDevice's audio APIs to support video recording, and App Store
+    // validation rejects a build whose frameworks reference those APIs with
+    // no purpose string — whether or not the app calls them. Deleting it,
+    // which an earlier version of this test demanded, would fail submission.
+    //
+    // What must not come back is the *wording*. It used to read "for video
+    // recording", describing a feature the app does not have; the string is
+    // the only thing App Review sees, so it should say the opposite.
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    final at = plist.indexOf('NSMicrophoneUsageDescription');
+    if (at == -1) return; // gone entirely is also fine — nothing uses it
+
+    final value = plist.substring(at, plist.indexOf('</string>', at));
     expect(
-      plist.contains('NSMicrophoneUsageDescription'),
-      isFalse,
-      reason: 'nothing in the app records audio — if something starts to, add '
-          'the key back with a string that says what it is actually for',
+      value.toLowerCase(),
+      isNot(contains('for video recording')),
+      reason: 'the app records no audio — the string should say so, since '
+          'App Review is its only audience',
     );
   });
 }

@@ -9,6 +9,8 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
+import 'package:permission_handler/permission_handler.dart'
+    show openAppSettings;
 
 /// Full-screen front-camera selfie capture with on-device face validation.
 ///
@@ -42,6 +44,10 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   /// Why there is no preview, when there is no preview. Null while the camera
   /// is still starting, which is the only state the spinner should mean.
   String? _cameraError;
+
+  /// Whether [_cameraError] is a refusal rather than a malfunction. Only a
+  /// refusal has a switch in Settings behind it.
+  bool _permissionDenied = false;
   // After a failed detection, let the user bypass the ML check.
   XFile? _lastCapturedFile;
 
@@ -66,7 +72,20 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
   Future<void> _initCamera() async {
     try {
       final cameras = await availableCameras();
-      if (!mounted || cameras.isEmpty) return;
+      if (!mounted) return;
+      // A device that reports no cameras at all. This used to `return` with
+      // nothing set, which leaves `_cameraError` null and `_cameraReady`
+      // false — the spinner state — so the screen waited forever for a
+      // camera that was never coming. Rare, but the same dead end the catch
+      // below exists to avoid.
+      if (cameras.isEmpty) {
+        setState(() {
+          _cameraReady = false;
+          _permissionDenied = false;
+          _cameraError = 'This device has no camera available.';
+        });
+        return;
+      }
       final cam = cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
@@ -93,7 +112,11 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
       setState(() {
         _ctrl = ctrl;
         _cameraReady = true;
+        // Both cleared: coming back from Settings having granted the camera
+        // re-runs this from the resume handler, and a stale denial would
+        // leave the screen offering a button to fix something already fixed.
         _cameraError = null;
+        _permissionDenied = false;
       });
     } catch (e) {
       // Say so, rather than spinning.
@@ -106,11 +129,15 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
       // the screen said what to do.
       debugPrint('[Selfie] camera unavailable: $e');
       if (!mounted) return;
+      final denied = e is CameraException && _isPermissionDenial(e.code);
       setState(() {
         _cameraReady = false;
-        _cameraError = e is CameraException && _isPermissionDenial(e.code)
-            ? 'Camera access is off for jperg. Turn it on in Settings to '
-                'take a selfie.'
+        _permissionDenied = denied;
+        // No "turn it on in Settings" in the text: there is a button for
+        // that now, and a sentence telling somebody to go and find a switch
+        // reads as an instruction when the screen can simply take them there.
+        _cameraError = denied
+            ? 'jperg needs your camera to take a selfie.'
             : 'The camera could not be started.';
       });
     }
@@ -173,6 +200,26 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final bottomPad = MediaQuery.of(context).padding.bottom;
 
+    // With no camera, there is no selfie to take — so the screen stops
+    // pretending there is.
+    //
+    // The error used to be drawn *into* the capture screen: the message
+    // landed on top of the "Take a Selfie" title, with "Centre your face
+    // inside the oval" and a live shutter button underneath it. Three
+    // instructions for an action the screen had just said was impossible,
+    // and a button that could only fail.
+    if (_cameraError != null) {
+      return _CameraBlocked(
+        message: _cameraError!,
+        // Only a refusal can be fixed in Settings. "The camera could not be
+        // started" is something else — a camera in use, a simulator, a
+        // failing device — and sending somebody to a switch that is already
+        // on would be the wrong advice.
+        onOpenSettings: _permissionDenied ? openAppSettings : null,
+        onBack: () => Navigator.of(context).pop(null),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -181,17 +228,6 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
           // ── Camera preview ────────────────────────────────────────────────
           if (_cameraReady && _ctrl != null)
             ClipRect(child: CameraPreview(_ctrl!))
-          else if (_cameraError != null)
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
-                child: Text(
-                  _cameraError!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 14.sp),
-                ),
-              ),
-            )
           else
             const Center(
               child: CircularProgressIndicator(
@@ -345,6 +381,100 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// What the screen is when there is no camera to show.
+///
+/// A whole screen rather than a message laid over the capture UI. The error
+/// used to be drawn into it — over the "Take a Selfie" title, above "Centre
+/// your face inside the oval" and a working shutter — which asked somebody to
+/// do the one thing the same screen had just said was impossible.
+///
+/// [onOpenSettings] is null when the camera failed for a reason Settings
+/// cannot fix, and the button is simply absent then.
+class _CameraBlocked extends StatelessWidget {
+  const _CameraBlocked({
+    required this.message,
+    required this.onBack,
+    this.onOpenSettings,
+  });
+
+  final String message;
+  final VoidCallback onBack;
+  final VoidCallback? onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: _CircleIconBtn(icon: AppBackButton.icon, onTap: onBack),
+        leadingWidth: 36.w + AppSpacing.lg.w * 2,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.no_photography_rounded,
+                    size: 44.sp, color: Colors.white38),
+                SizedBox(height: AppSpacing.lg.h),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: AppTypography.displayFontFamily,
+                  ),
+                ),
+                if (onOpenSettings != null) ...[
+                  SizedBox(height: AppSpacing.sm.h),
+                  Text(
+                    'Allow camera access, then come back to this screen.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                  ),
+                  SizedBox(height: AppSpacing.xxl.h),
+                  Semantics(
+                    button: true,
+                    label: 'Open Settings',
+                    child: GestureDetector(
+                      onTap: onOpenSettings,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xxl.w,
+                            vertical: AppSpacing.md.h),
+                        decoration: BoxDecoration(
+                          color: ext.accentGold,
+                          borderRadius: BorderRadius.circular(AppRadius.pill.r),
+                        ),
+                        child: Text(
+                          'Open Settings',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
