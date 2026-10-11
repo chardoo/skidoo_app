@@ -64,6 +64,7 @@ class FullBleedEventCard extends StatefulWidget {
     required this.onTap,
     required this.onHide,
     this.isAuthenticated = true,
+    this.isOwnPage = false,
     this.readiness,
   });
 
@@ -78,6 +79,23 @@ class FullBleedEventCard extends StatefulWidget {
   /// doubles as the login prompt for every reaction (matches the
   /// established convention in [EventDiscoveryCard]).
   final bool isAuthenticated;
+
+  /// Whether this card *is* the screen, rather than one post in a feed.
+  ///
+  /// True on [SharedEventFeedPage] — the page a link or a chat message opens.
+  /// Two things change, and both follow from the reader already being where
+  /// the card would otherwise invite them:
+  ///
+  ///  * "Explore event photos" is not offered. The carousel already holds
+  ///    every photo in the album, unlocked, and the pill was pointing at the
+  ///    album the reader had just opened — it reappeared every third photo,
+  ///    which reads as the app repeating itself.
+  ///  * A tap opens the viewer instead of toggling the feed chrome. There is
+  ///    no navigation bar on a pushed page, so that toggle moved nothing a
+  ///    reader could see: the tap was dead and the pill was the only way to
+  ///    reach zoom, purchase and download. Now the whole photo is the way in,
+  ///    which is where somebody taps anyway.
+  final bool isOwnPage;
 
   /// Which of this post's slides have settled. Tests only.
   ///
@@ -330,6 +348,9 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
   bool get _showExploreCta {
     final pics = widget.event.pictures;
     if (pics.isEmpty) return false;
+    // Nowhere to explore to: this card is the album's own page, and a tap
+    // already opens the viewer. See [isOwnPage].
+    if (widget.isOwnPage) return false;
     if ((_mediaIndex + 1) % _exploreEvery == 0) return true;
     if (_mediaIndex != pics.length - 1) return false;
     return _mediaIndex == 0 || _mediaIndex % _exploreEvery != 0;
@@ -372,6 +393,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
   void _onCardTapped() {
     if (!widget.isAuthenticated) {
       widget.onTap();
+      return;
+    }
+    // On the album's own page the chrome being toggled does not exist, so the
+    // tap went nowhere. It opens the photo properly instead — the thing the
+    // CTA used to be the only route to. See [isOwnPage].
+    if (widget.isOwnPage) {
+      _openEventPhotos();
       return;
     }
     FeedChrome.toggle();

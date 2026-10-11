@@ -122,6 +122,11 @@ class _SharedEventFeedPageState extends State<SharedEventFeedPage> {
                   cardIndex: 0,
                   activeCardIndex: _activeCardIndex,
                   onTap: () {},
+                  // This page *is* the album, so the card does not offer to
+                  // open it — and a tap on the photo opens the viewer, since
+                  // there is no navigation bar here for the usual tap to
+                  // toggle. See [FullBleedEventCard.isOwnPage].
+                  isOwnPage: true,
                   onHide: () => Navigator.of(context).maybePop(),
                 ),
               )
