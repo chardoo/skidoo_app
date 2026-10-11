@@ -230,8 +230,13 @@ void main() {
       expect(message.top, greaterThanOrEqualTo(box.bottom));
     });
 
-    testWidgets('the validator sees the full E.164 number, not the digits typed',
+    testWidgets('the validator sees the digits typed, not the dial code',
         (tester) async {
+      // This used to assert the opposite, and the opposite was the bug: fed
+      // the full `+233241234567`, a length check spent most of its minimum
+      // on the dial code, so a two-digit number passed while a long one was
+      // caught. `nationalPhoneValidator` is documented as checking the
+      // national digits and now actually receives them.
       String? seen;
       final controller = TextEditingController();
       await tester.pumpWidget(formWith(
@@ -249,8 +254,10 @@ void main() {
       await tester.enterText(find.byType(TextField), '241234567');
       await tester.pumpAndSettle();
 
-      expect(seen, controller.text);
-      expect(seen, startsWith('+'));
+      expect(seen, '241234567');
+      expect(seen, isNot(startsWith('+')));
+      // What the form submits is unchanged — still the full E.164 number.
+      expect(controller.text, '+233241234567');
     });
   });
 }

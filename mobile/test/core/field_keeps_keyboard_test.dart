@@ -92,8 +92,12 @@ void main() {
     await t.pumpWidget(formWith(AppPhoneField(
       controller: controller,
       label: 'Phone Number',
+      // Counted against the national digits, which is what the field hands
+      // its validator — it used to be the full `+233…`, and 13 was that
+      // string's length. Nothing here is about phone rules; the field just
+      // needs an error it can show and then clear.
       validator: (v) =>
-          (v ?? '').length < 13 ? '*Enter a valid phone number' : null,
+          (v ?? '').length < 9 ? '*Enter a valid phone number' : null,
     )));
 
     final before = editable(t);

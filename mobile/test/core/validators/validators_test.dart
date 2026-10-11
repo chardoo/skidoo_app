@@ -163,4 +163,59 @@ void main() {
       expect(Validators.url('', isRequired: false), isNull);
     });
   });
+
+  group('Validators.nationalPhoneValidator', () {
+    // The reported bug: a long number was flagged, a short one was not.
+    //
+    // The validator was being handed the full E.164 number rather than the
+    // digits typed into the field, so the dial code paid most of the
+    // minimum. `+233` is four characters of the six required — two typed
+    // digits were enough to pass, while a long number still tripped the
+    // ceiling. That asymmetry is exactly what was seen on screen.
+    test('rejects a number that is too short', () {
+      expect(Validators.nationalPhoneValidator('24'), isNotNull);
+      expect(Validators.nationalPhoneValidator('241'), isNotNull);
+      expect(Validators.nationalPhoneValidator('241234'), isNotNull);
+    });
+
+    test('rejects a number that is too long', () {
+      expect(Validators.nationalPhoneValidator('12345678901234'), isNotNull);
+    });
+
+    test('accepts a real national number', () {
+      // Ghana is nine digits; the shorter and longer ones are real lengths
+      // elsewhere, and must not be refused.
+      expect(Validators.nationalPhoneValidator('241234567'), isNull);
+      expect(Validators.nationalPhoneValidator('12345678'), isNull);
+      expect(Validators.nationalPhoneValidator('1234567890'), isNull);
+    });
+
+    test('asks for a number when the field is empty', () {
+      expect(Validators.nationalPhoneValidator(''), contains('required'));
+      expect(Validators.nationalPhoneValidator(null), contains('required'));
+      expect(Validators.nationalPhoneValidator('   '), contains('required'));
+    });
+
+    test('says which way it is wrong', () {
+      // "Invalid number" for both left somebody with a short number no idea
+      // what to do about it.
+      expect(Validators.nationalPhoneValidator('24'), contains('short'));
+      expect(
+          Validators.nationalPhoneValidator('12345678901234'), contains('long'));
+    });
+
+    test('counts digits, not characters', () {
+      // Spacing is how people write phone numbers, and the field is fed
+      // whatever the formatter left behind.
+      expect(Validators.nationalPhoneValidator('24 123 4567'), isNull);
+      expect(Validators.nationalPhoneValidator('24 1'), isNotNull);
+    });
+
+    test('a dial code is not part of what it measures', () {
+      // The regression guard. If the full E.164 number is ever fed back in,
+      // this two-digit number would pass on the strength of `+233`.
+      expect(Validators.nationalPhoneValidator('+23324'), isNotNull,
+          reason: 'the dial code must not pay for the minimum');
+    });
+  });
 }

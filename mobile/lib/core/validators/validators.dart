@@ -72,10 +72,25 @@ class Validators {
   /// Validates the national part of a phone number (digits only) entered
   /// alongside a country dial-code dropdown. The full E.164 number is assembled
   /// by the field itself. The backend must accept international numbers.
+  /// The digits typed into the phone field, without the country's dial code.
+  ///
+  /// It used to be handed the full E.164 number — `+233241234567` — and
+  /// counted *that*. The dial code paid for most of the minimum on its own:
+  /// `+233` is four characters of the six required, so two typed digits
+  /// passed. Too-long numbers were caught, too-short ones sailed through,
+  /// which is exactly what was reported. [AppPhoneField] feeds it the
+  /// national digits now, which is what this always claimed to check.
+  ///
+  /// Deliberately a range rather than a per-country length. National numbers
+  /// run from eight digits (Norway, Denmark, Singapore) to eleven or more,
+  /// and a table of exact lengths for thirty-six countries is a table that
+  /// will be wrong for somebody — wrongly refusing a real number is worse
+  /// than accepting an implausible one, which the server checks again anyway.
   static String? nationalPhoneValidator(String? value) {
-    final n = (value ?? '').trim();
-    if (n.isEmpty) return '*Phone number is required';
-    if (n.length < 6 || n.length > 14) return '*Invalid number';
+    final digits = (value ?? '').replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return '*Phone number is required';
+    if (digits.length < 7) return '*Number is too short';
+    if (digits.length > 13) return '*Number is too long';
     return null;
   }
 

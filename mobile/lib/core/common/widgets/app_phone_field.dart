@@ -196,7 +196,15 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
     // this widget's AnimatedContainer, so an InputDecorator error would be
     // drawn inside the box. See the note on AppTextField.
     return FormField<String>(
-      initialValue: widget.controller.text,
+      // The digits typed here, not the E.164 number the parent controller
+      // holds. The validator is documented as checking the national digits
+      // and this is what makes that true — fed the full number, its minimum
+      // was already half paid for by the dial code, so a two-digit number
+      // passed while a long one was caught.
+      //
+      // Nothing reads this value but the validator: what the form submits is
+      // the parent controller, which still carries the full E.164 number.
+      initialValue: _nationalCtrl.text,
       validator: widget.validator,
       autovalidateMode: widget.autovalidateMode,
       builder: (state) {
@@ -225,10 +233,7 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
             keyboardType: TextInputType.phone,
             textInputAction: widget.textInputAction,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            // The validator reads the full E.164 number the parent controller
-            // holds, not the national digits typed here, so the FormField is
-            // fed the same value the form will submit.
-            onChanged: (_) => state.didChange(widget.controller.text),
+            onChanged: (_) => state.didChange(_nationalCtrl.text),
             style:
                 TextStyle(color: textColor, fontSize: 15.sp, letterSpacing: 0.2),
             decoration: InputDecoration(
@@ -246,7 +251,10 @@ class _AppPhoneFieldState extends State<AppPhoneField> {
                 onChanged: (v) {
                   setState(() => _iso2 = v);
                   _syncFullNumber();
-                  state.didChange(widget.controller.text);
+                  // The typed digits are unchanged by picking a country, but
+                  // the field is revalidated so a dial code swap cannot leave
+                  // a stale verdict on screen.
+                  state.didChange(_nationalCtrl.text);
                 },
               ),
               prefixIconConstraints:
