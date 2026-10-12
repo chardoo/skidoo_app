@@ -120,34 +120,34 @@ void main() {
   });
 
   group('where the web links point', () {
-    test('the portal opens on the Render deployment, for now', () {
-      // Deliberate and temporary: jperg.com serves production, and the portal
-      // this opens is still being built. Put both back on [shareBaseUrl] when
-      // the production site carries the new one.
+    test('the portal opens on production', () {
+      // It opened on the Render deployment while the dashboard was being
+      // built. Production carries it now — the live jperg.com bundle
+      // references every PhotographerView chunk — so creators are sent to the
+      // portal that has been deployed rather than to a build server.
       expect(AppLinksConfig.creatorDashboardUrl,
-          'https://picco-v2.onrender.com/photographer/dashboard');
+          'https://jperg.com/photographer/dashboard');
       expect(AppLinksConfig.creatorUploadUrl,
-          'https://picco-v2.onrender.com/photographer/events');
+          'https://jperg.com/photographer/events');
     });
 
-    test('but shares are still built on jperg.com', () {
-      // The one that must not follow it. This host is pinned in two places
-      // outside Dart — `applinks:jperg.com` in Runner.entitlements and
-      // `deepLinkHost` in build.gradle.kts — and a link built on any other
-      // host opens a browser instead of the app, silently. Moving the portal
-      // is a one-line change; moving this is a release of both platforms.
+    test('shares are built on jperg.com, and that is not a coincidence', () {
+      // The two agree again, which is fine — but only one of them is *pinned*.
+      // This host appears in two places outside Dart: `applinks:jperg.com` in
+      // Runner.entitlements and `deepLinkHost` in build.gradle.kts. A link
+      // built on any other host opens a browser instead of the app, silently.
       expect(AppLinksConfig.shareBaseUrl, 'https://jperg.com');
     });
 
-    test('and the two are allowed to differ', () {
-      // Written down because they were the same for a while and the comment
-      // that said so has been removed. Somebody tidying `webPortalUrl` back
-      // onto `shareBaseUrl` would send every creator to production.
-      expect(
-        AppLinksConfig.creatorDashboardUrl,
-        isNot(startsWith(AppLinksConfig.shareBaseUrl)),
-        reason: 'the portal is a destination, not a link we parse back',
-      );
+    test('and the portal is still the one that is allowed to move', () {
+      // They were deliberately different for a while and may be again: the
+      // portal is a destination the app only ever opens, so it can point at
+      // whichever deployment is being worked on. Moving it is this one line.
+      // Moving shareBaseUrl is a release of both platforms.
+      expect(AppLinksConfig.webPortalUrl, AppLinksConfig.shareBaseUrl,
+          reason: 'today they agree');
+      expect(AppLinksConfig.creatorDashboardUrl,
+          startsWith(AppLinksConfig.webPortalUrl));
     });
   });
 }

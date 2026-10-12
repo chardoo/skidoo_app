@@ -25,10 +25,17 @@ class AppLinksConfig {
   ///     parses it coming back, so it can point wherever the portal being
   ///     worked on lives.
   ///
-  /// Pointed at the Render deployment deliberately and for now: jperg.com
-  /// serves production, and the dashboard this opens is still being built. Put
-  /// it back to `shareBaseUrl` once the production site carries the new portal.
-  static const String webPortalUrl = 'https://picco-v2.onrender.com';
+  /// It pointed at the Render deployment while the dashboard was being built,
+  /// on the understanding that it would come back here once production carried
+  /// the new portal. It does: the live jperg.com bundle references every
+  /// PhotographerView chunk, so the portal somebody is sent to is the one that
+  /// has been deployed rather than a build server.
+  ///
+  /// Kept as its own constant rather than folded into [shareBaseUrl]. The two
+  /// are still different things — one is parsed coming back and pinned by the
+  /// app's entitlements, the other is only ever opened — and the next time the
+  /// portal needs to be worked on somewhere else, this is the line to move.
+  static const String webPortalUrl = shareBaseUrl;
 
   /// The creator dashboard, which lives on the web rather than in the app.
   static const String creatorDashboardUrl =
