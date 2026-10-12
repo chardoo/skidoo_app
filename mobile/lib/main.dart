@@ -15,7 +15,6 @@ import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
-import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

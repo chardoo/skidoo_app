@@ -10,6 +10,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Everything a client says about a photographer, and the screen where they
 /// say it.
@@ -253,7 +254,7 @@ class ReviewCard extends StatelessWidget {
                     : null,
                 child: (review.clientPhotoUrl?.isNotEmpty ?? false)
                     ? null
-                    : Text(name[0].toUpperCase(),
+                    : Text(avatarInitial(name),
                         style: TextStyle(
                             color: ext.avatarForeground, fontSize: 12.sp)),
               ),

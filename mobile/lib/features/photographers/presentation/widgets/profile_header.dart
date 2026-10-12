@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/models/photographer/photographerModel.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 class PhotographerProfileHeader extends StatelessWidget {
   const PhotographerProfileHeader({super.key, required this.photographer, required this.ext});
@@ -14,9 +15,7 @@ class PhotographerProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasImage = photographer.imageUrl != null &&
         photographer.imageUrl!.isNotEmpty;
-    final initial = photographer.name.isNotEmpty
-        ? photographer.name[0].toUpperCase()
-        : '?';
+    final initial = avatarInitial(photographer.name);
 
     return Stack(
       fit: StackFit.expand,

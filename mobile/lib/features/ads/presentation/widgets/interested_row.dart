@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// The faces under a request card: who has answered it, and how many.
 ///
@@ -129,9 +130,7 @@ class _Face extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photo = person.profileUrl;
-    final initial = (person.name?.trim().isNotEmpty ?? false)
-        ? person.name!.trim()[0].toUpperCase()
-        : '?';
+    final initial = avatarInitial(person.name);
 
     return Container(
       width: 26.r,

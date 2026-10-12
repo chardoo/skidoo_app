@@ -29,6 +29,7 @@ import 'package:jperg_app/features/settings/presentation/pages/settings_page.dar
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_grid.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// The profile screen.
 ///
@@ -807,9 +808,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final photo = overview.profileUrl;
-    final initial = overview.username.trim().isNotEmpty
-        ? overview.username.trim()[0].toUpperCase()
-        : '?';
+    final initial = avatarInitial(overview.username);
 
     return Padding(
       padding:

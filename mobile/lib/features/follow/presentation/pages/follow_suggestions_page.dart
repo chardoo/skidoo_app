@@ -10,6 +10,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/auth/onboarding_step.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Final onboarding step — "Creators to follow" (4/4), the same for every
 /// role. Photographer-only portfolio setup + verification no longer happen
@@ -272,7 +273,7 @@ class _SuggestionAvatar extends StatelessWidget {
       radius: size / 2,
       backgroundColor: ext.avatarBackground,
       child: Text(
-        suggestion.name.isNotEmpty ? suggestion.name[0].toUpperCase() : '?',
+        avatarInitial(suggestion.name),
         style: TextStyle(
           color: ext.avatarForeground,
           fontWeight: FontWeight.w700,

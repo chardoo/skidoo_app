@@ -11,7 +11,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/auth_service.dart';
-import 'package:jperg_app/features/auth/onboarding_step.dart';
 
 /// "You're all set, Kwame!" — the end of becoming a creator.
 ///

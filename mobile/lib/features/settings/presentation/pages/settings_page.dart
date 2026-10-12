@@ -259,7 +259,7 @@ class _WhoYouAre extends StatelessWidget {
           // everybody — including accounts that plainly had a photo, which the
           // Profile screen one tap away was happy to show.
           imageUrl: state.profileUrl.isEmpty ? null : state.profileUrl,
-          initial: state.name.isNotEmpty ? state.name : '?',
+          initial: state.name,
           radius: 22.r,
         ),
         SizedBox(width: AppSpacing.md.w),

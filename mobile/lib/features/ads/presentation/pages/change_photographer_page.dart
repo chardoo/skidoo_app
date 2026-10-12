@@ -10,6 +10,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Swapping the chosen photographer for another one.
 ///
@@ -294,7 +295,7 @@ class _SelectableTile extends StatelessWidget {
                   : null,
               child: (person.profileUrl?.isNotEmpty ?? false)
                   ? null
-                  : Text(name[0].toUpperCase(),
+                  : Text(avatarInitial(name),
                       style: TextStyle(color: ext.avatarForeground)),
             ),
             SizedBox(width: AppSpacing.md.w),

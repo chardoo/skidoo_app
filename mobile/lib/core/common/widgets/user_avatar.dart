@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Circular avatar that shows a network image when [imageUrl] is set,
 /// or a themed initial/letter when no image is available.
@@ -81,7 +82,7 @@ class _Initials extends StatelessWidget {
       radius: radius.r,
       backgroundColor: bg,
       child: Text(
-        initial.isNotEmpty ? initial[0].toUpperCase() : '?',
+        avatarInitial(initial),
         style: TextStyle(
           color: fg,
           fontWeight: FontWeight.bold,

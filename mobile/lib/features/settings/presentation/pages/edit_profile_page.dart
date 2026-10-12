@@ -189,7 +189,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   children: [
                     Center(
                       child: _AvatarField(
-                        initial: state.name.isNotEmpty ? state.name : '?',
+                        initial: state.name,
                         imageUrl: _photoUrl,
                         isBusy: _uploadingPhoto,
                         onPick: _pickPhoto,

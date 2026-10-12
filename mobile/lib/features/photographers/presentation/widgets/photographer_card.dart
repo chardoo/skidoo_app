@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 class PhotographerCard extends StatelessWidget {
   const PhotographerCard({
@@ -96,7 +97,7 @@ class PhotographerGridCard extends StatelessWidget {
     final hasImage =
         photographer.imageUrl != null && photographer.imageUrl!.isNotEmpty;
     final initial =
-        photographer.name.isNotEmpty ? photographer.name[0].toUpperCase() : '?';
+        avatarInitial(photographer.name);
 
     return Semantics(
         button: true,
@@ -223,7 +224,7 @@ class _PhotographerAvatar extends StatelessWidget {
     final hasImage =
         photographer.imageUrl != null && photographer.imageUrl!.isNotEmpty;
     final initial =
-        photographer.name.isNotEmpty ? photographer.name[0].toUpperCase() : '?';
+        avatarInitial(photographer.name);
 
     if (hasImage) {
       return CircleAvatar(

@@ -6,6 +6,7 @@ import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// The standout comment, drawn the way Shorts draws it: a frosted capsule
 /// holding the commenter's avatar and what they said, sitting directly above
@@ -43,7 +44,7 @@ class TopCommentLine extends StatelessWidget {
   /// same grey outline of a person.
   String get _initial {
     final name = comment.authorName.trim();
-    return name.isEmpty ? '?' : name[0].toUpperCase();
+    return avatarInitial(name);
   }
 
   @override

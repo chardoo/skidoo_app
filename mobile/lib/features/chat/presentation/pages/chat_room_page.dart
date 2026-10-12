@@ -38,6 +38,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/common/reaction_feedback.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Which of [newIds] are really *new*, and so should play the entrance fade.
 ///
@@ -1442,7 +1443,7 @@ class _UserOptionsSheetState extends State<_UserOptionsSheet> {
                 radius: 24.r,
                 backgroundColor: ext.searchFieldFill,
                 child: Text(
-                  _displayName[0].toUpperCase(),
+                  avatarInitial(_displayName),
                   style: TextStyle(
                     color: ext.greetingColor,
                     fontSize: 18.sp,

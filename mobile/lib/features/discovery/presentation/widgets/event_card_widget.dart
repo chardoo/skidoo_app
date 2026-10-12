@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 class EventCardWidget extends StatelessWidget {
   const EventCardWidget({
@@ -135,7 +136,7 @@ class _GradientPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final idx = name.isEmpty ? 0 : name.codeUnitAt(0) % _palette.length;
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final initial = avatarInitial(name);
 
     return Container(
       decoration: BoxDecoration(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/models/photographer/photographerModel.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 class PhotographerTileWidget extends StatelessWidget {
   final PhotographerModel photographer;
@@ -20,9 +21,7 @@ class PhotographerTileWidget extends StatelessWidget {
             radius: 26,
             backgroundColor: const Color.fromARGB(255, 80, 80, 80),
             child: Text(
-              photographer.name.isNotEmpty
-                  ? photographer.name[0].toUpperCase()
-                  : '?',
+              avatarInitial(photographer.name),
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,

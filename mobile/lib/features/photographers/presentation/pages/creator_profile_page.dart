@@ -33,6 +33,7 @@ import 'package:jperg_app/features/search/presentation/pages/search_event_photos
 import 'package:jperg_app/models/photographer/photographer_event.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Everything the header states about a creator.
 ///
@@ -565,7 +566,7 @@ class _IdentityRow extends StatelessWidget {
             child: (photo?.isNotEmpty ?? false)
                 ? null
                 : Text(
-                    profile.name[0].toUpperCase(),
+                    avatarInitial(profile.name),
                     style:
                         TextStyle(color: ext.avatarForeground, fontSize: 18.sp),
                   ),

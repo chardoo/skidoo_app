@@ -35,6 +35,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 String _resolveErrorMessage(String key, AppLocalizations l10n) => switch (key) {
       'accountAnonymousModeUpdateFailed' =>
@@ -130,9 +131,7 @@ class _AccountView extends StatelessWidget {
                             radius: 48.r,
                             backgroundColor: ext.avatarBackground,
                             child: Text(
-                              state.name.isNotEmpty
-                                  ? state.name[0].toUpperCase()
-                                  : '?',
+                              avatarInitial(state.name),
                               style: TextStyle(
                                 color: ext.avatarForeground,
                                 fontSize: 36.sp,

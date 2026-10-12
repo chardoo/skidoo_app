@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/models/event/Event.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 class SearchItemWidget extends StatelessWidget {
   final Event event;
@@ -45,9 +46,7 @@ class SearchItemWidget extends StatelessWidget {
             radius: 18.r,
             backgroundColor: ext.accentGold,
             child: Text(
-              event.photographer.isNotEmpty
-                  ? event.photographer[0].toUpperCase()
-                  : '?',
+              avatarInitial(event.photographer),
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,

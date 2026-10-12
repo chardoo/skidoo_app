@@ -41,6 +41,7 @@ import 'package:jperg_app/features/music/presentation/feed_music_controller.dart
 import 'package:jperg_app/features/music/presentation/widgets/feed_music_pill.dart';
 import 'package:jperg_app/features/music/presentation/widgets/feed_volume_button.dart';
 import 'package:jperg_app/features/music/presentation/widgets/music_track_sheet.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// One full-screen page of the TikTok-style vertical feed — the photo/video
 /// carousel fills the entire page edge-to-edge, with the caption and action
@@ -1442,10 +1443,8 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
                                     : null,
                                 child: event.photographerProfileUrl == null
                                     ? Text(
-                                        event.photographerName.isNotEmpty
-                                            ? event.photographerName[0]
-                                                .toUpperCase()
-                                            : '?',
+                                        avatarInitial(
+                                            event.photographerName),
                                         style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w700),

@@ -6,6 +6,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/common/reaction_feedback.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Single comment/reply row — model-agnostic.
 /// Accepts pre-computed [CommentRowData]; contains no BLoC or model imports.
@@ -60,9 +61,7 @@ class CommentItemWidget extends StatelessWidget {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          data.label.isNotEmpty
-                              ? data.label[0].toUpperCase()
-                              : '?',
+                          avatarInitial(data.label),
                           style: TextStyle(
                             color: avatarColor,
                             fontWeight: FontWeight.bold,

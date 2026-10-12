@@ -4,6 +4,7 @@ import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 class CardCommentSheet extends StatefulWidget {
   const CardCommentSheet(
@@ -155,7 +156,7 @@ class CardCommentTile extends StatelessWidget {
             radius: 15.r,
             backgroundColor: ext.accentGold,
             child: Text(
-              comment.author[0].toUpperCase(),
+              avatarInitial(comment.author),
               style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

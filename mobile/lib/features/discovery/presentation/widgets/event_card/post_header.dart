@@ -7,6 +7,7 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Slim header row shown above a feed card's media: creator avatar + name,
 /// an "owner" badge for the current user's own posts, a Follow pill, and a
@@ -212,7 +213,7 @@ class CreatorInitialsAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    final initial = avatarInitial(name);
     const borderPad = 2.5;
 
     final fallback = Container(

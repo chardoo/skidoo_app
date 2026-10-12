@@ -7,6 +7,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// One photographer in the list of who answered a request.
 ///
@@ -98,7 +99,7 @@ class PhotographerTile extends StatelessWidget {
                             child: (person.profileUrl?.isNotEmpty ?? false)
                                 ? null
                                 : Text(
-                                    _name[0].toUpperCase(),
+                                    avatarInitial(_name),
                                     style: TextStyle(
                                       color: ext.avatarForeground,
                                       fontSize: 16.sp,

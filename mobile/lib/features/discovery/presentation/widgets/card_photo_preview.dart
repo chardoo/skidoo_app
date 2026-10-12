@@ -7,6 +7,7 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/media_readiness.dart';
+import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Full-width swipeable photo/video carousel — Instagram / TikTok style.
 /// Media is always shown uncropped at its native aspect ratio (`BoxFit
@@ -486,7 +487,7 @@ class CardGradientPlaceholder extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: palette[idx])),
       alignment: Alignment.center,
-      child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+      child: Text(avatarInitial(name),
           style: TextStyle(
               // The watermark has to invert with the tile or it vanishes.
               color: (isLight ? Colors.black : Colors.white)
