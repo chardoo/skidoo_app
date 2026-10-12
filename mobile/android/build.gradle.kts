@@ -5,6 +5,30 @@ allprojects {
     }
 }
 
+// "Your app could crash on 16 KB devices" — the Play Console's warning about
+// base/lib/{arm64-v8a,x86_64}/libtoolChecker.so.
+//
+// That library is not ours and is not built here: it is a prebuilt inside
+// RootBeer, which flutter_jailbreak_detection pins at 0.1.0 through JitPack.
+// Its PT_LOAD segments are aligned to 4 KB, so raising this project's
+// ndkVersion does nothing — nothing in this build ever compiles it. RootBeer
+// 0.1.2 is the release that aligned all four ABIs to 16 KB ("Enforce 16KB page
+// size for all ABIs", scottyab/rootbeer#244); it carries the same
+// com.scottyab.rootbeer.RootBeer the plugin calls, on Maven Central rather
+// than JitPack, which is why this is a substitution and not a version bump.
+//
+// Applied to every subproject because the dependency is declared by the plugin
+// module, not by :app — a resolutionStrategy on :app alone would not see it.
+subprojects {
+    configurations.all {
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("com.github.scottyab:rootbeer"))
+                .using(module("com.scottyab:rootbeer-lib:0.1.2"))
+                .because("16 KB page alignment for libtoolChecker.so")
+        }
+    }
+}
+
 // Fix for older Flutter plugins that don't declare a namespace in their
 // build.gradle (required by AGP 8+), AND for plugins whose source
 // AndroidManifest.xml still has a package= attribute (rejected by AGP 8.3+
