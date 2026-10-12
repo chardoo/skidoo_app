@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/platform/face_check.dart';
+import 'package:jperg_app/core/common/widgets/camera_blocked.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -209,7 +210,7 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
     // instructions for an action the screen had just said was impossible,
     // and a button that could only fail.
     if (_cameraError != null) {
-      return _CameraBlocked(
+      return CameraBlocked(
         message: _cameraError!,
         // Only a refusal can be fixed in Settings. "The camera could not be
         // started" is something else — a camera in use, a simulator, a
@@ -381,100 +382,6 @@ class _SelfieCaptureScreenState extends State<SelfieCaptureScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// What the screen is when there is no camera to show.
-///
-/// A whole screen rather than a message laid over the capture UI. The error
-/// used to be drawn into it — over the "Take a Selfie" title, above "Centre
-/// your face inside the oval" and a working shutter — which asked somebody to
-/// do the one thing the same screen had just said was impossible.
-///
-/// [onOpenSettings] is null when the camera failed for a reason Settings
-/// cannot fix, and the button is simply absent then.
-class _CameraBlocked extends StatelessWidget {
-  const _CameraBlocked({
-    required this.message,
-    required this.onBack,
-    this.onOpenSettings,
-  });
-
-  final String message;
-  final VoidCallback onBack;
-  final VoidCallback? onOpenSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: _CircleIconBtn(icon: AppBackButton.icon, onTap: onBack),
-        leadingWidth: 36.w + AppSpacing.lg.w * 2,
-      ),
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.no_photography_rounded,
-                    size: 44.sp, color: Colors.white38),
-                SizedBox(height: AppSpacing.lg.h),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: AppTypography.displayFontFamily,
-                  ),
-                ),
-                if (onOpenSettings != null) ...[
-                  SizedBox(height: AppSpacing.sm.h),
-                  Text(
-                    'Allow camera access, then come back to this screen.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 14.sp),
-                  ),
-                  SizedBox(height: AppSpacing.xxl.h),
-                  Semantics(
-                    button: true,
-                    label: 'Open Settings',
-                    child: GestureDetector(
-                      onTap: onOpenSettings,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xxl.w,
-                            vertical: AppSpacing.md.h),
-                        decoration: BoxDecoration(
-                          color: ext.accentGold,
-                          borderRadius: BorderRadius.circular(AppRadius.pill.r),
-                        ),
-                        child: Text(
-                          'Open Settings',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

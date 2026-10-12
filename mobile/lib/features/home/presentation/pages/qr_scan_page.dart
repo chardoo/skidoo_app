@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/common/widgets/camera_blocked.dart';
 
 class QrScanPage extends StatefulWidget {
   const QrScanPage({super.key});
@@ -22,6 +24,16 @@ class _QrScanPageState extends State<QrScanPage> {
   );
 
   bool _processing = false;
+
+  /// Set when the scanner cannot run — refused camera, unsupported device.
+  ///
+  /// Held here rather than only inside `errorBuilder` because the plugin's
+  /// builder replaces the *camera*, and this page lays a scan frame, a torch
+  /// button and a "point at the code" caption over it. Left to itself, a
+  /// refused camera produced a screen that still looked like a working
+  /// scanner, with the error tucked underneath the frame. The whole screen
+  /// has to stand down, which is the same conclusion the selfie page reached.
+  MobileScannerException? _cameraError;
 
   @override
   void dispose() {
@@ -54,9 +66,38 @@ class _QrScanPageState extends State<QrScanPage> {
     }
   }
 
+  /// What the screen says, in the reader's terms rather than the plugin's.
+  ///
+  /// `MobileScannerException.toString()` is a developer string — the error
+  /// code and a raw platform message — and it was what the default error view
+  /// put on screen.
+  String _messageFor(MobileScannerException error) =>
+      switch (error.errorCode) {
+        MobileScannerErrorCode.permissionDenied =>
+          'jperg needs your camera to scan a QR code.',
+        MobileScannerErrorCode.unsupported =>
+          'This device cannot scan QR codes.',
+        _ => 'The camera could not be started.',
+      };
+
   @override
   Widget build(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+
+    // No camera, no scanner. The scan frame, the torch and "point at the
+    // code" are all instructions for an action this screen has just said is
+    // impossible — the same mistake the selfie page used to make, where the
+    // error was drawn over a live shutter button.
+    if (_cameraError != null) {
+      return CameraBlocked(
+        message: _messageFor(_cameraError!),
+        onOpenSettings: _cameraError!.errorCode ==
+                MobileScannerErrorCode.permissionDenied
+            ? openAppSettings
+            : null,
+        onBack: () => Navigator.of(context).maybePop(),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -109,6 +150,36 @@ class _QrScanPageState extends State<QrScanPage> {
             onDetect: (capture) {
               final code = capture.barcodes.firstOrNull?.rawValue;
               if (code != null && code.isNotEmpty) _handleCode(code);
+            },
+            // Without this the plugin draws its own error — "permission
+            // denied" in small type — *underneath* the scan frame and the
+            // torch button this page lays over it. Somebody who had refused
+            // the camera got a screen that still looked like a working
+            // scanner, with nothing to tap and no way to change their mind
+            // short of finding the switch in iOS Settings themselves.
+            //
+            // The same screen the selfie page shows, for the same reason and
+            // with the same Settings button. See [CameraBlocked].
+            errorBuilder: (context, error) {
+              // Painted during build, so the page-level rebuild waits for the
+              // frame to finish.
+              if (_cameraError?.errorCode != error.errorCode) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _cameraError = error);
+                });
+              }
+              return CameraBlocked(
+                message: _messageFor(error),
+                // Only a refusal is fixable there. "Scanning is not
+                // supported on this device" or a camera already in use is
+                // not, and sending somebody to a switch that is already on
+                // would be the wrong advice.
+                onOpenSettings:
+                    error.errorCode == MobileScannerErrorCode.permissionDenied
+                        ? openAppSettings
+                        : null,
+                onBack: () => Navigator.of(context).maybePop(),
+              );
             },
           ),
 
