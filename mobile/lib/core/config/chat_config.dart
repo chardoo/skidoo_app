@@ -1,10 +1,15 @@
+import 'package:jperg_app/core/config/api_config.dart';
+
 /// Configuration for the chat micro-service.
-/// Change [restBaseUrl] / [wsBaseUrl] to point at the production host.
 class ChatConfig {
   ChatConfig._();
 
-  static const String restBaseUrl = 'https://photoapp-backend-ka5m.onrender.com';
-  static const String wsBaseUrl = 'https://photoapp-backend-ka5m.onrender.com';
+  /// Chat is reached through the same gateway as everything else — `/chat`
+  /// and `/chat/ws` are proxied to it — so there is no host here of its own.
+  /// It used to carry its own copy of the backend URL, which is two more
+  /// places to forget when the app is pointed somewhere else. See [ApiConfig].
+  static const String restBaseUrl = ApiConfig.host;
+  static const String wsBaseUrl = ApiConfig.host;
 
   /// What the app calls the two kinds of account.
   ///

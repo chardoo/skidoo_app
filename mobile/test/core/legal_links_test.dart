@@ -45,9 +45,13 @@ void main() {
       // Support's `info@piccotechnologies.com` is not what this is about. The
       // check used to match the bare domain anywhere, which made it broader
       // than the rule it enforces.
+      // And not the `api.` subdomain, which is the gateway and answers fine
+      // — see test/core/api_host_test.dart. What never resolved is the site
+      // host, bare and `www.`, which is where the legal pages were linked
+      // from. The two are different servers under one domain.
       final webLink = RegExp(r'https?://[^\s'
           "'"
-          r'"]*piccotechnologies\.com');
+          r'"]*(?<!api\.)piccotechnologies\.com');
       final offenders = <String>[];
       for (final file in dartFiles()) {
         final source = file.readAsStringSync();
