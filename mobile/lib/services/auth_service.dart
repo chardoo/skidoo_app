@@ -66,6 +66,24 @@ class AuthService {
   /// avatar watching it redraws.
   static final profileUrl = ValueNotifier<String>('');
 
+  /// The signed-in account's display name, or '' before one is known.
+  ///
+  /// A notifier for the same reason [profileUrl] is one, and drawn in the
+  /// same place: the avatar falls back to the first letter of this when there
+  /// is no picture, and the feed's top bar builds once and stays up. A
+  /// one-shot `getName()` there keeps whatever storage held at build time —
+  /// on a fresh sign-in, nothing — so the creator's own avatar showed a
+  /// question mark and never corrected itself.
+  static final name = ValueNotifier<String>('');
+
+  /// The signed-in account's own id, or '' when nobody is signed in.
+  ///
+  /// Readable synchronously, which is the point: "is this my own profile?"
+  /// decides whether a profile screen draws its buttons at all, and answering
+  /// it with `await getUserId()` meant they could not be drawn on the first
+  /// frame. They arrived a beat late, which reads as a half-loaded screen.
+  static final userId = ValueNotifier<String>('');
+
   /// Whether the account may upload and sell work.
   static bool get isPhotographer => role.value == 'photographer';
 
@@ -153,10 +171,21 @@ class AuthService {
   Future<void> setEmail(String v) => _write(_kEmail, v);
   Future<String> getEmail() async => await _read(_kEmail) ?? '';
 
-  Future<void> setId(String v) => _write(_kId, v);
+  /// Records the account's own id and tells everything watching [userId].
+  Future<void> setId(String v) {
+    AuthService.userId.value = v;
+    return _write(_kId, v);
+  }
   Future<String> getUserId() async => await _read(_kId) ?? '';
 
-  Future<void> setName(String v) => _write(_kName, v);
+  /// Records the display name and tells everything watching [name].
+  ///
+  /// Notifier first and synchronously, so a widget rebuilding on this frame
+  /// sees the new name rather than the pending write — as [setProfileUrl].
+  Future<void> setName(String v) {
+    AuthService.name.value = v;
+    return _write(_kName, v);
+  }
   Future<String> getName() async => await _read(_kName) ?? '';
 
   // ── Face / reference photos prompt ────────────────────────────────────────────
@@ -248,6 +277,16 @@ class AuthService {
   /// once the profile request comes back.
   Future<void> primeProfileUrl() async =>
       AuthService.profileUrl.value = await getProfileUrl();
+
+  /// Seeds [name] from storage, alongside [primeProfileUrl]. The pair travel
+  /// together: the avatar draws the picture when there is one and the first
+  /// letter of the name when there is not.
+  Future<void> primeName() async => AuthService.name.value = await getName();
+
+  /// Seeds [userId], so the first profile opened after a cold start can tell
+  /// whose it is without waiting on storage.
+  Future<void> primeUserId() async =>
+      AuthService.userId.value = await getUserId();
 
   // ── Onboarding ───────────────────────────────────────────────────────────────
   /// Device-level flag (not cleared on logout) — the 3-screen intro carousel
@@ -347,6 +386,10 @@ class AuthService {
     // settings and feed avatars of whoever signed in next, until their own
     // profile finished loading over it.
     profileUrl.value = '';
+    // And the letter drawn in place of that face, and who they were — or the
+    // next person to sign in opens on the last account's initial.
+    name.value = '';
+    userId.value = '';
     // Everything the session put in memory, on the socket, or in a feed cache.
     // Registered by its owners rather than listed here — see [SessionReset],
     // and add to it rather than to this method.

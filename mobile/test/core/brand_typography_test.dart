@@ -99,16 +99,46 @@ void main() {
       }
     });
 
-    test('covers every weight the app asks for', () {
-      // Syne's `wght` axis stops at 800 and has no Black. That is fine only as
-      // long as nothing set in Syne asks for w900 — which the call-site group
-      // below is what actually holds to.
-      final weights = {
+    test('covers every weight the app asks for, and no more', () {
+      // Both directions, derived rather than listed.
+      //
+      // It used to assert the literal set {400,500,600,700,800,900}, which was
+      // a description of what happened to be in the folder rather than of
+      // anything the app needs — and it contradicted the call-site group
+      // below, which fails on a w600. Six weights across two families is
+      // ~300 KB of an APK, carried for three weights nobody asks for.
+      //
+      // A weight that is *used* and not bundled is the worse failure: Flutter
+      // silently synthesises it from the nearest, so the type is subtly wrong
+      // everywhere and nothing reports it.
+      final bundled = {
         for (final family in ours.entries)
-          family.key: {for (final font in family.value) font['weight']}
+          family.key: {for (final font in family.value) font['weight'] as int}
       };
-      expect(weights['DM Sans'], {400, 500, 600, 700, 800, 900});
-      expect(weights['Syne'], {400, 500, 600, 700, 800});
+
+      final asked = <int>{};
+      for (final file in Directory('lib')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        final source = file.readAsStringSync();
+        for (final m in RegExp(r'FontWeight\.w(\d{3})').allMatches(source)) {
+          asked.add(int.parse(m.group(1)!));
+        }
+        if (source.contains('FontWeight.bold')) asked.add(700);
+        if (source.contains('FontWeight.normal')) asked.add(400);
+      }
+
+      // w300 is asked for once and there is no Light cut of either family.
+      // Flutter falls back to 400, which is what it has always done here.
+      asked.remove(300);
+
+      for (final family in bundled.entries) {
+        expect(family.value, containsAll(asked),
+            reason: '${family.key} is missing a weight the app uses');
+        expect(family.value.difference(asked), isEmpty,
+            reason: '${family.key} bundles a weight nothing asks for');
+      }
     });
   });
 

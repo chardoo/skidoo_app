@@ -17,8 +17,6 @@ PODS:
   - just_audio (0.0.1):
     - Flutter
     - FlutterMacOS
-  - lecle_downloads_path_provider (0.0.1):
-    - Flutter
   - mobile_scanner (7.0.0):
     - Flutter
     - FlutterMacOS
@@ -110,7 +108,6 @@ DEPENDENCIES:
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - just_audio (from `.symlinks/plugins/just_audio/darwin`)
-  - lecle_downloads_path_provider (from `.symlinks/plugins/lecle_downloads_path_provider/ios`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
   - onesignal_flutter (from `.symlinks/plugins/onesignal_flutter/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
@@ -147,8 +144,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   just_audio:
     :path: ".symlinks/plugins/just_audio/darwin"
-  lecle_downloads_path_provider:
-    :path: ".symlinks/plugins/lecle_downloads_path_provider/ios"
   mobile_scanner:
     :path: ".symlinks/plugins/mobile_scanner/darwin"
   onesignal_flutter:
@@ -184,7 +179,6 @@ SPEC CHECKSUMS:
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   IOSSecuritySuite: ba76f34cb367b9230934ac37904e26a40d033e3d
   just_audio: 4e391f57b79cad2b0674030a00453ca5ce817eed
-  lecle_downloads_path_provider: b8fc900fe43f42c88498a1f7e6d64f7c37eb9614
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
   onesignal_flutter: 29eeda57e99e9615280a7f10dc103840ed6f4746
   OneSignalXCFramework: 48e5b7c5b51d4e67bab3405229f963efde1a3894

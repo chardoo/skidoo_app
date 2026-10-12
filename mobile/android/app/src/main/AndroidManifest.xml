@@ -142,7 +142,7 @@
              opened. The model is not shipped in the APK — see FaceCheckPlugin. -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="face" />
+            android:value="face,barcode" />
 
         <!-- Deep links are handled by app_links → DeepLinkService, NOT by
              Flutter's built-in routing.

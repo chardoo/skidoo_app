@@ -42,10 +42,8 @@ dependencies:
   # store cached_network_image writes into, which means importing this package
   # by name.
   flutter_cache_manager: ^3.3.1
-  carousel_slider_plus: ^7.1.1
   flutter_svg: ^2.0.9
   shimmer: ^3.0.0
-  provider: ^6.1.2
 
   # Chat - WebSocket & Local DB
   web_socket_channel: ^3.0.2
@@ -73,12 +71,10 @@ dependencies:
   # Storage & Utils
   path_provider: ^2.1.1
   url_launcher: ^6.3.1
-  lecle_downloads_path_provider: ^0.0.2+8
   permission_handler: ^11.3.1
   share_plus: ^10.0.0
 
   # Forms
-  easy_autocomplete: ^1.6.0
   intl: ^0.20.2
 
   # Video — the platform's own player: AVPlayer (iOS), ExoPlayer (Android),
@@ -191,12 +187,8 @@ flutter:
           weight: 400
         - asset: assets/fonts/Syne-Medium.ttf
           weight: 500
-        - asset: assets/fonts/Syne-SemiBold.ttf
-          weight: 600
         - asset: assets/fonts/Syne-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Syne-ExtraBold.ttf
-          weight: 800
     - family: DM Sans
       fonts:
         - asset: assets/fonts/DMSans-Regular.ttf
@@ -206,11 +198,5 @@ flutter:
           style: italic
         - asset: assets/fonts/DMSans-Medium.ttf
           weight: 500
-        - asset: assets/fonts/DMSans-SemiBold.ttf
-          weight: 600
         - asset: assets/fonts/DMSans-Bold.ttf
           weight: 700
-        - asset: assets/fonts/DMSans-ExtraBold.ttf
-          weight: 800
-        - asset: assets/fonts/DMSans-Black.ttf
-          weight: 900

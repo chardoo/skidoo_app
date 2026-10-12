@@ -153,14 +153,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.3"
-  carousel_slider_plus:
-    dependency: "direct main"
-    description:
-      name: carousel_slider_plus
-      sha256: "24a352d5340c0fbcd99281aaa0fc18e7f0efe0fc1d07778a441e00e6f3d497fa"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.1.1"
   characters:
     dependency: transitive
     description:
@@ -249,14 +241,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  easy_autocomplete:
-    dependency: "direct main"
-    description:
-      name: easy_autocomplete
-      sha256: e7ded95deb010daec41caf25f553b450fbdaa6769e7a6fdb7b8dce6764318406
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.6.0"
   equatable:
     dependency: "direct main"
     description:
@@ -645,14 +629,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.2"
-  lecle_downloads_path_provider:
-    dependency: "direct main"
-    description:
-      name: lecle_downloads_path_provider
-      sha256: "111f6d6d21e18acddda515eba8fd445658aa14defcbd59513d6d1b02b9ed47a0"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.2+8"
   lints:
     dependency: transitive
     description:
@@ -886,7 +862,7 @@ packages:
     source: hosted
     version: "2.1.8"
   provider:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: provider
       sha256: c8a055ee5ce3fd98d6fc872478b03823ffdb448699c6ebdbbc71d59b596fd48c

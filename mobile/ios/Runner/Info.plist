@@ -65,6 +65,25 @@
 	     audience this string will ever have. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>jperg does not use your location. This notice is required because the notification service bundled with the app includes location-based features, which jperg keeps switched off.</string>
+	<!-- Same situation as the location key above, and the same rejection
+	     (90683). jperg records no audio and no video: the only two cameras it
+	     opens are the selfie capture and the face capture, both of which pass
+	     `enableAudio: false` precisely so the microphone is never requested —
+	     see the note in selfie_capture_screen.dart, where defaulting to true
+	     once failed the whole camera initialise when somebody declined a mic
+	     prompt on a screen called "Take a Selfie".
+
+	     The key is required anyway because `camera_avfoundation` links
+	     AVCaptureDevice's audio APIs to support video recording, and App Store
+	     validation rejects a build whose frameworks reference those APIs with
+	     no purpose string — whether or not the app calls them. image_picker,
+	     mobile_scanner and audio_session are in the same position.
+
+	     No prompt will ever be shown, because nothing in the app asks for
+	     microphone access. The wording says exactly that, since App Review is
+	     the only audience this string will ever have. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>jperg does not use your microphone and records no audio. This notice is required because the camera library bundled with the app includes video-recording features, which jperg keeps switched off.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>jperg needs permission to save images to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

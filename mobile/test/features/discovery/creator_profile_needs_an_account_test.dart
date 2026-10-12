@@ -58,7 +58,10 @@ class _FakeLoginBloc extends Bloc<LoginEvent, LoginState> implements LoginBloc {
 /// tests for a reason that has nothing to do with what they assert.
 Future<void> loadBodyFont() async {
   final loader = FontLoader(Styles.bodyFontFamily);
-  for (final weight in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+  // The cuts that are bundled. SemiBold was dropped — nothing in the app
+  // asks for w600, and three unused weights across two families is ~300 KB
+  // of APK. See test/core/brand_typography_test.dart.
+  for (final weight in ['Regular', 'Medium', 'Bold']) {
     loader.addFont(Future.value(ByteData.sublistView(
         File('assets/fonts/DMSans-$weight.ttf').readAsBytesSync())));
   }

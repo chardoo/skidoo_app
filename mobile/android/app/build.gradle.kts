@@ -36,7 +36,7 @@ android {
         // google_ml_kit requires minSdk 21; camera requires 21
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 30 
+        versionCode = 35 
         versionName = flutter.versionName
     }
 
@@ -63,8 +63,39 @@ android {
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")
+
+            // R8 was never switched on, so every release shipped the whole of
+            // every Java/Kotlin dependency plus all of their resources —
+            // classes.dex alone was 5.8 MB of code most of which nothing calls.
+            //
+            // What it is allowed to delete is bounded by proguard-rules.pro:
+            // anything reached only by reflection or only from native code
+            // looks unreachable to R8, and the failure arrives at runtime, in
+            // release, on somebody's phone.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
+
+    // No `splits { abi { … } }` here, deliberately.
+    //
+    // It conflicts with the `ndk.abiFilters` the Flutter Gradle plugin injects
+    // — "Conflicting configuration ... cannot be present when splits abi
+    // filters are set" — and it fails the *bundle* build, which is the one the
+    // store takes.
+    //
+    // It is also unnecessary. An app bundle already splits by ABI: Play builds
+    // a per-device APK and sends one architecture, which is how a 96 MB fat
+    // APK became a ~17 MB download. For a plain APK, Flutter's own
+    // `--split-per-abi` does the same thing without touching Gradle, and
+    // `--target-platform android-arm,android-arm64` leaves out the x86_64
+    // slice that only emulators run.
+    //
+    // See the build commands in README / the release checklist.
 }
 
 flutter {

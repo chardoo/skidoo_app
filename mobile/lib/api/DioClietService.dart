@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/config/api_config.dart';
 
 class Api {
   final dio = createDio();
@@ -12,7 +13,7 @@ class Api {
   static Dio createDio() {
     final dio = Dio(BaseOptions(
       validateStatus: (status) => status != null && status <= 399,
-      baseUrl: 'https://photoapp-backend-ka5m.onrender.com/api',
+      baseUrl: ApiConfig.apiBaseUrl,
       
       receiveTimeout: const Duration(seconds: 60),
       connectTimeout: const Duration(seconds: 60),
