@@ -22,6 +22,7 @@ import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/profile_actions.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
@@ -32,7 +33,6 @@ import 'package:jperg_app/features/photographers/presentation/widgets/photograph
 import 'package:jperg_app/features/search/presentation/pages/search_event_photos_page.dart';
 import 'package:jperg_app/models/photographer/photographer_event.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
-import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
 
 /// Everything the header states about a creator.
@@ -126,6 +126,26 @@ class CreatorProfile {
             fresh.followerCount > 0 ? fresh.followerCount : followerCount,
         verified: fresh.verified || verified,
       );
+
+  /// This profile with a different follower count.
+  ///
+  /// Not [mergedWith]: that treats 0 as "the fetch did not say" and keeps the
+  /// old figure, which is right for a server payload and wrong for an unfollow
+  /// — the one that takes a creator from their only follower to none would
+  /// leave the count showing 1.
+  CreatorProfile withFollowerCount(int count) => CreatorProfile(
+        id: id,
+        name: name,
+        photoUrl: photoUrl,
+        bannerUrl: bannerUrl,
+        bio: bio,
+        location: location,
+        specialties: specialties,
+        rating: rating,
+        ratingCount: ratingCount,
+        followerCount: count < 0 ? 0 : count,
+        verified: verified,
+      );
 }
 
 /// A creator, wherever you tapped them.
@@ -176,10 +196,6 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
   ReviewPage? _reviews;
   bool _loadingReviews = false;
 
-  /// null while the checks are in flight. Not false: on the first paint a
-  /// `false` would draw a Follow button on the viewer's own profile, and
-  /// tapping it posts a follow of themselves, which the API refuses.
-  bool? _isOwner;
   CanMessageResult? _canMsg;
 
   List<AdMedia> _portfolio = const [];
@@ -195,7 +211,6 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
       _loadFollowers();
     }
     _loadPortfolio();
-    _checkOwner();
     _checkCanMessage();
   }
 
@@ -209,6 +224,14 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
       // the banner, not the screen.
       debugPrint('[CreatorProfile] profile ERROR: $e');
     }
+  }
+
+  /// The follower figure and the button move together — a Follow that left the
+  /// count where it was reads as a tap that did not land.
+  void _onFollowChanged(bool following) {
+    if (!mounted) return;
+    setState(() => _p =
+        _p.withFollowerCount(_p.followerCount + (following ? 1 : -1)));
   }
 
   /// The follow service owns this number, not the profile payload.
@@ -250,17 +273,6 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
     } catch (e) {
       debugPrint('[CreatorProfile] portfolio ERROR: $e');
       if (mounted) setState(() => _loadingPortfolio = false);
-    }
-  }
-
-  Future<void> _checkOwner() async {
-    try {
-      final myId = await sl<AuthService>().getUserId();
-      if (mounted) setState(() => _isOwner = myId == _p.id);
-    } catch (e) {
-      // Left unknown rather than assumed: the buttons stay hidden, which is
-      // the safe way to be wrong.
-      debugPrint('[CreatorProfile] ownership ERROR: $e');
     }
   }
 
@@ -401,12 +413,39 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
                 // Follow and Message, on the profile itself rather than only on
                 // the one this replaced. A profile you cannot act on is a
                 // poster.
-                if (_isOwner == false) ...[
-                  _Actions(
-                    profile: _p,
+                //
+                // Unconditional now, and that is the fix: this used to be
+                // `if (_isOwner == false)`, so the pair was absent until a read
+                // of the stored user id came back, and Message within it was
+                // dropped altogether whenever the can-message check said no or
+                // had not answered. A creator reached from search or from a
+                // comment thread therefore showed no Message button at all.
+                // [ProfileActions] decides all of it — own profile, which
+                // buttons, and dimmed versus absent — on the first frame.
+                // Except in the request flow, which owns its own call to
+                // action: a requester picking somebody for a job chooses them
+                // first and talks afterwards, so Follow and Message there
+                // would compete with "Select photographer" for the same
+                // decision. [footer] is how that mounting announces itself —
+                // nothing else passes one.
+                //
+                // That rule was asserted in a test and never actually held:
+                // the old gate read the stored user id, and the request
+                // profile showed both buttons as soon as it came back. It only
+                // looked right under test, where the read fails and the gate
+                // stayed closed.
+                //
+                // No `isFollowedByMe`: this payload does not carry one, and the
+                // creator follow set [FollowRepository] keeps is the authority
+                // every other follow control in the app already reads.
+                if (widget.footer == null) ...[
+                  ProfileActions(
+                    userId: _p.id,
                     ext: ext,
-                    canMessage: _canMsg?.canMessage ?? false,
+                    isCreator: true,
+                    canMessage: _canMsg?.canMessage,
                     onMessage: _openDirectChat,
+                    onFollowChanged: _onFollowChanged,
                   ),
                   SizedBox(height: AppSpacing.lg.h),
                 ],
@@ -618,168 +657,6 @@ class _IdentityRow extends StatelessWidget {
   }
 }
 
-/// Follow and Message, side by side.
-///
-/// A matched pair rather than the feed's little follow pill: on a profile these
-/// are the two things there are to do, and the design gives them equal weight.
-///
-/// Message disappears rather than failing when the person is not taking new
-/// conversations — a button that always errors is worse than no button.
-class _Actions extends StatefulWidget {
-  const _Actions({
-    required this.profile,
-    required this.ext,
-    required this.canMessage,
-    required this.onMessage,
-  });
-
-  final CreatorProfile profile;
-  final AppThemeExtension ext;
-  final bool canMessage;
-  final VoidCallback onMessage;
-
-  @override
-  State<_Actions> createState() => _ActionsState();
-}
-
-class _ActionsState extends State<_Actions> {
-  final _repo = FollowRepository();
-
-  late bool _following =
-      FollowRepository.followedIds.contains(widget.profile.id);
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Following the same person from two screens at once is ordinary — the
-    // feed card behind this one has its own button.
-    FollowRepository.followedRevision.addListener(_onFollowedChanged);
-  }
-
-  @override
-  void dispose() {
-    FollowRepository.followedRevision.removeListener(_onFollowedChanged);
-    super.dispose();
-  }
-
-  void _onFollowedChanged() {
-    final following = FollowRepository.followedIds.contains(widget.profile.id);
-    if (mounted && following != _following) {
-      setState(() => _following = following);
-    }
-  }
-
-  Future<void> _toggle() async {
-    if (_busy) return;
-    final wasFollowing = _following;
-    setState(() {
-      _following = !wasFollowing;
-      _busy = true;
-    });
-    try {
-      wasFollowing
-          ? await _repo.unfollow(widget.profile.id)
-          : await _repo.follow(widget.profile.id);
-    } catch (e) {
-      debugPrint('[CreatorProfile] follow ERROR: $e');
-      if (mounted) setState(() => _following = wasFollowing);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ext = widget.ext;
-    return Row(
-      children: [
-        Expanded(
-          child: _PillButton(
-            ext: ext,
-            icon: _following
-                ? Icons.person_remove_alt_1_outlined
-                : Icons.person_add_alt_1_outlined,
-            label: _following ? 'Following' : 'Follow',
-            filled: _following,
-            onTap: _toggle,
-          ),
-        ),
-        if (widget.canMessage) ...[
-          SizedBox(width: AppSpacing.md.w),
-          Expanded(
-            child: _PillButton(
-              ext: ext,
-              icon: Icons.chat_bubble_outline_rounded,
-              label: 'Message',
-              filled: false,
-              onTap: widget.onMessage,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _PillButton extends StatelessWidget {
-  const _PillButton({
-    required this.ext,
-    required this.icon,
-    required this.label,
-    required this.filled,
-    required this.onTap,
-  });
-
-  final AppThemeExtension ext;
-  final IconData icon;
-  final String label;
-
-  /// Filled marks the state you are already in — following. The action you
-  /// have not taken is an outline, the same rule the reaction rail follows.
-  final bool filled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: label,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 44.h,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: filled
-                ? ext.searchHintColor.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
-            border: Border.all(
-              color: ext.searchHintColor.withValues(alpha: 0.35),
-              width: 0.9,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 17.sp, color: ext.greetingColor),
-              SizedBox(width: AppSpacing.sm.w),
-              Text(
-                label,
-                style: TextStyle(
-                  color: ext.greetingColor,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ── Tabs and their contents ──────────────────────────────────────────────────
 

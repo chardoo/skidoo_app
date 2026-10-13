@@ -9,6 +9,8 @@ import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/features/user_profile/presentation/utils/open_author_profile.dart';
+import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
@@ -75,12 +77,28 @@ class _PhotoCommentSheetContentState extends State<_PhotoCommentSheetContent>
 
   ChatMessage? _replyingTo;
 
+  /// The viewer's own id, so their own comments do not offer a tap through to
+  /// their own profile. Empty until it is read, which only costs the author of
+  /// a comment the dead tap they had before.
+  String _myId = '';
+
   @override
   void initState() {
     super.initState();
     _bloc = context.read<ChatRoomBloc>();
     _scrollCtrl.addListener(_onScroll);
     _loadRoom();
+    _loadMyId();
+  }
+
+  Future<void> _loadMyId() async {
+    try {
+      final id = await sl<AuthService>().getUserId();
+      if (mounted) setState(() => _myId = id);
+    } catch (_) {
+      // Left empty: every author stays tappable, which is the harmless way to
+      // be wrong — the profile itself draws no actions on your own account.
+    }
   }
 
   /// What was fetched plus anything that has arrived since — see the event
@@ -255,7 +273,19 @@ class _PhotoCommentSheetContentState extends State<_PhotoCommentSheetContent>
       label: _label(msg),
       content: msg.content,
       timeLabel: TimeFormatter.relative(msg.createdAt),
-      isMe: false,
+      isMe: msg.senderId == _myId,
+      // A tap on the author opens their profile — a creator's or a person's,
+      // whichever they are. This sheet wired nothing at all, so a photographer
+      // could be read in a photo's comments and not reached: the one path to
+      // their Follow and Message from here was dead. See
+      // [openAuthorProfileTap], which every thread now shares.
+      onUserTap: openAuthorProfileTap(
+        context,
+        authorId: msg.senderId,
+        authorName: _label(msg),
+        authorRole: msg.senderRole,
+        isMe: msg.senderId == _myId,
+      ),
       isPending: msg.isLocal,
       // The server's number, not the length of a list this sheet does not
       // have until the thread is expanded — see [_toggleReplies].

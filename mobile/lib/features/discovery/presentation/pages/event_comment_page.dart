@@ -19,13 +19,12 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/core/utils/time_formatter.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart'
     show GetCommentRepliesUseCase, GetEventRoomUseCase;
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/bloc/room/chat_room_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/feed_active_event.dart';
-import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
+import 'package:jperg_app/features/user_profile/presentation/utils/open_author_profile.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -394,15 +393,6 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
     return r.isEmpty ? 'User' : r[0].toUpperCase() + r.substring(1);
   }
 
-  void _openProfile(ChatMessage msg) {
-    final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
-    openPhotographerProfile(
-      context,
-      photographerId: msg.senderId,
-      photographerName: name,
-    );
-  }
-
   // ── Thread building ──────────────────────────────────────────────────────────
 
   ({List<ChatMessage> topLevel, Map<String, List<ChatMessage>> repliesMap})
@@ -549,10 +539,18 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
       viewerLiked: likeFor(msg).liked,
       onLike: likeHandler(msg),
       onReply: () => onReply(msg),
-      onUserTap: (msg.senderId == _myId ||
-              msg.senderRole != ChatConfig.rolePhotographer)
-          ? null
-          : () => _openProfile(msg),
+      // Every author but the viewer, not creators alone. This used to refuse
+      // the tap unless `senderRole` was the creator role, so an ordinary
+      // commenter's avatar was dead — and a thread is the one list in the app
+      // where both kinds of account appear together. The role now picks the
+      // screen rather than deciding whether there is one.
+      onUserTap: openAuthorProfileTap(
+        context,
+        authorId: msg.senderId,
+        authorName: _label(msg),
+        authorRole: msg.senderRole,
+        isMe: msg.senderId == _myId,
+      ),
       // Who may do what, and they are not the same list. The author may
       // change what they said; the creator of the album may take it down but
       // not rewrite it. The server enforces both — this decides what is worth
@@ -929,15 +927,6 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
     return r.isEmpty ? 'User' : r[0].toUpperCase() + r.substring(1);
   }
 
-  void _openProfile(ChatMessage msg) {
-    final name = msg.senderName.isNotEmpty ? msg.senderName : 'Creator';
-    openPhotographerProfile(
-      context,
-      photographerId: msg.senderId,
-      photographerName: name,
-    );
-  }
-
   ({List<ChatMessage> topLevel, Map<String, List<ChatMessage>> repliesMap})
       _buildThreads(List<ChatMessage> messages) {
     final allIds = {for (final m in messages) m.id};
@@ -1078,10 +1067,18 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
       viewerLiked: likeFor(msg).liked,
       onLike: likeHandler(msg),
       onReply: () => onReply(msg),
-      onUserTap: (msg.senderId == _myId ||
-              msg.senderRole != ChatConfig.rolePhotographer)
-          ? null
-          : () => _openProfile(msg),
+      // Every author but the viewer, not creators alone. This used to refuse
+      // the tap unless `senderRole` was the creator role, so an ordinary
+      // commenter's avatar was dead — and a thread is the one list in the app
+      // where both kinds of account appear together. The role now picks the
+      // screen rather than deciding whether there is one.
+      onUserTap: openAuthorProfileTap(
+        context,
+        authorId: msg.senderId,
+        authorName: _label(msg),
+        authorRole: msg.senderRole,
+        isMe: msg.senderId == _myId,
+      ),
       // The same two grants the sheet applies — this panel draws the same
       // comments and must not answer the question differently.
       canEdit: !msg.isLocal && msg.senderId == _myId,
