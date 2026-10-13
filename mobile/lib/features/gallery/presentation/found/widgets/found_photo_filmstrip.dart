@@ -6,6 +6,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
@@ -165,8 +166,6 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
 
   @override
   Widget build(BuildContext context) {
-    final ext = Theme.of(context).extension<AppThemeExtension>()!;
-
     return SizedBox(
       height: 64.w,
       child: NotificationListener<ScrollNotification>(
@@ -184,60 +183,73 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
           separatorBuilder: (_, __) => SizedBox(width: AppSpacing.sm.w),
           itemBuilder: (_, index) {
             final active = index == widget.activeIndex;
-            return Semantics(
-              button: true,
-              selected: active,
-              label: 'Photo ${index + 1}',
-              child: GestureDetector(
-                onTap: () => widget.onTap(index),
-                child: Container(
-                  width: 64.w,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                    // Accent green, per the Found/PhotoSelected designs — not
-                    // white. `accentGold` is #1D9E75 in both light and dark, so
-                    // the ring needs no per-theme variant even though the strip
-                    // around it does.
-                    border: Border.all(
-                      color: active ? ext.accentGold : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      PaidPhotoWatermark(
-                        price: widget.photos[index].price,
-                        isPurchased: widget.photos[index].isPurchased,
-                        child: JpergImage(
-                          imageUrl: widget.photos[index].url,
-                          fit: BoxFit.cover,
-                          logicalWidth: 64,
-                          placeholder: (_, __) => const JpergImagePlaceholder(),
-                          errorWidget: (_, __, ___) =>
-                              const JpergImagePlaceholder(),
-                        ),
-                      ),
-                      // Priced photos carry their amount here too, so scrubbing
-                      // the strip shows which of them cost money without having
-                      // to land on each one and read the pill.
-                      if (widget.photos[index].price > 0 &&
-                          !widget.photos[index].isPurchased)
-                        Positioned(
-                          left: 3.w,
-                          bottom: 3.h,
-                          child: PhotoPriceBadge(
-                            price: widget.photos[index].price,
-                            compact: true,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+            // Per thumbnail rather than around the strip: a scrubbed strip
+            // rebuilds its items anyway, and this way the amount comes off the
+            // one photo that was bought the moment it is paid for.
+            return PurchaseAware(
+              builder: (context) => _thumb(context, index, active: active),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  /// One thumbnail. Split out of the builder so the [PurchaseAware] wrapper has
+  /// a body to call, and so `bought` is resolved once per thumb rather than
+  /// three times down the tree.
+  Widget _thumb(BuildContext context, int index, {required bool active}) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final photo = widget.photos[index];
+    // The amount and the mark both come off a thumb the moment it is paid for,
+    // without waiting for the album to be refetched — see [photoIsBought].
+    final bought = photoIsBought(photo);
+
+    return Semantics(
+      button: true,
+      selected: active,
+      label: 'Photo ${index + 1}',
+      child: GestureDetector(
+        onTap: () => widget.onTap(index),
+        child: Container(
+          width: 64.w,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
+            // Accent green, per the Found/PhotoSelected designs — not
+            // white. `accentGold` is #1D9E75 in both light and dark, so
+            // the ring needs no per-theme variant even though the strip
+            // around it does.
+            border: Border.all(
+              color: active ? ext.accentGold : Colors.transparent,
+              width: 2,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              PaidPhotoWatermark(
+                price: photo.price,
+                isPurchased: bought,
+                child: JpergImage(
+                  imageUrl: photo.url,
+                  fit: BoxFit.cover,
+                  logicalWidth: 64,
+                  placeholder: (_, __) => const JpergImagePlaceholder(),
+                  errorWidget: (_, __, ___) => const JpergImagePlaceholder(),
+                ),
+              ),
+              // Priced photos carry their amount here too, so scrubbing
+              // the strip shows which of them cost money without having
+              // to land on each one and read the pill.
+              if (photo.price > 0 && !bought)
+                Positioned(
+                  left: 3.w,
+                  bottom: 3.h,
+                  child: PhotoPriceBadge(price: photo.price, compact: true),
+                ),
+            ],
+          ),
         ),
       ),
     );

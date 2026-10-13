@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
+import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
 /// What the viewer claims as theirs, for one event.
@@ -31,6 +33,20 @@ class PhotoSelection extends ChangeNotifier {
   PhotoSelection({List<Photo> photos = const [], this.reviewMode = false})
       : _photos = List.of(photos) {
     _indexMine();
+    // A purchase made from this very selection changes what is selectable —
+    // see [_isSelectable] — and it completes after the payment screen has
+    // closed, with nothing else to tell the bar that its total is now zero.
+    _owned?.revision.addListener(notifyListeners);
+  }
+
+  /// What this account owns. Null in a widget test with no service locator,
+  /// which leaves the payload's own flag as the only answer.
+  final PurchasedPhotos? _owned = purchasedPhotosOrNull();
+
+  @override
+  void dispose() {
+    _owned?.revision.removeListener(notifyListeners);
+    super.dispose();
   }
 
   /// Whether a photo nobody has touched counts as selected.
@@ -48,7 +64,11 @@ class PhotoSelection extends ChangeNotifier {
   /// Photos already owned are never part of this. They cannot be re-bought,
   /// they must not swell the total, and showing them as "selected" would imply
   /// the CTA is about to charge for them again.
-  bool _isSelectable(Photo p) => !p.isPurchased;
+  ///
+  /// Owned by either account of it — see [photoIsBought]. The payload's flag
+  /// alone left a photo bought in this session still selectable, so the bar
+  /// came back offering to sell it a second time.
+  bool _isSelectable(Photo p) => !photoIsBought(p);
 
   /// What a photo nobody has touched counts as.
   ///

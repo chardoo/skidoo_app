@@ -79,6 +79,7 @@ class FoundFilters {
     this.status = FoundMatchStatus.confirmed,
     this.photographerIds = const <String>{},
     this.eventIds = const <String>{},
+    this.includePublic = false,
   });
 
   final FoundDateRange dateRange;
@@ -100,6 +101,25 @@ class FoundFilters {
   /// a scanned event. Either an id or an access code: the server resolves both,
   /// which matters because a QR carries the code.
   final Set<String> eventIds;
+
+  /// Whether the event's *other* photos come too — the ones the viewer is not
+  /// in but is allowed to see.
+  ///
+  /// Off, which is what Found means: a list of photos of you. Only the scanned
+  /// event turns it on, where the errand is "show me this album" and a public
+  /// photo recognition found no face in is not being withheld.
+  ///
+  /// The one parameter here whose default is not also the server's: there,
+  /// `includePublic` defaults *on* whenever an `eventId` scope is present. So
+  /// it is the one default this class sometimes states out loud — see
+  /// [toQueryParameters].
+  ///
+  /// Leaving it unsaid is what made the Found tab's album drill-down and its
+  /// viewer open the whole event folder. The feed's sections are an unscoped
+  /// read and so count matches only; drilling into one narrows that same query
+  /// by `eventId`, which the server read as permission to widen, and a section
+  /// saying 6 opened a viewer holding the photographer's whole album.
+  final bool includePublic;
 
   static const none = FoundFilters();
 
@@ -135,6 +155,12 @@ class FoundFilters {
       if (photographerIds.isNotEmpty)
         'photographerId': photographerIds.toList(growable: false),
       if (eventIds.isNotEmpty) 'eventId': eventIds.toList(growable: false),
+      // The one parameter whose default is not the server's: `includePublic`
+      // defaults *on* whenever an `eventId` is named and off otherwise. So the
+      // rule here is to speak only when this selection disagrees with that —
+      // which for the Found tab's drill-down means saying `false` out loud,
+      // because silence there means the whole event folder.
+      if (includePublic != eventIds.isNotEmpty) 'includePublic': includePublic,
     };
   }
 
@@ -146,6 +172,7 @@ class FoundFilters {
     FoundMatchStatus? status,
     Set<String>? photographerIds,
     Set<String>? eventIds,
+    bool? includePublic,
   }) {
     return FoundFilters(
       dateRange: dateRange ?? this.dateRange,
@@ -154,6 +181,7 @@ class FoundFilters {
       status: status ?? this.status,
       photographerIds: photographerIds ?? this.photographerIds,
       eventIds: eventIds ?? this.eventIds,
+      includePublic: includePublic ?? this.includePublic,
     );
   }
 
@@ -179,6 +207,7 @@ class FoundFilters {
           other.customRange == customRange &&
           other.visibility == visibility &&
           other.status == status &&
+          other.includePublic == includePublic &&
           _sameIds(other.photographerIds, photographerIds) &&
           _sameIds(other.eventIds, eventIds);
 
@@ -191,6 +220,7 @@ class FoundFilters {
         customRange,
         visibility,
         status,
+        includePublic,
         Object.hashAllUnordered(photographerIds),
         Object.hashAllUnordered(eventIds),
       );

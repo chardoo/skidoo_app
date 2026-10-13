@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -201,7 +202,7 @@ class _GalleryFullscreenPageState extends State<GalleryFullscreenPage> {
                         photoLabel: _photo.eventName,
                         paidPreview: PaidPhotoWatermark.shouldMark(
                           price: _photo.price,
-                          isPurchased: _photo.isPurchased,
+                          isPurchased: photoIsBought(_photo),
                         ),
                       ),
                     ),
@@ -271,11 +272,17 @@ class _ZoomablePhoto extends StatelessWidget {
       onTap: onTap,
       onZoomChanged: onZoomChanged,
       isActive: isActive,
-      overlayBuilder: (_, scale) => PaidPhotoWatermark(
-        price: photo.price,
-        isPurchased: photo.isPurchased,
-        scale: scale,
-        child: const SizedBox.expand(),
+      // The mark answers to what this account owns rather than to the flag the
+      // photo arrived with, which is false on every surface but two and stale
+      // the moment something is bought — see [photoIsBought]. Wrapped so it
+      // comes off while the photo is still on screen.
+      overlayBuilder: (_, scale) => PurchaseAware(
+        builder: (_) => PaidPhotoWatermark(
+          price: photo.price,
+          isPurchased: photoIsBought(photo),
+          scale: scale,
+          child: const SizedBox.expand(),
+        ),
       ),
       errorWidget: (_, __, ___) => Center(
         child: Icon(

@@ -256,9 +256,13 @@ void main() {
       expect(await barHasDownload(t, photo()), isTrue);
     });
 
-    testWidgets('public needs a claim first', (t) async {
-      // On show to everyone. Taking the file is what claiming is for.
-      expect(await barHasDownload(t, photo(isPublic: true)), isFalse);
+    testWidgets('public is downloadable too, claim or no claim', (t) async {
+      // It used to need a claim — a PaidImage row or a bookmark — on the
+      // reasoning that a photo on show to everyone should be kept only
+      // deliberately. But this is a photo *of the viewer* that costs nothing,
+      // and Found you does not draw the bookmark that would have claimed it.
+      // Price is the whole test now.
+      expect(await barHasDownload(t, photo(isPublic: true)), isTrue);
       expect(
         await barHasDownload(t, photo(isPublic: true, isPurchased: true)),
         isTrue,
@@ -266,7 +270,7 @@ void main() {
     });
 
     testWidgets('the rail is unchanged by any of it', (t) async {
-      // The reactions are the reactions. Only the download reads the save.
+      // The reactions are the reactions — they follow visibility, nothing else.
       expect(await pumpRail(t, photo()), {share});
       expect(await pumpRail(t, photo(isPublic: true)), {like, comment, share});
     });

@@ -38,6 +38,11 @@ class HomePage extends StatelessWidget {
   /// `_HomeViewState` listens and clears it after switching.
   static final tabRequest = ValueNotifier<int?>(null);
 
+  /// The Profile tab's index, for the callers that write [tabRequest] —
+  /// a finished purchase sends the buyer to the gallery on it. Public so
+  /// nobody has to hardcode the 3.
+  static const profileTab = 3;
+
   /// Whether a Home is currently in the tree and listening to [tabRequest].
   ///
   /// A deep link to one of Home's tabs used to push a fresh `/home` even when
@@ -335,7 +340,7 @@ class _HomeViewState extends State<_HomeView> {
 
   /// The Profile tab's index, and a handle on its state so it can be told to
   /// reload when the tab is opened.
-  static const _profileTab = 3;
+  static const _profileTab = HomePage.profileTab;
   final _profileKey = GlobalKey<UserProfilePageState>();
 
   void _changeTab(int index, {bool fromTap = false}) {

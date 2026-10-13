@@ -49,6 +49,12 @@ class MyApp extends StatelessWidget {
   /// [hasSeenOnboarding], which only means the carousel has played.
   final bool isGuest;
 
+  /// True on the first launch after an install — see [firstRouteFor], which
+  /// lets it outrank every other answer. `main` has already cleared the
+  /// stored session by the time this is true; it is passed anyway so the
+  /// first screen does not depend on that wipe having succeeded.
+  final bool isFreshInstall;
+
   const MyApp({
     super.key,
     required this.token,
@@ -56,6 +62,7 @@ class MyApp extends StatelessWidget {
     this.hasSeenOnboarding = false,
     this.onboardingStep,
     this.isGuest = false,
+    this.isFreshInstall = false,
   });
 
   @override
@@ -80,6 +87,7 @@ class MyApp extends StatelessWidget {
           hasSeenOnboarding: hasSeenOnboarding,
           onboardingStep: onboardingStep,
           isGuest: isGuest,
+          isFreshInstall: isFreshInstall,
           themeMode: themeMode,
         ),
       ),
@@ -96,6 +104,7 @@ class _MobileApp extends StatelessWidget {
     required this.hasSeenOnboarding,
     required this.onboardingStep,
     required this.isGuest,
+    required this.isFreshInstall,
     required this.themeMode,
   });
 
@@ -104,6 +113,7 @@ class _MobileApp extends StatelessWidget {
   final bool hasSeenOnboarding;
   final OnboardingStep? onboardingStep;
   final bool isGuest;
+  final bool isFreshInstall;
   final ThemeMode themeMode;
 
   @override
@@ -118,6 +128,7 @@ class _MobileApp extends StatelessWidget {
         hasSeenOnboarding: hasSeenOnboarding,
         onboardingStep: onboardingStep,
         isGuest: isGuest,
+        isFreshInstall: isFreshInstall,
         themeMode: themeMode,
       ),
     );
@@ -133,6 +144,7 @@ class _AppMaterial extends StatelessWidget {
     required this.hasSeenOnboarding,
     required this.onboardingStep,
     required this.isGuest,
+    required this.isFreshInstall,
     required this.themeMode,
   });
 
@@ -141,6 +153,7 @@ class _AppMaterial extends StatelessWidget {
   final bool hasSeenOnboarding;
   final OnboardingStep? onboardingStep;
   final bool isGuest;
+  final bool isFreshInstall;
   final ThemeMode themeMode;
 
   @override
@@ -179,11 +192,12 @@ class _AppMaterial extends StatelessWidget {
         ],
         // Every cold start plays the branded splash first (including
         // already-logged-in users, who previously had no splash moment at
-        // all), then hands off to the real destination: returning users (valid
-        // token) go to /home; first-ever launch (no token, onboarding never
-        // shown) goes to the 3-screen intro carousel; every other logged-out
-        // cold start (including after "Continue as guest") goes straight to
-        // Discovery.
+        // all), then hands off to the real destination: any first launch after
+        // an install goes to the 3-screen intro carousel, carrying nothing
+        // over from whatever was installed before it; returning users (valid
+        // token) go to /home; a logged-out cold start that has already seen
+        // the carousel goes to the sign-up gate, or to Discovery if they chose
+        // "Continue as guest". The whole table is [firstRouteFor].
         initialRoute: SplashPage.routeName,
         // The same table `routes:` used to hold, one level down.
         //
@@ -204,6 +218,7 @@ class _AppMaterial extends StatelessWidget {
                     hasSeenOnboarding: hasSeenOnboarding,
                     onboardingStep: onboardingStep,
                     isGuest: isGuest,
+                    isFreshInstall: isFreshInstall,
                   ),
                 ),
             OnboardingResumePage.routeName => (_) => _AuthGuard(
@@ -456,7 +471,14 @@ class _SecurityWarningPage extends StatelessWidget {
 
 /// The first screen of a cold start.
 ///
-/// Four questions, and until now the first two were being asked as one.
+/// Five questions, and until now two pairs of them were being asked as one.
+///
+/// **A new install is not a returning user.** It outranks everything else
+/// here, and it has to, because on iOS the other four answers can all be
+/// inherited: the Keychain survives app deletion, so a reinstall read back
+/// the previous owner's token, role and carousel flag and opened on their
+/// Home. A fresh install starts at slide one and signs in again — `main`
+/// clears the stored session the moment [isFreshInstall] is true.
 ///
 /// **A token is not a finished signup.** `VerifyCodeUseCase` establishes the
 /// session the moment a code is accepted, before the wizard has asked for a
@@ -479,7 +501,17 @@ String firstRouteFor({
   required bool hasSeenOnboarding,
   required OnboardingStep? onboardingStep,
   required bool isGuest,
+  required bool isFreshInstall,
 }) {
+  // **A new install starts at slide one.** Before the token, before the
+  // wizard, before anything — because on iOS none of those facts belong to
+  // this install. The Keychain survives app deletion, so a reinstalled app
+  // read back the last owner's session and sent them to Home, and read back
+  // their `has_seen_onboarding` and skipped the carousel for someone who had
+  // never seen it. `main` clears all of it when this is true; the rule is
+  // stated here as well so the first screen is a decision rather than a
+  // consequence of a wipe that might have thrown.
+  if (isFreshInstall) return OnboardingPage.routeName;
   if (token.isNotEmpty) {
     // Signed in, wizard unfinished — the step they were on, not Home.
     return onboardingStep != null

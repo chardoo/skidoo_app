@@ -1,6 +1,10 @@
 /// Which screen a cold start opens on.
 ///
-/// Four questions, and two pairs of them were being asked as one.
+/// Five questions, and two pairs of them were being asked as one.
+///
+/// **A new install is not a returning user.** On iOS the Keychain outlives
+/// the app, so a reinstall could read back the last owner's token and their
+/// "carousel already seen" and open on their Home. A new install starts over.
 ///
 /// **A token is not a finished signup.** The session is established the moment
 /// a verification code is accepted, so "has a token" was answering "is set
@@ -23,18 +27,64 @@ import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
 
 void main() {
+  // Defaults to a launch of an app that is already installed — which is every
+  // launch but one, and what the rest of this table is about.
   String route({
     String token = '',
     bool hasSeenOnboarding = false,
     OnboardingStep? onboardingStep,
     bool isGuest = false,
+    bool isFreshInstall = false,
   }) =>
       firstRouteFor(
         token: token,
         hasSeenOnboarding: hasSeenOnboarding,
         onboardingStep: onboardingStep,
         isGuest: isGuest,
+        isFreshInstall: isFreshInstall,
       );
+
+  group('a new install', () {
+    test('opens on the first onboarding screen', () {
+      expect(route(isFreshInstall: true), OnboardingPage.routeName);
+    });
+
+    test('opens there wearing the previous install\'s state', () {
+      // The iOS case this rule exists for. The Keychain is not wiped with the
+      // app, so every one of these can be left over from whoever had the
+      // phone before, and not one of them describes this install.
+      expect(route(isFreshInstall: true, token: 'abc'),
+          OnboardingPage.routeName,
+          reason: 'an inherited session is not a signed-in user');
+      expect(route(isFreshInstall: true, hasSeenOnboarding: true),
+          OnboardingPage.routeName,
+          reason: 'this install has never played the carousel');
+      expect(route(isFreshInstall: true, isGuest: true),
+          OnboardingPage.routeName,
+          reason: 'nobody has chosen anything on this install yet');
+      expect(
+        route(
+            isFreshInstall: true,
+            token: 'abc',
+            onboardingStep: OnboardingStep.face),
+        OnboardingPage.routeName,
+        reason: "a stranger's half-finished wizard is not resumed",
+      );
+    });
+
+    test('outranks every other answer at once', () {
+      expect(
+        route(
+          isFreshInstall: true,
+          token: 'abc',
+          hasSeenOnboarding: true,
+          isGuest: true,
+          onboardingStep: OnboardingStep.face,
+        ),
+        OnboardingPage.routeName,
+      );
+    });
+  });
 
   group('signed in', () {
     test('with the wizard finished, goes home', () {

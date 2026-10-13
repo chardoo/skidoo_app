@@ -13,6 +13,7 @@ import 'package:jperg_app/core/widgets/zoomable_photo.dart';
 import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_meta_bar.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_visibility_badge.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_buy_pill.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_counter_pill.dart';
@@ -78,8 +79,16 @@ class FoundPhotoStage extends StatelessWidget {
   static const double _videoControlsBand = 40;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      // Everything priced on this page — the Buy pill, the watermark, what the
+      // rail offers — answers to whether the photo has been bought, and that
+      // can change while this page is on screen: the payment runs on a route
+      // pushed over it and pops back here. See [photoIsBought].
+      PurchaseAware(builder: _buildStage);
+
+  Widget _buildStage(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    final bought = photoIsBought(photo);
 
     // Scales up out of the way when a comment sheet opens, so the photo being
     // discussed stays whole and lit above it.
@@ -141,7 +150,7 @@ class FoundPhotoStage extends StatelessWidget {
                         // much of it. This one is pinned *and* scales.
                         overlayBuilder: (_, scale) => PaidPhotoWatermark(
                           price: photo.price,
-                          isPurchased: photo.isPurchased,
+                          isPurchased: bought,
                           scale: scale,
                           child: const SizedBox.expand(),
                         ),
@@ -187,9 +196,10 @@ class FoundPhotoStage extends StatelessWidget {
                     // "GHS 20 | Buy". Sits above the action rail, which is centred
                     // down the right edge rather than pinned to the top, so the two
                     // do not meet.
-                    if (selection != null &&
-                        photo.price > 0 &&
-                        !photo.isPurchased)
+                    // Gone the moment the photo is paid for, rather than the
+                    // next time the album is fetched: a Buy pill on a photo
+                    // somebody has just bought reads as a second charge.
+                    if (selection != null && photo.price > 0 && !bought)
                       Positioned(
                         right: AppSpacing.md.w,
                         top: AppSpacing.md.h,

@@ -10,12 +10,14 @@ import 'package:jperg_app/l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/ads/presentation/pages/ads_checkout_page.dart';
 import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
+import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
 import 'package:jperg_app/features/home/presentation/bloc/home_bloc.dart';
-import 'package:jperg_app/features/home/presentation/pages/home_navigation_page.dart';
-import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
+import 'package:jperg_app/core/purchase/paid_gallery_route.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/services/auth_service.dart';
@@ -164,6 +166,14 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         pictures: pictures,
       );
 
+      // What the cart's own checkout does on completion, and this path was
+      // missing: the photos are owned now, so every grid showing a price on
+      // them has to stop (see [photoIsBought]) and the gallery this is about
+      // to open has to refetch. Fed the ids rather than told to reload — the
+      // batch that was just paid for is right here.
+      purchasedPhotosOrNull()?.add([for (final p in paidPhotos) p.id]);
+      GalleryRefreshSignal.bump();
+
       if (!mounted) return;
       setState(() => _paymentLoading = false);
 
@@ -173,18 +183,13 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
         context.read<HomeBloc>().add(HomeFreeImagesSaved(freePhotos));
       }
 
-      // Request the bottom-nav to switch to Home, then the Found pill (where
-      // purchased/found photos now live), then pop back to home.
-      HomePage.tabRequest.value = 0;
-      HomeNavigationPage.pillTabRequest.value = 0;
-      // `|| route.isFirst` is what keeps this from emptying the navigator.
-      // `ModalRoute.withName` alone matches nothing when Home is not on the
-      // stack — a session that started at the guest feed, or anything that
-      // cleared the stack on the way here — and popUntil with a predicate that
-      // never matches pops every route there is, leaving a black screen.
-      Navigator.of(context).popUntil(
-        (route) => route.settings.name == HomePage.routeName || route.isFirst,
-      );
+      // Off to the photos that were just bought. This used to land on Home's
+      // Found pill, which is the right *neighbourhood* and the wrong screen:
+      // Found is what recognition matched, paid for or not, so the photos from
+      // this purchase were somewhere in a grid among photos still for sale.
+      // The gallery is only what was paid for, newest first. See
+      // [openPaidGallery], which every other checkout in the app now ends in.
+      openPaidGallery(context);
     } catch (e) {
       if (mounted) {
         setState(() => _paymentLoading = false);
@@ -427,11 +432,22 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
 
   // ── Photo card ─────────────────────────────────────────────────────────────
 
-  Widget _buildCard(Photo photo, AppThemeExtension ext) {
+  /// The price treatment on a tile follows what this account owns, and this
+  /// grid is still on screen behind the checkout that changes it — a purchase
+  /// made from here pops back to exactly these tiles. [PurchaseAware] repaints
+  /// them; [_card] draws one.
+  Widget _buildCard(Photo photo, AppThemeExtension ext) => PurchaseAware(
+        builder: (context) => _card(photo, ext),
+      );
+
+  Widget _card(Photo photo, AppThemeExtension ext) {
     final isSelected = _selectedIds.contains(photo.id);
     // Priced *and* not already owned. A photo they have bought must stop
     // quoting them the amount — it only means anything as a thing to pay.
-    final isPaid = photo.price > 0 && !photo.isPurchased;
+    // Owned by the app's own record as well as the payload's flag, so a photo
+    // bought in this session stops quoting it immediately — see
+    // [photoIsBought].
+    final isPaid = photo.price > 0 && !photoIsBought(photo);
 
     return Semantics(
         button: true,

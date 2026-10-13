@@ -41,6 +41,19 @@ import 'package:jperg_app/core/utils/avatar_initial.dart';
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
 
+  /// The Purchased grid's index among the tabs — liked, saved, bought,
+  /// broadcast.
+  static const purchasedTab = 2;
+
+  /// Any caller can write a tab index here to ask this screen to open on that
+  /// tab. Cleared once it has been handled, the same shape
+  /// [HomeNavigationPage.pillTabRequest] uses for the pills inside Home.
+  ///
+  /// It exists for one caller: a finished purchase, which sends the buyer here
+  /// to see what they just paid for (see `openPaidGallery`). Nothing else may
+  /// move someone off the tab they chose.
+  static final tabRequest = ValueNotifier<int?>(null);
+
   @override
   State<UserProfilePage> createState() => UserProfilePageState();
 }
@@ -94,6 +107,16 @@ class UserProfilePageState extends State<UserProfilePage>
   void initState() {
     super.initState();
     _tabs = TabController(length: 4, vsync: this);
+    // A request can be written before this page is on screen — a purchase
+    // completes on another route and asks for the Purchased tab as it sends
+    // the buyer here. Consumed rather than animated to: nothing has been laid
+    // out yet, and `index` is what the first build reads.
+    final pending = UserProfilePage.tabRequest.value;
+    if (pending != null && pending >= 0 && pending < _tabs.length) {
+      _tabs.index = pending;
+      UserProfilePage.tabRequest.value = null;
+    }
+    UserProfilePage.tabRequest.addListener(_onTabRequest);
     _load();
     // initState has no inherited widgets to read yet.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -103,8 +126,20 @@ class UserProfilePageState extends State<UserProfilePage>
 
   @override
   void dispose() {
+    UserProfilePage.tabRequest.removeListener(_onTabRequest);
     _tabs.dispose();
     super.dispose();
+  }
+
+  /// Somebody asked for a particular tab — see [UserProfilePage.tabRequest].
+  void _onTabRequest() {
+    final index = UserProfilePage.tabRequest.value;
+    if (index == null) return;
+    UserProfilePage.tabRequest.value = null;
+    if (index < 0 || index >= _tabs.length || index == _tabs.index) return;
+    // Animated: this page is already built and usually already on screen, so
+    // the tab moving is feedback that the request landed.
+    _tabs.animateTo(index);
   }
 
   /// Called by the nav each time the Profile tab is opened.

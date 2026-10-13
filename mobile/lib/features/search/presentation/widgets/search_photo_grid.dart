@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/media_grid.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -54,16 +55,21 @@ class SearchPhotoGridSliver extends StatelessWidget {
             onTap: () => onPhotoTap(index),
           );
         }
-        // Listened to per tile so choosing one photo repaints one tile.
+        // Listened to per tile so choosing one photo repaints one tile. The
+        // purchased set is listened to alongside it: a photo bought from the
+        // viewer this grid opens has nothing left to select, and the tick and
+        // the amount have to go when it does — see [photoIsBought].
         return ListenableBuilder(
           listenable: selection,
-          builder: (_, __) => SearchPhotoTile(
-            key: ValueKey(photo.id),
-            photo: photo,
-            onTap: () => onPhotoTap(index),
-            selectable: photo.price > 0 && !photo.isPurchased,
-            selected: selection.isSelected(photo.id),
-            onToggle: () => selection.toggle(photo.id),
+          builder: (_, __) => PurchaseAware(
+            builder: (_) => SearchPhotoTile(
+              key: ValueKey(photo.id),
+              photo: photo,
+              onTap: () => onPhotoTap(index),
+              selectable: photo.price > 0 && !photoIsBought(photo),
+              selected: selection.isSelected(photo.id),
+              onToggle: () => selection.toggle(photo.id),
+            ),
           ),
         );
       },
@@ -92,7 +98,12 @@ class SearchPhotoTile extends StatelessWidget {
   final VoidCallback? onToggle;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      // The mark comes off a photo the moment it is paid for, in a grid that
+      // sells and in one that does not.
+      PurchaseAware(builder: _buildTile);
+
+  Widget _buildTile(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
 
     final media = ColoredBox(
@@ -102,7 +113,7 @@ class SearchPhotoTile extends StatelessWidget {
         children: [
           PaidPhotoWatermark(
             price: photo.price,
-            isPurchased: photo.isPurchased,
+            isPurchased: photoIsBought(photo),
             child: JpergImage(
               imageUrl: photo.url,
               fit: BoxFit.cover,

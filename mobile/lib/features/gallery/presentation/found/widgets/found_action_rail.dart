@@ -1,6 +1,7 @@
 import 'package:jperg_app/core/cache/comment_counts.dart';
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:flutter/services.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/media_reaction_rail.dart';
@@ -66,16 +67,25 @@ class FoundActionRail extends StatefulWidget {
   /// Covers the bottom bar's two actions as well as this rail's — one photo has
   /// one set of permissions, and splitting the question in two is how the two
   /// surfaces would start disagreeing about the same photo.
+  /// Ownership comes from [photoIsBought] rather than the photo's own flag: a
+  /// photo bought a moment ago still arrives saying it was not, and the rail
+  /// of a paid photo is locked until it is paid for. Without this a purchase
+  /// left the viewer with no like, no comment and no download on a photo the
+  /// person had just bought.
   static FoundPhotoActions actionsFor(
     Photo photo, {
     required bool gated,
-    bool saved = false,
   }) =>
       gated
-          ? FoundPhotoActions.forFoundPhoto(photo, saved: saved)
+          ? FoundPhotoActions.forFoundPhoto(
+              photo,
+              purchased: photoIsBought(photo),
+            )
           : FoundPhotoActions.unrestricted(
               commentsEnabled: photo.commentsEnabled,
-              isPublic: photo.isPublic);
+              isPublic: photo.isPublic,
+              purchased: photoIsBought(photo),
+            );
 
   @override
   State<FoundActionRail> createState() => _FoundActionRailState();
@@ -227,23 +237,32 @@ class _FoundActionRailState extends State<FoundActionRail> {
         // are handed a URL and nothing else, and cannot work it out.
         paidPreview: PaidPhotoWatermark.shouldMark(
           price: widget.photo.price,
-          isPurchased: widget.photo.isPurchased,
+          isPurchased: photoIsBought(widget.photo),
         ),
       );
 
   @override
   Widget build(BuildContext context) {
-    final offered = FoundActionRail.actionsFor(
-      widget.photo,
-      gated: widget.purchaseGated,
-      saved: _saved?.isSaved(widget.photo.id) ?? false,
-    );
-
     // Rebuilt whenever the saved set changes, including from another rail
-    // showing the same photo.
+    // showing the same photo — the bookmark glyph draws filled or hollow off
+    // it. Nothing here is *offered* on the strength of a bookmark any more:
+    // what a photo gets is its price and its visibility, which do not move.
+    //
+    // What a photo gets *does* move when it is bought, though — a paid photo
+    // offers nothing until then (see [FoundPhotoActions]) — and the payment
+    // happens on a route over this one. [PurchaseAware] is what brings the
+    // reactions back without waiting for the album to be refetched, so the
+    // offered set is read inside it rather than above.
     return ValueListenableBuilder<int>(
       valueListenable: _saved?.revision ?? kNoSavedPhotos,
-      builder: (context, _, __) => _rail(offered),
+      builder: (context, _, __) => PurchaseAware(
+        builder: (context) => _rail(
+          FoundActionRail.actionsFor(
+            widget.photo,
+            gated: widget.purchaseGated,
+          ),
+        ),
+      ),
     );
   }
 

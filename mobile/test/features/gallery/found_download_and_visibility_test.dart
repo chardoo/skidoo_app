@@ -82,26 +82,34 @@ void main() {
       );
     });
 
-    test('a free public photo nobody has claimed is not downloadable', () {
-      // The one free case still refused, and the reason the private test above
-      // is about privacy rather than about price. This photo is on show to
-      // everyone; taking the file is what a claim is for.
+    test('a free public photo needs no claim at all', () {
+      // The last case that was refused, and it was the odd one out: a photo of
+      // you that the photographer is giving away was the one thing on this
+      // screen you could look at and not keep. A claim earned it — a PaidImage
+      // row or a bookmark — but Found you does not draw the bookmark, so the
+      // claim could not be made from the screen that wanted it.
+      //
+      // Price is now the whole test: at zero there is nothing to transact.
       expect(
         FoundPhotoActions.forFoundPhoto(photo(isPublic: true)).download,
-        isFalse,
+        isTrue,
       );
+    });
+
+    test('free means free, whatever the price field says below zero', () {
+      // A negative price is not a thing anyone sets on purpose, but `<= 0` is
+      // the gate everywhere else in the app and this must not be the one place
+      // that reads it as "priced".
       expect(
-        FoundPhotoActions.forFoundPhoto(photo(isPublic: true), saved: true)
+        FoundPhotoActions.forFoundPhoto(photo(price: -1, isPublic: true))
             .download,
         isTrue,
       );
     });
 
-    test('saving does not unlock a photo that was never bought', () {
-      // An unbought priced photo offers nothing at all — a bookmark must not
-      // be a way round the price.
-      final actions =
-          FoundPhotoActions.forFoundPhoto(photo(price: 20), saved: true);
+    test('a priced photo that was never bought is still offered nothing', () {
+      // The free rule must not become a way round the price.
+      final actions = FoundPhotoActions.forFoundPhoto(photo(price: 20));
 
       expect(actions.download, isFalse);
       expect(actions.any, isFalse);
@@ -146,7 +154,7 @@ void main() {
     });
 
     test('a private photo with a download puts both in the bar', () {
-      final free = FoundPhotoActions.forFoundPhoto(photo(), saved: true);
+      final free = FoundPhotoActions.forFoundPhoto(photo());
 
       expect(free.download, isTrue);
       expect(free.share, isTrue);

@@ -459,11 +459,23 @@ class AuthService {
   /// Wipes every key this service persists — the superset of [removeToken]
   /// (which deliberately keeps onboarding/faces state across a logout).
   /// Only call this when [isFreshInstall] is true.
-  /// No longer called at startup — see the note in `main()`. A fresh install
-  /// preserves the session and lets the server reject the token if it is no
-  /// longer valid, because "SharedPreferences is empty" also describes every
-  /// reinstall and every bundle-id change, and wiping on those signed people
-  /// out for no reason. Kept for an explicit "forget this device" action.
+  ///
+  /// Called from `main()` on the first launch after an install, which is the
+  /// whole point of it: on iOS the Keychain is not wiped with the app, so
+  /// without this a reinstall inherits the last owner's session and their
+  /// "I have already seen the carousel". A new install starts over — it signs
+  /// in again, and it watches the intro.
+  ///
+  /// The device-level keys go too, deliberately, which is the half
+  /// [removeToken] is right to keep: [_kHasSeenOnboarding] surviving means
+  /// the carousel this install has genuinely never played is marked played.
+  ///
+  /// The cost of this is real and was accepted knowingly — an empty
+  /// SharedPreferences also describes a reinstall done to re-fetch the AASA
+  /// or to take a Play-signed build, and those launches now sign the user
+  /// out. See the note in `main()`.
+  ///
+  /// Also serves an explicit "forget this device" action.
   Future<void> resetAllForFreshInstall() async {
     isAuthenticated.value = false;
     hasAddedFaces.value = false;

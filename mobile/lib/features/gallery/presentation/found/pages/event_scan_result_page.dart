@@ -148,6 +148,9 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
       filters: FoundFilters(
         eventIds: {widget.code},
         status: FoundMatchStatus.all,
+        // See _showResult: a scanned event is the one place the answer is the
+        // album rather than only the photos of you.
+        includePublic: true,
       ),
       limit: 1,
     );
@@ -218,6 +221,14 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
         filters: FoundFilters(
           eventIds: {widget.code},
           status: FoundMatchStatus.all,
+          // Explicit, and the only surface that asks for it: somebody who has
+          // just scanned a code is asking about the *event*, so its public
+          // photos come too and the screen can say "none of these matched your
+          // face" over them rather than "we didn't find you" over nothing.
+          //
+          // The Found tab is the opposite question and passes false — see
+          // FoundFilters.includePublic.
+          includePublic: true,
         ),
         limit: 1,
       );
@@ -253,8 +264,12 @@ class _EventScanResultPageState extends State<EventScanResultPage> {
           reviewMode: true,
           // The album fetches the full set itself, so the card's answer and the
           // page behind it have to be asking the same question — otherwise the
-          // count says 24 and the grid that opens is empty.
-          filters: const FoundFilters(status: FoundMatchStatus.all),
+          // count says 24 and the grid that opens is empty. Both halves of that
+          // question: the pending matches *and* the event's public photos.
+          filters: const FoundFilters(
+            status: FoundMatchStatus.all,
+            includePublic: true,
+          ),
         ),
       ),
     );

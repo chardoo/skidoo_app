@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/core/purchase/paid_gallery_route.dart';
 import 'package:jperg_app/core/purchase/photo_selection.dart';
 import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
 import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
@@ -95,6 +96,10 @@ Future<void> runPhotoCheckout(
 
 /// Pushes the Paystack page when the cart has a URL, and reports the outcome.
 ///
+/// A success also ends the trip: the buyer is taken to their gallery of paid
+/// photos rather than left on the photo they were looking at — see
+/// [openPaidGallery].
+///
 /// A widget rather than a mixin so it can wrap any screen's body without that
 /// screen having to be stateful or know the cart exists beyond calling
 /// [runPhotoCheckout].
@@ -141,6 +146,11 @@ class PhotoCheckoutListener extends StatelessWidget {
               state.successMessage ?? 'Your photos are unlocked.',
             );
             onSuccess?.call();
+            // And then out of here, to the photos that were bought. The
+            // snackbar is raised first on purpose: it belongs to the app's one
+            // root ScaffoldMessenger, so it survives the routes closing
+            // underneath it and is read on the gallery. See [openPaidGallery].
+            openPaidGallery(context);
           case CartStatus.paymentFailure:
             AppSnackBar.error(
               context,

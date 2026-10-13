@@ -55,32 +55,42 @@ void main() async {
 
   final authService = sl<AuthService>();
 
-  // On iOS, Keychain entries survive app deletion — without this, a genuine
-  // fresh install would silently inherit the previous install's token /
-  // onboarding-seen flag and look like a returning user. Must complete
-  // before the reads below, which would otherwise race the wipe.
+  // A new install starts over. Nothing is inherited.
   //
-  // A fresh install no longer destroys the session, in any build.
+  // On iOS the Keychain outlives the app: delete Jperg, install it again, and
+  // the previous install's token, role, avatar and onboarding-seen flag are
+  // all still sitting there. So the "fresh" install came up as whoever used
+  // the phone last, and skipped a carousel the new owner had never seen.
+  // Android wipes its own sandbox and sets allowBackup="false", so the
+  // symptom was iOS-only — but the rule below is the same on both, because
+  // the rule is about what a new install *means*, not about which store
+  // happens to leak.
   //
-  // The marker lives in SharedPreferences, which is empty for any app the OS
-  // considers new. That is true of a genuine first install — and equally of
-  // every reinstall and every change of applicationId/bundle id. Deleting the
-  // token here therefore signed people out for reasons that had nothing to do
-  // with their session: reinstalling is the only way to make iOS re-fetch the
-  // AASA, Android App Links need a Play-signed build installed fresh, and this
-  // app's package has been renamed. Every one of those looked exactly like
-  // "the deep link logged me out", because the launch that followed the
-  // install was the one with the link in it.
+  // This is how the big apps behave: reinstalling signs you out and puts you
+  // back at the intro. An earlier version preserved the session instead and
+  // let the server reject the token, because an empty SharedPreferences also
+  // describes reinstalls done for other reasons — re-fetching the AASA,
+  // getting a Play-signed build for App Links, the package rename — and
+  // signing out on those read as "the deep link logged me out". That is the
+  // accepted cost of this decision: a reinstall now means signing in again.
+  // Deliberately, and in exchange for the thing that matters more — a phone
+  // wiped to be rid of an account does not come back wearing it.
   //
-  // The property that mattered — a new install must not be able to *use* an
-  // inherited session — is now enforced where it actually holds: the server.
-  // A token it will not accept comes back 401, and AppInterceptors signs the
-  // user out then, having checked the token's own `exp` claim. A token the
-  // server still accepts was never a security problem to keep.
-  if (await authService.isFreshInstall()) {
+  // Must finish before the reads below, which would otherwise race the wipe
+  // and seed the first frame from keys that are about to vanish. Guarded
+  // because a Keychain that throws here is not worth a black screen in front
+  // of `runApp`, and [firstRouteFor] is told about the install directly — so
+  // the carousel still comes up first even on a launch where nothing could be
+  // deleted.
+  final isFreshInstall = await authService.isFreshInstall();
+  if (isFreshInstall) {
+    try {
+      await authService.resetAllForFreshInstall();
+    } catch (e) {
+      debugPrint('[Startup] fresh install: could not clear stored state: $e');
+    }
     await authService.markInstalled();
-    debugPrint('[Startup] first launch for this install — session preserved; '
-        'the server decides whether the token is still good');
+    debugPrint('[Startup] first launch for this install — starting over');
   }
 
   // ── Run all independent startup checks in parallel ──────────────────────────
@@ -268,5 +278,7 @@ void main() async {
     hasSeenOnboarding: hasSeenOnboarding,
     onboardingStep: onboardingStep,
     isGuest: isGuest,
+    // Outranks all four of the above — see [firstRouteFor].
+    isFreshInstall: isFreshInstall,
   ));
 }

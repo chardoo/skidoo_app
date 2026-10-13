@@ -12,10 +12,17 @@ part 'found_album_state.dart';
 /// The flat, paged read of `GET /client/my-photos?groupBy=none`.
 ///
 /// Two callers, one query. Give it an [eventId] and it backs the album
-/// drill-down — every photo of that event, which the feed's albums cannot show
-/// because they only carry a `previewLimit`-sized slice. Leave [eventId] null
-/// and it is the whole result set for [filters], which is what the viewer
-/// opened from the feed swipes through.
+/// drill-down — every photo *of the viewer* in that event, which the feed's
+/// albums cannot show because they only carry a `previewLimit`-sized slice.
+/// Leave [eventId] null and it is the whole result set for [filters], which is
+/// what the viewer opened from the feed swipes through.
+///
+/// "Of the viewer", not "of the event": naming an event is the server's cue to
+/// widen the answer to the whole album, so whoever asks has to say which of the
+/// two they meant. That arrives in [filters] — see
+/// [FoundFilters.includePublic] — and this bloc passes it through rather than
+/// deciding, because both of its callers come through here and they want
+/// opposite things.
 class FoundAlbumBloc extends Bloc<FoundAlbumEvent, FoundAlbumState> {
   FoundAlbumBloc({
     required GetFoundPhotosUseCase getFoundPhotosUseCase,

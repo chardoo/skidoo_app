@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/core/purchase/photo_price_badge.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 
@@ -60,15 +61,26 @@ class FoundPhotoTile extends StatelessWidget {
 
   bool get _isOverflow => overflowCount > 0;
 
+  /// Bought, by the payload's flag or by the app's own record of what this
+  /// account owns — see [photoIsBought]. A grid is almost always on screen
+  /// behind the viewer a purchase was made in, and its tiles were fetched
+  /// before the payment.
+  bool get _bought => photoIsBought(photo);
+
   /// Priced, and not already bought. An owned photo shows no price: it is
   /// paid for, and repeating the amount reads as a second charge.
-  bool get _showsPrice => photo.price > 0 && !photo.isPurchased && !_isOverflow;
+  bool get _showsPrice => photo.price > 0 && !_bought && !_isOverflow;
 
   /// Deselected *and* being reviewed — the "Not me" treatment.
   bool get _isDiscarded => reviewing && selectable && !selected && !_isOverflow;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      // The price badge and the tick both follow what this account owns, and
+      // that changes under this tile while it is on screen.
+      PurchaseAware(builder: _buildTile);
+
+  Widget _buildTile(BuildContext context) {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
     final radius = BorderRadius.circular(AppRadius.sm.r);
 
@@ -98,7 +110,7 @@ class FoundPhotoTile extends StatelessWidget {
               children: [
                 PaidPhotoWatermark(
                   price: photo.price,
-                  isPurchased: photo.isPurchased,
+                  isPurchased: _bought,
                   child: JpergImage(
                     imageUrl: photo.url,
                     fit: BoxFit.cover,
@@ -178,7 +190,7 @@ class FoundPhotoTile extends StatelessWidget {
                     ),
                   ),
 
-                if (selectable && !_isOverflow && !photo.isPurchased)
+                if (selectable && !_isOverflow && !_bought)
                   Positioned(
                     right: 6.w,
                     top: 6.h,

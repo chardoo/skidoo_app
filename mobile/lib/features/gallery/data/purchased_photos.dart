@@ -115,9 +115,14 @@ class PurchasedPhotos {
   Future<void> _load() async {
     try {
       final ids = await _store.purchasedIds();
-      _purchased
-        ..clear()
-        ..addAll(ids);
+      // Merged rather than replaced. A purchase can complete while this
+      // request is in flight — checkout calls [add] the instant it does — and
+      // the response was written before it happened, so clearing first dropped
+      // the id and put the Buy pill back on a photo that had just been paid
+      // for. Nothing else writes here, and [clear] is what empties the set, so
+      // there is nothing to be stale: every id in it was either the server's
+      // answer or a purchase this app watched complete.
+      _purchased.addAll(ids);
       _loaded = true;
       revision.value++;
     } catch (_) {

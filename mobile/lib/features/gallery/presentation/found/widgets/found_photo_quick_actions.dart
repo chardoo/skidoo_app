@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/media/media_action_buttons.dart';
 import 'package:jperg_app/components/media/media_rail_action.dart';
+import 'package:jperg_app/core/purchase/photo_ownership.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
-import 'package:jperg_app/features/gallery/data/saved_photos.dart';
 import 'package:jperg_app/features/gallery/presentation/found/found_access.dart';
 import 'package:jperg_app/features/gallery/presentation/found/models/found_photo_actions.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -40,8 +40,9 @@ import 'package:jperg_app/models/photos/Photo.dart';
 /// back out to 40 rather than shrinking what can be pressed.
 ///
 /// Whether the button appears at all is [FoundPhotoActions]' business. It is
-/// only ever offered on a photo the viewer owns — bought if it had a price,
-/// bookmarked if it did not.
+/// only ever offered on a photo the viewer owns — which means bought, if it had
+/// a price, and means nothing at all if it did not: a free photo of you is
+/// yours already.
 class FoundPhotoQuickActions extends StatefulWidget {
   const FoundPhotoQuickActions({
     super.key,
@@ -63,8 +64,6 @@ class FoundPhotoQuickActions extends StatefulWidget {
 class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
   bool _downloading = false;
 
-  final SavedPhotos? _saved = savedPhotosOrNull();
-
   /// Which photos this account has bought.
   ///
   /// Consulted because the photo itself usually does not know: only the Found
@@ -80,11 +79,9 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
   @override
   void initState() {
     super.initState();
-    // Cheap and shared: each id set is fetched once per session, so asking
-    // here costs no request. Between them they decide whether the download is
-    // offered — a free photo earns it by being bookmarked, a priced one by
-    // having been bought.
-    _saved?.ensureLoaded();
+    // Cheap and shared: the id set is fetched once per session, so asking here
+    // costs no request. It is what decides a *priced* photo — a free one needs
+    // nothing, the price is the whole test.
     _purchased?.ensureLoaded();
   }
 
@@ -115,15 +112,14 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
   void _require(VoidCallback action) => requireAccount(context, action: action);
 
   /// Bought, by either account of it: what the payload said, or what the id
-  /// set knows. See [_purchased] for why the payload is so often silent.
-  bool get _bought =>
-      widget.photo.isPurchased ||
-      (_purchased?.isPurchased(widget.photo.id) ?? false);
+  /// set knows. See [photoIsBought], which is the same question every other
+  /// priced surface asks, and [_purchased] for why the payload is so often
+  /// silent.
+  bool get _bought => photoIsBought(widget.photo);
 
   FoundPhotoActions get _offered => widget.purchaseGated
       ? FoundPhotoActions.forFoundPhoto(
           widget.photo,
-          saved: _saved?.isSaved(widget.photo.id) ?? false,
           purchased: _bought,
         )
       : FoundPhotoActions.unrestricted(
@@ -134,19 +130,17 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuilt whenever either id set changes: bookmarking a free photo is what
-    // earns it a download, and buying a priced one is, and the button has to
-    // appear when it happens rather than the next time the viewer is opened.
+    // Rebuilt whenever the purchased set changes: buying a priced photo is what
+    // earns it a download, and the button has to appear when it happens rather
+    // than the next time the viewer is opened. A free photo never waits on
+    // anything — it arrives downloadable.
     return ValueListenableBuilder<int>(
-      valueListenable: _saved?.revision ?? kNoSavedPhotos,
-      builder: (context, _, __) => ValueListenableBuilder<int>(
-        valueListenable: _purchased?.revision ?? kNoPurchasedPhotos,
-        builder: (context, _, __) => _bar(context),
-      ),
+      valueListenable: _purchased?.revision ?? kNoPurchasedPhotos,
+      builder: (context, _, __) => _bar(context),
     );
   }
 
-  /// The button itself, once both id sets have had their say.
+  /// The button itself, once the purchased set has had its say.
   Widget _bar(BuildContext context) {
     final offered = _offered;
     // `download`, not `anyInBar`. The bar now carries the engagements of a

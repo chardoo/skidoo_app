@@ -243,4 +243,69 @@ void main() {
       expect(removeToken, isNot(contains('_delete(_kLastAccountId)')));
     });
   });
+
+  group('what a fresh install is wired to clear', () {
+    // Signing out keeps the device's own preferences; installing the app does
+    // not, because there is no device history to keep — only the previous
+    // install's, which iOS leaves in the Keychain whether or not the app that
+    // wrote it still exists.
+    late String main_;
+    late String authService;
+
+    setUpAll(() {
+      main_ = File('lib/main.dart').readAsStringSync();
+      authService = File('lib/services/auth_service.dart').readAsStringSync();
+    });
+
+    test('startup wipes the inherited state', () {
+      expect(main_, contains('resetAllForFreshInstall()'),
+          reason: 'a new install must not come up as the last owner');
+    });
+
+    test('the wipe finishes before the first frame is seeded', () {
+      // The reads below it fill the token, the role and the avatar that the
+      // first screen is drawn from. Racing the wipe means seeding the frame
+      // from keys that are in the middle of disappearing.
+      expect(
+        main_.indexOf('resetAllForFreshInstall()'),
+        lessThan(main_.indexOf('await Future.wait<Object?>')),
+      );
+      expect(
+        main_.indexOf('resetAllForFreshInstall()'),
+        lessThan(main_.indexOf('runApp(MyApp(')),
+        reason: 'the call, not the several comments that mention runApp',
+      );
+    });
+
+    test('the carousel flag is cleared with everything else', () {
+      // The one the reinstall bug was actually about: left behind, the app
+      // marks an intro it has never played as already seen.
+      final reset = authService.substring(
+        authService.indexOf('Future<void> resetAllForFreshInstall()'),
+      );
+      for (final key in const [
+        '_kHasSeenOnboarding',
+        '_kHasSeenSwipeHint',
+        '_kToken',
+        '_kOnboardingStep',
+        '_kIsGuest',
+        '_kRole',
+      ]) {
+        expect(reset, contains('_delete($key)'),
+            reason: '$key belongs to the previous install, not this one');
+      }
+    });
+
+    test('the install marker itself is not in the Keychain', () {
+      // It is the one key that must be wiped *by the OS* on uninstall, or it
+      // would answer "already installed" for an install that is new — and
+      // the Keychain is precisely where that does not happen.
+      final fresh = authService.substring(
+        authService.indexOf('Future<bool> isFreshInstall()'),
+        authService.indexOf('Future<void> resetAllForFreshInstall()'),
+      );
+      expect(fresh, contains('SharedPreferences'));
+      expect(fresh, isNot(contains('_read(_kInstallMarker)')));
+    });
+  });
 }

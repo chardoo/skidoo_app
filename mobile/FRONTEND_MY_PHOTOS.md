@@ -7,9 +7,10 @@ Backend for the **Found photos** screen and its **Filters** sheet.
 | `GET /api/client/my-photos` | the grid, grouped by event |
 | `GET /api/client/my-photos/filters` | options for the Filters sheet + the "Show N photos" count |
 
-Both require the client's `Authorization: Bearer <token>` and only ever return
-pictures where *that* user was matched by face recognition. A client who has
-never enrolled a face gets an empty result, never an error.
+Both require the client's `Authorization: Bearer <token>`. By default they
+return only pictures where *that* user was matched by face recognition; an
+event scope widens that unless you say otherwise (see `includePublic` below).
+A client who has never enrolled a face gets an empty result, never an error.
 
 ## Filters (identical query params on both endpoints)
 
@@ -20,6 +21,7 @@ never enrolled a face gets an empty result, never an error.
 | `visibility` | `all` (default) · `public` · `private` | `private` = the photographer has not made the photo public |
 | `photographerId` | id, repeatable | `?photographerId=a&photographerId=b` or `?photographerId=a,b` |
 | `eventId` | id, repeatable | same two forms — use it for the "see all" drill-down |
+| `includePublic` | `true` · `false` | **defaults to `true` whenever `eventId` is given**, `false` otherwise. On, the answer is the *event*: photos of you plus its public photos (and the whole event if you own it), with `isMine` saying which is which and the public-only ones sorted last. A Found-tab drill-down wants photos of *you*, so it must send `false` explicitly — see [FOUND_EVENT_SCOPE.md](FOUND_EVENT_SCOPE.md) |
 
 The date filter matches the photo's **shoot date** (`Picture.eventDate`, falling
 back to the event's date, then upload date) — not when the face was recognised.
@@ -46,7 +48,9 @@ max 100), `page`, `limit` (default 25, max 100).
         "content_tags": [], "eventDate": "2026-07-12",
         "photographer": { "id": "…", "name": "Kofi Mensah", "profile_url": "…" }
       },
-      "photoCount": 21,          // all matches in this event
+      "photoCount": 21,          // every photo returned for this event
+      "mineCount": 21,           // how many of them are of you (= photoCount
+                                 // unless includePublic widened the answer)
       "photos": [ /* newest `previewLimit`, full photo objects */ ],
       "moreCount": 15,           // what the "+15" tile stands for
       "lastIdentifiedAt": "2026-07-28T19:04:11+00:00"
@@ -54,12 +58,16 @@ max 100), `page`, `limit` (default 25, max 100).
   ],
   "pagination": { "page": 1, "limit": 25, "total": 4, "totalPages": 1,
                   "hasNext": false, "hasPrev": false },
-  "totals": { "photos": 48, "events": 4 }
+  // `mine` is the number to say "we found N photos of you" with — `photos`
+  // counts the public ones too once includePublic is on.
+  "totals": { "photos": 48, "events": 4, "mine": 48 }
 }
 ```
 
 Groups are ordered by most recent match; photos within a group likewise.
-Tapping "+15" → re-request with `?eventId=<id>&groupBy=none` and page through.
+Tapping "+15" → re-request with `?eventId=<id>&groupBy=none` and page through —
+add `&includePublic=false` unless the drill-down is meant to show the whole
+album, because the `eventId` alone turns the widening on.
 
 **`groupBy=none`** — flat photo list (the previous shape), `pagination.total`
 counts photos. Each photo:
@@ -70,6 +78,9 @@ counts photos. Each photo:
   "facesCount": 3, "mediaType": "image", "likeCount": 0, "commentCount": 0,
   "comments_enabled": true, "width": 4000, "height": 6000, "durationSeconds": null,
   "isPurchased": false,                       // by *this* client
+  "isMine": true,                             // false = here only because it
+                                              // is public; these sort last
+  "reviewStatus": "confirmed",                // or "pending"; null when !isMine
   "identifiedAt": "2026-07-28T19:04:11+00:00",
   "photoDate": "2026-07-12",                  // what dateRange filters on
   "event": { /* same event object as above */ }
