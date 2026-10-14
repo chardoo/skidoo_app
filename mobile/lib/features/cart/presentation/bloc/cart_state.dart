@@ -6,6 +6,15 @@ enum CartStatus {
   paymentInitiated,
   paymentSuccess,
   paymentFailure,
+
+  /// The checkout was closed without a payment that cleared.
+  ///
+  /// Apart from [paymentFailure] because the two deserve different treatment:
+  /// a failure is a payment that was attempted and refused and is worth saying
+  /// out loud, while this is somebody who opened Paystack and backed out. The
+  /// basket is kept so the next tap on Buy does not have to be rebuilt, and
+  /// nothing is said — see `CartPaymentCompleted.quiet`.
+  paymentAbandoned,
   downloading,
   downloadSuccess,
   downloadFailure,

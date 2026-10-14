@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/purchase/paystack_return.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
@@ -14,6 +15,7 @@ class AdsCheckoutPage extends StatefulWidget {
     super.key,
     required this.authorizationUrl,
     required this.onSuccess,
+    this.onAbandoned,
     this.reference = '',
     this.amountGhs = 0,
     this.originalAmount = 0,
@@ -23,8 +25,21 @@ class AdsCheckoutPage extends StatefulWidget {
   final String authorizationUrl;
   final String reference;
 
-  /// Called when Paystack redirects back indicating a successful payment.
+  /// Called when Paystack hands the payer back carrying a reference — somebody
+  /// who went through with it.
   final VoidCallback onSuccess;
+
+  /// Called when the checkout ends with no reference: the close page, the back
+  /// button, the system gesture.
+  ///
+  /// Null for the campaign and boost flows, which settle from Paystack's
+  /// webhook and have nothing to do here. The photo purchase in
+  /// SearchResultsPage passes one, because there the app is what settles the
+  /// basket — and a payment that cleared on a page with no redirect left in it
+  /// would otherwise be money taken with nothing delivered. It must stay quiet
+  /// about refusals: the likeliest reason this fires is somebody changing their
+  /// mind.
+  final VoidCallback? onAbandoned;
 
   /// Exact GHS amount returned by the server's pay endpoint.
   final double amountGhs;
@@ -43,10 +58,10 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   WebViewController? _controller;
   bool _loading = true;
 
-  static bool _isSuccess(String url) => url.contains('trxref=');
-  static bool _isClose(String url) =>
-      url.contains('standard.paystack.co/close') ||
-      url.contains('paystack.co/close');
+  /// This screen has done its job. More than one channel reports the same
+  /// return — see [initState] — and without this the payer was settled twice
+  /// and `pop` was called twice, the second taking the screen underneath.
+  bool _finished = false;
 
   @override
   void initState() {
@@ -54,11 +69,20 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (_) {
+        onPageStarted: (url) {
           if (mounted) setState(() => _loading = true);
+          // A second channel for the return, because `onNavigationRequest`
+          // does not fire for a redirect driven from script — which is how
+          // Paystack's success page leaves — nor, on iOS, for some server
+          // redirects. Missing it left this screen up on a finished payment.
+          if (PaystackReturn.isFinished(url)) _finish(url);
         },
         onPageFinished: (_) {
           if (mounted) setState(() => _loading = false);
+        },
+        onUrlChange: (change) {
+          final url = change.url;
+          if (url != null && PaystackReturn.isFinished(url)) _finish(url);
         },
         onWebResourceError: (error) {
           if (mounted) {
@@ -67,20 +91,33 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           }
         },
         onNavigationRequest: (request) {
-          final url = request.url;
-          if (_isClose(url)) {
-            if (mounted) Navigator.of(context).pop();
-            return NavigationDecision.prevent;
-          }
-          if (_isSuccess(url)) {
-            widget.onSuccess();
-            if (mounted) Navigator.of(context).pop();
+          if (PaystackReturn.isFinished(request.url)) {
+            _finish(request.url);
             return NavigationDecision.prevent;
           }
           return NavigationDecision.navigate;
         },
       ))
       ..loadRequest(Uri.parse(widget.authorizationUrl));
+  }
+
+  /// Report the outcome once and close.
+  ///
+  /// [url] is null when the payer closed the screen themselves. Either way the
+  /// flow ends here; which callback runs depends only on whether a reference
+  /// came back with them — see [AdsCheckoutPage.onAbandoned].
+  void _finish(String? url) {
+    if (_finished || !mounted) return;
+    // In state so it also releases [PopScope]: if the pop below ever fails,
+    // the next back press is handled natively rather than swallowed.
+    setState(() => _finished = true);
+
+    if (url != null && PaystackReturn.carriesReference(url)) {
+      widget.onSuccess();
+    } else {
+      widget.onAbandoned?.call();
+    }
+    Navigator.of(context).pop();
   }
 
   @override
@@ -97,7 +134,9 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           tooltip: 'Close',
           icon:
               AppSvgIcon(AppIcons.closeMd, color: ext.greetingColor, size: 22.sp),
-          onPressed: () => Navigator.of(context).pop(),
+          // Not a bare pop: leaving is not evidence that nothing was paid, and
+          // the flows that settle in the app have to be told either way.
+          onPressed: () => _finish(null),
         ),
         title: Text(
           'Complete Payment',
@@ -133,7 +172,15 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         ],
       ),
     );
-    return mobilePage;
+    return PopScope(
+      // False until settled, so the first back press reports the outcome. True
+      // afterwards — see [_finish].
+      canPop: _finished,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _finish(null);
+      },
+      child: mobilePage,
+    );
   }
 }
 

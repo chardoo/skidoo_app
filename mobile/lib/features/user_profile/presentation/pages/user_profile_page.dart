@@ -137,9 +137,14 @@ class UserProfilePageState extends State<UserProfilePage>
     if (index == null) return;
     UserProfilePage.tabRequest.value = null;
     if (index < 0 || index >= _tabs.length || index == _tabs.index) return;
-    // Animated: this page is already built and usually already on screen, so
-    // the tab moving is feedback that the request landed.
-    _tabs.animateTo(index);
+    // Set, not animated. This page lives in Home's IndexedStack under a
+    // `TickerMode` that is disabled while another tab is showing, and the
+    // request arrives *before* Home switches to Profile — so an animation
+    // would be driven by a muted ticker and stall part-way. Assigning the
+    // index moves the TabBarView outright, which is what is wanted anyway:
+    // the request comes from a finished purchase, so the grid should simply
+    // already be the one on screen when the tab appears.
+    _tabs.index = index;
   }
 
   /// Called by the nav each time the Profile tab is opened.

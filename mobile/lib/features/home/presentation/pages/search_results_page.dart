@@ -136,6 +136,17 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
             amountGhs: amount,
             onSuccess: () =>
                 _completePayment(reference, paidPhotos, freePhotos),
+            // Closed without a reference, which on this deployment is also how
+            // a *finished* payment often ends — Paystack's last page has no
+            // redirect left in it when no callback URL is configured. So the
+            // basket is settled either way and the server decides: the endpoint
+            // verifies the reference with Paystack before it hands anything
+            // over. Quiet, because the commonest reason to land here is
+            // somebody changing their mind, and "contact support" for a payment
+            // nobody made is the app inventing a problem.
+            onAbandoned: () => _completePayment(
+                reference, paidPhotos, freePhotos,
+                quiet: true),
           ),
         ),
       );
@@ -150,8 +161,9 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
   Future<void> _completePayment(
     String reference,
     List<Photo> paidPhotos,
-    List<Photo> freePhotos,
-  ) async {
+    List<Photo> freePhotos, {
+    bool quiet = false,
+  }) async {
     if (!mounted) return;
     setState(() => _paymentLoading = true);
     try {
@@ -193,12 +205,15 @@ class _SearchResultsPageState extends State<SearchResultsPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _paymentLoading = false);
+        // Silent when the checkout was merely closed — see [onAbandoned].
         // If "amount does not match" error, the server is idempotent — user can retry.
-        _showSnack(
-          context,
-          'Payment verification failed. If you were charged, contact support.',
-          isError: true,
-        );
+        if (!quiet) {
+          _showSnack(
+            context,
+            'Payment verification failed. If you were charged, contact support.',
+            isError: true,
+          );
+        }
       }
     }
   }

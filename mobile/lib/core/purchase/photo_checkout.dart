@@ -156,6 +156,12 @@ class PhotoCheckoutListener extends StatelessWidget {
               context,
               state.errorMessage ?? 'Payment failed. Please try again.',
             );
+          // The checkout was closed without a payment clearing — almost always
+          // somebody who changed their mind. Nothing to say and nowhere to go:
+          // the basket is still here and the Buy bar is still on screen behind
+          // this, so pressing it again is the whole of the retry.
+          case CartStatus.paymentAbandoned:
+            break;
           default:
             break;
         }

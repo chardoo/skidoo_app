@@ -153,25 +153,36 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           successMessage: 'Payment successful! Check your Gallery.',
         ));
       } else {
-        emit(state.copyWith(
-          status: CartStatus.paymentFailure,
-          items: [],
-          totalAmount: 0,
-          errorMessage: 'Payment unsuccessful. Please try again.',
-        ));
+        emit(_settlementRefused(
+            event, 'Payment unsuccessful. Please try again.'));
       }
     } on NetworkException catch (e) {
-      emit(state.copyWith(
-          status: CartStatus.paymentFailure, errorMessage: e.message));
+      emit(_settlementRefused(event, e.message));
     } on ServerException catch (e) {
-      emit(state.copyWith(
-          status: CartStatus.paymentFailure, errorMessage: e.message));
+      emit(_settlementRefused(event, e.message));
     } catch (e) {
-      emit(state.copyWith(
-          status: CartStatus.paymentFailure,
-          errorMessage: 'Payment verification failed.'));
+      emit(_settlementRefused(event, 'Payment verification failed.'));
     }
   }
+
+  /// The settlement did not produce any photos.
+  ///
+  /// Which of two things that is depends on how the checkout ended, and the
+  /// event carries the answer — see [CartPaymentCompleted.quiet]. A buyer who
+  /// was redirected back with a reference and then refused has a problem worth
+  /// reporting; a buyer who closed the page is almost always one who changed
+  /// their mind, and the basket is left intact so pressing Buy again does not
+  /// start from nothing.
+  CartState _settlementRefused(CartPaymentCompleted event, String message) =>
+      event.quiet
+          ? state.copyWith(status: CartStatus.paymentAbandoned)
+          : state.copyWith(
+              status: CartStatus.paymentFailure,
+              items: [],
+              totalAmount: 0,
+              referenceId: '',
+              errorMessage: message,
+            );
 
   Future<void> _onImageDownloaded(
       CartImageDownloaded event, Emitter<CartState> emit) async {
