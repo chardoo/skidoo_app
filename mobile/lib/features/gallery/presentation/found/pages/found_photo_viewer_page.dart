@@ -16,7 +16,6 @@ import 'package:jperg_app/features/gallery/presentation/found/widgets/found_revi
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_stage.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
-import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Full-screen viewer for an album's photos: "n of total" in the app bar, the
 /// photo with its badge/action-rail/photographer overlays, and a filmstrip of
@@ -384,17 +383,18 @@ class _ViewerTopBar extends StatelessWidget {
               ),
             ),
             // Balances the back button so the title sits truly centred, and
-            // holds the place the design gives the overflow menu. Nothing is
-            // wired to it yet — an enabled button that does nothing is worse
-            // than one that reads as unavailable.
-            IconButton(
-              onPressed: null,
-              icon: AppSvgIcon(
-                AppIcons.moreVertical,
-                size: 20.sp,
-                color: ext.greetingColor.withValues(alpha: 0.35),
-              ),
-            ),
+            // nothing more. There was a disabled overflow button here holding
+            // the place the design gives one, but nothing was ever wired to it
+            // — so a photo had three dots on it that could not be pressed, and
+            // everything such a menu would have offered (share, send, save,
+            // download) is already on the rail and the bar over the photo
+            // itself. A dead control on a viewer reads as a feature that
+            // broke.
+            //
+            // `kMinInteractiveDimension` is exactly what the IconButton it
+            // replaces occupied — Material's minimum tap target, and the same
+            // width [AppBackButton] takes on the other side.
+            const SizedBox(width: kMinInteractiveDimension),
           ],
         ),
       );
