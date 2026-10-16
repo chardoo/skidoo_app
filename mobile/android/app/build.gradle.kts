@@ -36,7 +36,7 @@ android {
         // google_ml_kit requires minSdk 21; camera requires 21
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 36 
+        versionCode = 39
         versionName = flutter.versionName
     }
 
@@ -91,11 +91,21 @@ android {
     // It is also unnecessary. An app bundle already splits by ABI: Play builds
     // a per-device APK and sends one architecture, which is how a 96 MB fat
     // APK became a ~17 MB download. For a plain APK, Flutter's own
-    // `--split-per-abi` does the same thing without touching Gradle, and
-    // `--target-platform android-arm,android-arm64` leaves out the x86_64
-    // slice that only emulators run.
+    // `--split-per-abi` does the same thing without touching Gradle.
     //
-    // See the build commands in README / the release checklist.
+    // **Do not reach for `--target-platform` to drop an ABI.** It narrows the
+    // *engine* slices that get built, and nothing else: the Flutter Gradle
+    // plugin still sets `ndk.abiFilters` to all three supported ABIs (see
+    // `configureAbiWithoutSplits` in FlutterPlugin.kt), so every plugin's
+    // prebuilt .so is packaged for every ABI regardless. The result is an APK
+    // with, say, `lib/x86_64/libdartjni.so` and no `libflutter.so` beside it —
+    // Play reads the folder, decides the app supports x86_64, offers it to
+    // those devices, and the app dies on launch with a missing engine.
+    //
+    // `tool/verify_android_release.sh` checks exactly that, along with both
+    // halves of the 16 KB page-size requirement. Run it on anything before it
+    // goes to the Console; see RELEASING.md for which artifact to upload and
+    // why a universal APK must never ride along with the per-ABI splits.
 }
 
 flutter {
