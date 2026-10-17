@@ -3,8 +3,8 @@
 jperg is an event photography marketplace. Photographers publish an event and
 upload their photos; attendees register their face once and the app returns
 only the photos they appear in. Photographers price photos and quote on jobs
-posted to a request board (requests are admin-moderated). Audience: adults 18+
-at photographed events (mostly 18-35) and professional photographers. Launch
+posted to a request board (admin-moderated). Audience: adults 18+ at
+photographed events (mostly 18-35) and professional photographers. Launch
 market: Ghana.
 
 3. ACCESSING THE MAIN FEATURES
@@ -49,32 +49,34 @@ Audiomack provides licensed music previews (item 6). That is the full list.
 Built and run by us, not third parties: the face recognition service, the
 FastAPI/PostgreSQL backend behind it (accounts, authentication by email and
 password with no social sign-in, payments, chat, moderation), and the feed
-ranking. No third party receives or processes face data, and we use no
-third-party or generative AI.
+ranking. No third party receives or processes face data, and no third-party or
+generative AI is used.
 
 5. REGIONAL DIFFERENCES
 
 Features are identical in every region; payments are in Ghanaian Cedi.
 Creators may target events and job requests by country, so the content mix
-differs by their choice, not by ours.
+differs by their choice.
 
 6. REGULATED SERVICES AND THIRD-PARTY MATERIAL
 
-We are not a licensed or regulated business.
+We are not a licensed or regulated business, and the only third-party material
+involved is Audiomack's music.
 
-Biometric data. Users opt in: registering a face is a deliberate step, and
-saving it for future events is off by default.  Users can switch recognition off and delete their face data in Settings >
-Privacy, and deleting the account removes the enrolment. Declared on our App
-Privacy card; policy at https://jperg.com/privacy. We are registered with
-Ghana's Data Protection Commission; documentation on request.
+Biometric data (ours — no third party). Users opt in: registering a face is a
+deliberate step, and saving it for future events is off by default. Users can
+switch recognition off and delete their face data in Settings > Privacy, and
+deleting the account removes the enrolment. Declared on our App Privacy card;
+policy at https://jperg.com/privacy. We are registered with Ghana's Data
+Protection Commission; documentation on request.
 
-Music. Audiomack supplies event soundtracks under a commercial partnership:
-short previews only, each credited with a "Listen on Audiomack" link. We do
-not host, sell or allow downloads.
+Music. Audiomack supplies event soundtracks under licence: short previews
+only, each credited with a "Listen on Audiomack" link. We do not host, sell or
+allow downloads.
 
 Photographs. Every photo is uploaded by the photographer who took it; our
 terms require them to hold the rights to what they sell. Our verification is a
 badge, not a licence: a photographer may submit a government ID for admin
 review, which marks the account verified for buyers, but selling is not
 restricted to verified accounts. Photos can be reported for copyright
-infringement, as in item 3. Terms: https://jperg.com/terms
+infringement (item 3). Terms: https://jperg.com/terms
