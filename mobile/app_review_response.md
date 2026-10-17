@@ -4,7 +4,8 @@ jperg is an event photography marketplace. Photographers publish an event and
 upload their photos; attendees register their face once and the app returns
 only the photos they appear in. Photographers price photos and quote on jobs
 posted to a request board (requests are admin-moderated). Audience: adults 18+
-at photographed events (mostly 18-35) and professional photographers.
+at photographed events (mostly 18-35) and professional photographers. Launch
+market: Ghana.
 
 3. ACCESSING THE MAIN FEATURES
 
@@ -22,15 +23,16 @@ Test card 4084 0840 8408 4081, any future expiry, CVV 408, PIN 0000, OTP
 
 Reporting: three-dot menu on a photo (in the viewer), an event or a job
 request; long-press a comment. Reasons: inappropriate content, spam,
-harassment, child safety or exploitation, copyright, other. Three such reports
-remove an item; child-safety reports are triaged first. To report or block a
-person, use the three-dot menu on their profile.
+harassment, child safety or exploitation, copyright, other. Three
+inappropriate-content reports remove an item; child-safety reports are triaged
+first. To report or block a person, use the three-dot menu on their profile.
 
 Messaging: Chats tab; direct messages are end-to-end encrypted. Photographers
 create events, upload and price photos, and quote on the board.
 
 Account deletion: Profile > Settings > Account & Security > Delete Account.
-Immediate and permanent; it severs the face enrolment.
+Immediate and permanent; it severs the face enrolment. Please use the second
+account.
 
 Not in this release: the app contains an advertising and campaigns feature,
 switched off for every user by a server-side flag, so it does not appear in
@@ -40,9 +42,11 @@ reaches it.
 4. EXTERNAL SERVICES
 
 Face recognition is our own service; no third party receives or processes face
-data. Cloudflare R2 stores new media; Cloudinary serves older media and watermarks. Paystack takes payments in Ghanaian Cedi through hosted checkout in
-a web view. Our own FastAPI/PostgreSQL backend handles accounts, authentication
-(email and password; no social sign-in), payments, chat and moderation. SendGrid sends email, OneSignal push, Arkesel SMS. Audiomack
+data. Cloudflare R2 stores new media; Cloudinary serves older media and
+watermarks. Paystack takes payments in Ghanaian Cedi through hosted checkout
+in a web view. Our own FastAPI/PostgreSQL backend handles accounts,
+authentication (email and password; no social sign-in), payments, chat and
+moderation. SendGrid sends email, OneSignal push, Arkesel SMS. Audiomack
 provides licensed music previews (item 6). No third-party or generative AI is
 used.
 
@@ -65,12 +69,12 @@ Privacy card; policy at https://jperg.com/privacy. We are registered with
 Ghana's Data Protection Commission; documentation on request.
 
 Music. Audiomack supplies event soundtracks under a commercial partnership:
-short previews only, each credited with a "Listen on Audiomack" link. We do not
-host, sell or allow downloads.
+short previews only, each credited with a "Listen on Audiomack" link. We do
+not host, sell or allow downloads.
 
-Photographs. Every photo is uploaded by the photographer who took it; our terms
-require them to hold the rights to what they sell. Our verification is a badge,
-not a licence: a photographer may submit a government ID for admin review,
-which marks the account verified for buyers, but selling is not restricted to
-verified accounts. Photos can be reported for copyright infringement, as in
-item 3. Terms: https://jperg.com/terms
+Photographs. Every photo is uploaded by the photographer who took it; our
+terms require them to hold the rights to what they sell. Our verification is a
+badge, not a licence: a photographer may submit a government ID for admin
+review, which marks the account verified for buyers, but selling is not
+restricted to verified accounts. Photos can be reported for copyright
+infringement, as in item 3. Terms: https://jperg.com/terms
