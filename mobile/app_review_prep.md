@@ -6,6 +6,18 @@ editing anything out.
 
 ## Settle these before replying
 
+0. **The reply has to fit 4000 characters.** That is the cap on App Store
+   Connect's App Review Information notes field, and it is characters, not
+   words. `app_review_response.md` is written to land just under it — about
+   3,890 with the placeholders still in. Real credentials will change that, so
+   count again after filling them in:
+
+       python3 -c "print(len(open('mobile/app_review_response.md').read().strip()))"
+
+   If it goes over, cut from item 4 or the photographer sentence in item 3
+   before touching anything about reporting, blocking, biometrics or the
+   advertising disclosure — those are the answers Apple is actually weighing.
+
 1. **Fill in the five bracketed values** in item 3: both demo accounts and the
    event code. A reviewer stopped on the sign-in screen is an automatic round
    trip.
