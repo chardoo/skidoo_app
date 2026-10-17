@@ -15,8 +15,9 @@ send; text outside the fences is for us.
 
 ## ⚠ Read before you send this
 
-Two things in the letter point at gaps that exist in the build. Neither is
-covered up below — it is cheaper to fix them than to argue them.
+Three things to know before you paste anything. Two came out of the letter;
+the third is ours to declare. None of them is covered up below — it is cheaper
+to fix or disclose them than to argue them.
 
 1. ~~Photos and comments cannot be reported in the app.~~ **Wired on 17
 October 2026 — this gap is closed.** Apple's item 1 asks the recording to show
@@ -27,7 +28,7 @@ now:
 | Content | Report in app? | Where |
 |---|---|---|
 | Event / album | ✅ | event ⋯ → "Report event" (`event_more_options_sheet.dart`) |
-| Ad campaign | ✅ | feed card ⋯ → "Report ad" (`feed_item_card.dart:1418`) |
+| Ad campaign | ✅ | feed card ⋯ → "Report ad" (`feed_item_card.dart:1418`) — not reachable this release, see item 3 § 12 |
 | Job request | ✅ | feed card ⋯ → "Report request" (same sheet) |
 | Individual photo | ✅ | photo viewer ⋯ → "Report photo" (`photo_more_options_sheet.dart`) |
 | Comment / reply | ✅ | long-press a comment → "Report comment" (`comment_dialogs.dart`) |
@@ -64,6 +65,25 @@ plainly rather than hiding it. Decide deliberately which way to go: adopt IAP
 for photo purchases, or move buying out of the app entirely. Expect this to be
 asked either way.
 
+3. Advertising is built but switched off, and that has to be *said*. The ads
+and campaigns feature is hidden for every user by the server-side `ads_enabled`
+flag while it is finished, so a reviewer will not see it. Apple's October 2026
+guideline revision moved hidden, dormant and undocumented features out of 2.3.1
+into their own guideline, **2.5.19**, which means a feature that exists in the
+binary and cannot be reached is now a named reason for rejection unless it is
+disclosed. Item 3 § 12 discloses it in the terms that guideline asks for: what
+it is, that it is off, how it is switched off, and that no gesture or account
+state reaches it. Do not quietly drop the code instead — a disclosed dormant
+feature is accepted, an undisclosed one found later is a Developer Code of
+Conduct problem.
+
+Two things below are unconfirmed and must be settled before replying: the
+database's region (item 4 carries a bracket), and whether `ads_enabled` is
+genuinely off in the production config the reviewed build will talk to. Check
+the admin panel's Config screen for the second — the flag is live state, not
+something the build decides, so it can be true right now and the disclosure
+would then be wrong.
+
 ---
 
 ## 2. Purpose and target audience
@@ -95,11 +115,12 @@ There is also a request board: a user posts what they need shot (event type,
 location, budget) and photographers send quotes. Posting is free. Requests pass
 through admin moderation before they appear on the board.
 
-Target audience. Adults and older teens who attend photographed social events
-— our primary group is 18-35 — plus professional and semi-professional
-photographers who shoot those events for a living. The initial market is Ghana,
-where the payment processor and SMS provider operate; the app itself is not
-restricted by region (see item 5).
+Target audience. Adults who attend photographed social events — our primary
+group is 18-35 — plus professional and semi-professional photographers who
+shoot those events for a living. Accounts are for people aged 18 and over, as
+stated in our terms. The initial market is Ghana, where the payment processor
+and SMS provider operate; the app itself is not restricted by region (see
+item 5).
 
 Value provided. Attendees get photos of themselves they would otherwise never
 see. Photographers get paid for work that currently goes undelivered, and reach
@@ -158,8 +179,8 @@ EVENT CODE for face search: [DEMO_EVENT_CODE]
 5. USER-GENERATED CONTENT. Photos and events are uploaded by photographers;
    comments and job requests are written by users. Everything a user can post
    can be reported from the ⋯ menu on it — a photo (⋯ in the photo viewer), an
-   event or a feed card (⋯ on the card), or a comment (long-press it). Choose a
-   reason: inappropriate content, spam, harassment, child safety or
+   event or a job request (⋯ on the card), or a comment (long-press it). Choose
+   a reason: inappropriate content, spam, harassment, child safety or
    exploitation, copyright, other. Three inappropriate-content reports take an
    item out of circulation automatically, and child-safety reports are triaged
    ahead of all other moderation.
@@ -193,6 +214,19 @@ EVENT CODE for face search: [DEMO_EVENT_CODE]
     in the background, which is what lets attendees find themselves.
 11. Request board: browse jobs, send a quote. Bookings run on escrow — quote,
     deposit, balance, release.
+
+--- Not available in this release -----------------------------------------
+
+12. ADVERTISING / CAMPAIGNS. The app contains an advertising feature —
+    sponsored cards in the feed and a "My Campaigns" area for buying them. It
+    is NOT part of this release and is switched off for every user by a
+    server-side configuration flag (`ads_enabled`), so no advertisement and no
+    campaign screen will appear anywhere during review. It is disclosed here
+    rather than left for you to find: the feature is still being completed and
+    we did not want to ship a half-finished surface. There is no way for a user
+    to switch it on, it is not reachable by any gesture, code or account state,
+    and no advertising is sold or served to users today. When it is finished we
+    will submit the release that turns it on and will describe it in full then.
 ```
 
 Demo account checklist — verify each before replying:
@@ -222,25 +256,30 @@ Demo account checklist — verify each before replying:
 ```
 Core functionality
 
-- Luxand Cloud (luxand.cloud) — face recognition. Enrols a user's face at
-  signup and detects faces in uploaded event photos. This is the service the
-  app's central feature depends on. Faces are enrolled against an internal
-  person identifier, not against names or email addresses.
-- An internal face-matching service we operate ourselves, which scores a
+- Face recognition is our own service, which we build and operate. It enrols a
+  user's face at signup, detects faces in uploaded event photos, and scores a
   candidate match against a confidence threshold before a photo is shown to
-  anyone as "yours".
-- Cloudinary — image and video storage, transformation and CDN delivery for
-  every photo, avatar and chat attachment.
-- Paystack — payment processing for photo purchases, ad campaigns and request
-  boosts. Hosted checkout, opened in an in-app WebView. Currency: GHS.
+  anyone as "yours". No third party receives or processes face data. Faces are
+  enrolled against an internal person identifier, not against names or email
+  addresses. The service runs on our own infrastructure (hosted at Render).
+- Cloudflare R2 — object storage and delivery for new photo, video and
+  attachment uploads.
+- Cloudinary — storage, image transformation and CDN delivery for media
+  uploaded before the move to R2, which is still the majority of the library.
+  It also renders the watermark overlay on unpurchased paid photos. Both
+  providers are live; which one serves a given file depends on when it was
+  uploaded.
+- Paystack — payment processing for photo purchases. Hosted checkout, opened in
+  an in-app WebView. Currency: GHS.
 
 Accounts, messaging and notifications
 
-- Our own API and database (FastAPI + PostgreSQL, hosted on AWS behind
-  Cloudflare) — accounts, authentication (email and password, JWT), events,
-  photos, payments, chat and moderation. There is no third-party
-  authentication provider and no social sign-in: we issue and verify our own
-  tokens.
+- Our own API and database (FastAPI + PostgreSQL) — accounts, authentication
+  (email and password, JWT), events, photos, payments, chat and moderation.
+  The API runs on AWS (af-south-1, Cape Town) behind Cloudflare; the database
+  is [CONFIRM: AWS af-south-1 or Render Oregon — see the note under this
+  fence]. There is no third-party authentication provider and no social
+  sign-in: we issue and verify our own tokens.
 - SendGrid, with a Gmail SMTP fallback — transactional email (verification
   codes, password reset, receipts).
 - OneSignal — push notifications.
@@ -266,6 +305,19 @@ Recommendations
   anywhere in the app.
 ```
 
+Two things to settle before this goes out:
+
+- **Where the database actually is.** The API box is `af-south-1` — that much is
+  in `deploy-aws.yml`. The database is documented in `docs/API_LATENCY_AUDIT.md`
+  as an `…oregon-postgres.render.com` host, and `render.yaml` pins every service
+  to Oregon. If that is still the case, say Render (US) rather than South
+  Africa: item 6 is a biometric-data answer, and a wrong data-location claim is
+  the worst kind to be caught on. Fill the bracket in with whichever is true.
+- **Advertising is off in this release** and is disclosed at the end of item 3.
+  Paystack's bullet no longer mentions ad campaigns or request boosts for the
+  same reason — nothing in this build can buy one. Put them back when the
+  feature ships.
+
 ## 5. Regional differences
 
 ```
@@ -280,11 +332,11 @@ Three region-dependent details, none of which changes what the app does:
    processor for the launch market. A buyer anywhere can pay with any card
    Paystack accepts; the amount is charged in GHS.
 2. Some content is targeted by its creator, not by us. A photographer can
-   restrict an event to, or exclude it from, chosen countries, and advertisers
-   and people posting job requests can target theirs. So two users in
-   different countries may see a different mix of events, ads and job
-   requests, in the same way two users with different interests do. This is a
-   creator-chosen audience setting, not a regional feature difference.
+   restrict an event to, or exclude it from, chosen countries, and people
+   posting job requests can target theirs. So two users in different countries
+   may see a different mix of events and job requests, in the same way two
+   users with different interests do. This is a creator-chosen audience
+   setting, not a regional feature difference.
 3. SMS notifications are sent through a Ghana gateway. Email and push
    notifications are global and are what the app relies on; SMS is
    supplementary.
@@ -312,8 +364,8 @@ or any licensed profession. Three areas where we hold or need authorisation:
      face data deleted, from Settings > Privacy ("Allow Face Recognition" and
      "Manage Face Data"). Deleting the account severs the enrolment too, so
      matches never carry over to a future account.
-   - Face data is processed by Luxand Cloud under our commercial agreement
-     with them.
+   - Face data is processed by our own recognition service, which we build and
+     operate. No third party receives, stores or processes it.
    - This is declared on our App Privacy card (Sensitive Info / biometric data)
      and in our privacy policy at https://jperg.com/privacy.
    - We are registered with Ghana's Data Protection Commission as a data
