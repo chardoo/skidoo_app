@@ -41,14 +41,16 @@ reaches it.
 
 4. EXTERNAL SERVICES
 
-Face recognition is our own service; no third party receives or processes face
-data. Cloudflare R2 stores new media; Cloudinary serves older media and
-watermarks. Paystack takes payments in Ghanaian Cedi through hosted checkout
-in a web view. Our own FastAPI/PostgreSQL backend handles accounts,
-authentication (email and password; no social sign-in), payments, chat and
-moderation. SendGrid sends email, OneSignal push, Arkesel SMS. Audiomack
-provides licensed music previews (item 6). No third-party or generative AI is
-used.
+Third parties: Cloudflare R2 stores new media; Cloudinary serves older media
+and watermarks; Paystack takes payments in Ghanaian Cedi through hosted
+checkout in a web view; SendGrid sends email, OneSignal push, Arkesel SMS;
+Audiomack provides licensed music previews (item 6). That is the full list.
+
+Built and run by us, not third parties: the face recognition service, the
+FastAPI/PostgreSQL backend behind it (accounts, authentication by email and
+password with no social sign-in, payments, chat, moderation), and the feed
+ranking. No third party receives or processes face data, and we use no
+third-party or generative AI.
 
 5. REGIONAL DIFFERENCES
 
@@ -61,9 +63,7 @@ differs by their choice, not by ours.
 We are not a licensed or regulated business.
 
 Biometric data. Users opt in: registering a face is a deliberate step, and
-saving it for future events is off by default. A face is stored against an
-internal identifier, never a name or email, and only our own service processes
-it. Users can switch recognition off and delete their face data in Settings >
+saving it for future events is off by default.  Users can switch recognition off and delete their face data in Settings >
 Privacy, and deleting the account removes the enrolment. Declared on our App
 Privacy card; policy at https://jperg.com/privacy. We are registered with
 Ghana's Data Protection Commission; documentation on request.
