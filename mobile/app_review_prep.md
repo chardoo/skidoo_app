@@ -39,6 +39,34 @@ editing anything out.
    nobody has verified — item 6 is a biometric-data answer, and a wrong
    data-location claim is the worst kind to be caught on.
 
+## Item 6 claims that are not provable from the code
+
+Three sentences in item 6 assert things no file in this repo can confirm.
+Check each before sending; a regulated-material answer is the worst place to
+be caught overstating.
+
+1. **"Creators pass government ID verification before selling" — removed,
+   because it is false.** Nothing gates publishing, uploading or pricing on
+   `verification_status`. The column is written by the creator-verification
+   submission (`photographer/samples.py`) and by admin review
+   (`common/admin.py`), and `verified_by_admin` is a badge the User model
+   itself describes as a badge. A reviewer with the photographer demo account
+   can upload and price a photo without verifying anything, which would have
+   disproved the sentence in minutes. Item 6 now says what is true: the badge
+   is a trust signal, not a licence, and selling is not restricted to verified
+   accounts. If the gate is wanted, that is a code change, not a wording one.
+
+2. **"Declared on our App Privacy card."** This is a declaration in App Store
+   Connect, not in the repo, and `app_store_listing.md` still carries it as a
+   to-do ("must declare face data collection"). Open the App Privacy section
+   and confirm Sensitive Info / biometric data is declared before claiming it.
+
+3. **"We are registered with Ghana's Data Protection Commission."**
+   `docs/DATA_PROTECTION_REGISTRATION.md` is answers *for the registration
+   form* — it records no registration number and no confirmation. If the
+   filing is complete, keep the sentence and have the certificate ready; if it
+   is in progress, say so instead.
+
 ## Known exposure: Guideline 3.1.1
 
 Photo purchases go through Paystack's hosted page in an in-app WebView
