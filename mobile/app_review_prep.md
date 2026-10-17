@@ -10,11 +10,13 @@ editing anything out.
    event code. A reviewer stopped on the sign-in screen is an automatic round
    trip.
 
-2. **Confirm advertising is actually off.** Item 3 § 12 tells Apple the ads and
-   campaigns feature is switched off for every user by the `ads_enabled` server
-   flag. That flag is live admin state and defaults to **true** — check the
-   admin panel's Config screen against the production API the reviewed build
-   talks to. If it is on, either turn it off or the disclosure is false.
+2. ~~Confirm advertising is actually off.~~ **Verified 17 October 2026:**
+   `GET https://api.piccotechnologies.com/api/config` answers
+   `"ads_enabled": false`, so item 3 § 12 is true of the production config the
+   reviewed build talks to. Worth re-checking if any time passes before the
+   reply goes out — the flag is live admin state, it defaults to **true**, and
+   a superAdmin can flip it from the panel's Config screen without touching a
+   build. The same call is the fastest way to check: no auth, one line.
 
 3. **Decide what item 4 says about where data lives.** The reply deliberately
    says "cloud infrastructure we control" and names no region, because the
