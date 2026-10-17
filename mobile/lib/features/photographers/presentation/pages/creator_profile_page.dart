@@ -23,6 +23,7 @@ import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_actions.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/profile_more_options_sheet.dart';
 import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_viewer_page.dart';
 import 'package:jperg_app/features/photographers/data/repositories/reviews_repository.dart';
 import 'package:jperg_app/features/photographers/domain/usecases/get_photographer_events_usecase.dart';
@@ -390,6 +391,13 @@ class _CreatorProfilePageState extends State<CreatorProfilePage> {
             fontSize: 16.sp,
           ),
         ),
+        // The same menu a person's profile carries — a creator is as
+        // reportable and as blockable as anybody else, and this is the screen
+        // most of the app's accounts are seen on. See
+        // [ProfileOverflowButton].
+        actions: [
+          ProfileOverflowButton(ext: ext, userId: _p.id, name: _p.name),
+        ],
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),

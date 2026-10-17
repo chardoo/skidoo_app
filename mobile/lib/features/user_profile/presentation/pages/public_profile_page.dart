@@ -16,6 +16,7 @@ import 'package:jperg_app/features/chat/presentation/bloc/rooms/chat_rooms_bloc.
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/user_profile/data/repositories/public_profile_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_actions.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/profile_more_options_sheet.dart';
 
 /// Somebody else's profile — the screen the People chip in search opens.
 ///
@@ -158,6 +159,11 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
             fontSize: 16.sp,
           ),
         ),
+        // Block and Report. Not on your own profile — see
+        // [ProfileOverflowButton].
+        actions: [
+          ProfileOverflowButton(ext: ext, userId: _p.id, name: _p.name),
+        ],
       ),
       body: _error != null
           ? AppErrorView(message: _error!, onRetry: _load)

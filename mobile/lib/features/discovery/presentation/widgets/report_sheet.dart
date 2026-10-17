@@ -15,14 +15,45 @@ const reportReasons = <String, String>{
   'inappropriate_content': 'Inappropriate content',
   'spam': 'Spam',
   'harassment': 'Harassment',
+  // Its own reason rather than a kind of "inappropriate content", because the
+  // published child safety standards commit to triaging these ahead of all
+  // other moderation — and a reason shared with blurry photos cannot be
+  // triaged differently. The admin queue sorts on this exact value.
+  'child_safety': 'Child safety or exploitation',
   'copyright': 'Copyright violation',
   'other': 'Other',
 };
 
+/// The `onReport` a comment options sheet wants, or null when there is nobody
+/// to report to.
+///
+/// Four surfaces draw comments — an event's thread, a photo's, an ad's and a
+/// request's — and all four reach the same reason picker with the same asset
+/// type, so the wiring is here rather than copied into each of them. Null for
+/// your own comment: reporting your own words is not an act anyone wants, and
+/// the one thing worse than not offering an option is offering one the server
+/// refuses.
+VoidCallback? reportCommentAction(
+  BuildContext context, {
+  required AppThemeExtension ext,
+  required String commentId,
+  required bool isMine,
+}) {
+  if (isMine) return null;
+  return () => ReportSheet.show(
+        context,
+        ext: ext,
+        assetType: 'comment',
+        assetId: commentId,
+      );
+}
+
 /// Shared report-reason bottom sheet.
 ///
-/// [assetType] must be one of: "event", "picture", "request", "campaign".
-/// [assetId] is the backend ID of the thing being reported.
+/// [assetType] must be one of: "event", "picture", "comment", "user",
+/// "request", "campaign" — the six the server accepts. "user" is the account
+/// itself rather than anything it posted, and [assetId] is then a user id.
+/// [assetId] is otherwise the backend ID of the thing being reported.
 class ReportSheet extends StatefulWidget {
   const ReportSheet({
     super.key,
@@ -61,6 +92,7 @@ class _ReportSheetState extends State<ReportSheet> {
   Future<void> _submit() async {
     if (_selected == null || _submitting) return;
     setState(() => _submitting = true);
+    String? failure;
     try {
       final userId = await sl<AuthService>().getUserId();
       await sl<Api>().dio.post(
@@ -71,13 +103,29 @@ class _ReportSheetState extends State<ReportSheet> {
           'reason': _selected,
         },
       );
-    } on dio.DioException catch (_) {
-      // Best-effort — don't block on network error.
+    } on dio.DioException catch (e) {
+      // Said plainly rather than swallowed.
+      //
+      // This used to pop and thank the reader whatever happened, so a refused
+      // report — the commonest refusal being "you have already reported this"
+      // — looked exactly like an accepted one. Nothing reaches moderation, and
+      // the person who went looking for the control is told it worked. For the
+      // one kind of report that has to be trusted, a false receipt is worse
+      // than an error.
+      final data = e.response?.data;
+      failure = data is Map
+          ? (data['error'] is Map ? data['error']['message'] as String? : null)
+          : null;
+      failure ??= 'Could not submit the report. Try again.';
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
     if (!mounted) return;
     Navigator.of(context).pop();
+    if (failure != null) {
+      AppSnackBar.error(context, failure);
+      return;
+    }
     AppSnackBar.success(
         context, 'Report submitted. Thank you for your feedback.');
   }
@@ -123,13 +171,23 @@ class _ReportSheetState extends State<ReportSheet> {
                               color: ext.greetingColor, size: 18.sp),
                         )),
                     SizedBox(width: AppSpacing.md.w),
-                    Text(
-                      'Why are you reporting this?',
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: AppTypography.displayFontFamily,
-                        fontSize: 16.sp,
+                    // Expanded, because the heading is a whole sentence next
+                    // to an icon in a fixed-width row: at a large system text
+                    // scale it ran off the right edge of the sheet (and does
+                    // so in widget tests, where the test font is wider than
+                    // any real one). Taking the remaining width and
+                    // ellipsising is the readable failure.
+                    Expanded(
+                      child: Text(
+                        'Why are you reporting this?',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: AppTypography.displayFontFamily,
+                          fontSize: 16.sp,
+                        ),
                       ),
                     ),
                   ],

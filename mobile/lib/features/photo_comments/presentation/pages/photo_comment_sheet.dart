@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/components/comments/comment_dialogs.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart'
+    show reportCommentAction;
 import 'package:jperg_app/components/comments/comment_like_state.dart';
 import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
@@ -298,6 +301,37 @@ class _PhotoCommentSheetContentState extends State<_PhotoCommentSheetContent>
       // yet that a like could be filed against.
       onLike: likeHandler(msg),
       onReply: () => _startReply(msg),
+      // Long-press to report. This sheet offered nothing on a long press, so a
+      // comment on a photo — the app's primary piece of user content — could
+      // be read and not flagged. Never on one still on its way to the server
+      // (no id to report against) and never on your own, which is what
+      // [reportCommentAction] answers null for.
+      onLongPress: msg.isLocal ? null : () => _showOptions(msg),
+    );
+  }
+
+  /// What this reader may do about somebody else's comment.
+  ///
+  /// Report alone, for now: editing is the author's and this sheet has no
+  /// delete path of its own, so a sheet with Report in it is the whole menu.
+  /// [showCommentOptionsSheet] opens nothing when there is nothing to offer,
+  /// which is what keeps a long-press on your own comment from flashing an
+  /// empty sheet.
+  void _showOptions(ChatMessage msg) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    showCommentOptionsSheet(
+      context,
+      ext: ext,
+      canEdit: false,
+      canDelete: false,
+      onEdit: () {},
+      onDelete: () {},
+      onReport: reportCommentAction(
+        context,
+        ext: ext,
+        commentId: msg.id,
+        isMine: msg.senderId == _myId,
+      ),
     );
   }
 

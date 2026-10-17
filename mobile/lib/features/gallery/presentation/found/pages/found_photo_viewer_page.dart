@@ -16,6 +16,8 @@ import 'package:jperg_app/features/gallery/presentation/found/widgets/found_revi
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_photo_stage.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
+import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/photo_more_options_sheet.dart';
 
 /// Full-screen viewer for an album's photos: "n of total" in the app bar, the
 /// photo with its badge/action-rail/photographer overlays, and a filmstrip of
@@ -226,7 +228,12 @@ class _FoundPhotoViewerPageState extends State<FoundPhotoViewerPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _ViewerTopBar(index: _index, total: total, title: widget.title),
+            _ViewerTopBar(
+              index: _index,
+              total: total,
+              pictureId: widget.photos[_index].id,
+              title: widget.title,
+            ),
             // Review mode only: recognition proposed this photo and the person
             // is confirming it. Above the image, not over it — the answer
             // depends on seeing the whole frame.
@@ -347,15 +354,47 @@ class _ViewerTopBar extends StatelessWidget {
   const _ViewerTopBar({
     required this.index,
     required this.total,
+    required this.pictureId,
     this.title,
   });
 
   final int index;
   final int total;
 
+  /// The photo currently on screen — what the overflow's Report is filed
+  /// against. It follows the pager rather than the album, so the menu always
+  /// names the photo being looked at.
+  final String pictureId;
+
   /// The album's name. When present it takes the centre and the counter moves
   /// onto the photo — see [FoundPhotoViewerPage.title].
   final String? title;
+
+  /// The three dots, in the slot the design gives them.
+  ///
+  /// There was a disabled button here once, wired to nothing, and removing it
+  /// was right at the time: everything a photo menu would have offered —
+  /// share, send, save, download — is already on the rail and the bar over the
+  /// photo. Report is the one thing that is not, and a photo is the app's
+  /// primary piece of user content, so this is the slot it belongs in.
+  Widget _overflow(BuildContext context, AppThemeExtension ext) {
+    return Semantics(
+      button: true,
+      label: 'More options',
+      child: IconButton(
+        onPressed: () => PhotoMoreOptionsSheet.show(
+          context,
+          ext: ext,
+          pictureId: pictureId,
+        ),
+        icon: AppSvgIcon(
+          AppIcons.moreVertical,
+          size: 20.sp,
+          color: ext.greetingColor,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -383,18 +422,11 @@ class _ViewerTopBar extends StatelessWidget {
               ),
             ),
             // Balances the back button so the title sits truly centred, and
-            // nothing more. There was a disabled overflow button here holding
-            // the place the design gives one, but nothing was ever wired to it
-            // — so a photo had three dots on it that could not be pressed, and
-            // everything such a menu would have offered (share, send, save,
-            // download) is already on the rail and the bar over the photo
-            // itself. A dead control on a viewer reads as a feature that
-            // broke.
-            //
-            // `kMinInteractiveDimension` is exactly what the IconButton it
-            // replaces occupied — Material's minimum tap target, and the same
-            // width [AppBackButton] takes on the other side.
-            const SizedBox(width: kMinInteractiveDimension),
+            // carries the menu. An IconButton occupies exactly
+            // `kMinInteractiveDimension` — Material's minimum tap target, and
+            // the same width [AppBackButton] takes on the other side — so the
+            // title stays centred either way. See [_overflow].
+            _overflow(context, ext),
           ],
         ),
       );
@@ -407,6 +439,14 @@ class _ViewerTopBar extends StatelessWidget {
           const Align(
             alignment: Alignment.centerLeft,
             child: AppBackButton(),
+          ),
+          // The same menu as the titled layout above. This is the bar the
+          // callers with no album name get, and a photo carries its Report
+          // wherever it is opened from — otherwise which entry point the
+          // reader came through would decide whether it can be flagged.
+          Align(
+            alignment: Alignment.centerRight,
+            child: _overflow(context, ext),
           ),
           Center(
             // One label for the whole counter. Split across spans it reads out as

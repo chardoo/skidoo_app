@@ -4,6 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_input_bar_widget.dart';
 import 'package:jperg_app/components/comments/comment_row_data.dart';
+import 'package:jperg_app/components/comments/comment_dialogs.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart'
+    show reportCommentAction;
 import 'package:jperg_app/features/photo_comments/data/comment_like_service.dart';
 import 'package:jperg_app/components/comments/comment_sheet_shell.dart';
 import 'package:jperg_app/components/comments/threaded_comment_widget.dart';
@@ -164,6 +167,32 @@ class _FeedCommentSheetContentState extends State<_FeedCommentSheetContent> {
       viewerLiked: _likeFor(c).liked,
       onLike: () => _toggleLike(c),
       onReply: onReply,
+      // Long-press to report, the same as every other thread in the app. An
+      // ad's or a request's comments are as public as an album's, and this
+      // sheet offered nothing on a long press at all.
+      onLongPress: () => _showOptions(c, myId: myId),
+    );
+  }
+
+  /// What this reader may do about somebody else's comment: report it.
+  ///
+  /// [showCommentOptionsSheet] opens nothing when every option is withheld, so
+  /// a long press on your own comment does not flash an empty sheet.
+  void _showOptions(PhotoComment c, {required String myId}) {
+    final ext = Theme.of(context).extension<AppThemeExtension>()!;
+    showCommentOptionsSheet(
+      context,
+      ext: ext,
+      canEdit: false,
+      canDelete: false,
+      onEdit: () {},
+      onDelete: () {},
+      onReport: reportCommentAction(
+        context,
+        ext: ext,
+        commentId: c.id,
+        isMine: c.userId == myId,
+      ),
     );
   }
 

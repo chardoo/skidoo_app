@@ -18,28 +18,42 @@ send; text outside the fences is for us.
 Two things in the letter point at gaps that exist in the build. Neither is
 covered up below — it is cheaper to fix them than to argue them.
 
-1. Photos and comments cannot be reported in the app. Apple's item 1 asks
-the recording to show "any user-generated content, including the required
-content reporting and blocking mechanisms" (Guideline 1.2). What exists today:
+1. ~~Photos and comments cannot be reported in the app.~~ **Wired on 17
+October 2026 — this gap is closed.** Apple's item 1 asks the recording to show
+"any user-generated content, including the required content reporting and
+blocking mechanisms" (Guideline 1.2). Where every kind of content is reported
+now:
 
 | Content | Report in app? | Where |
 |---|---|---|
 | Event / album | ✅ | event ⋯ → "Report event" (`event_more_options_sheet.dart`) |
 | Ad campaign | ✅ | feed card ⋯ → "Report ad" (`feed_item_card.dart:1418`) |
 | Job request | ✅ | feed card ⋯ → "Report request" (same sheet) |
-| Individual photo | ❌ | no affordance anywhere |
-| Comment on a photo | ❌ | no affordance anywhere |
-| Abusive user | ✅ (DMs) | chat room ⋯ → Block (`chat_room_page.dart:364`) |
+| Individual photo | ✅ | photo viewer ⋯ → "Report photo" (`photo_more_options_sheet.dart`) |
+| Comment / reply | ✅ | long-press a comment → "Report comment" (`comment_dialogs.dart`) |
+| An account | ✅ | profile ⋯ → "Report account" (`profile_more_options_sheet.dart`) |
+| Abusive user | ✅ | profile ⋯ → Block, and chat room ⋯ → Block |
 
-The server already accepts both missing types — `POST /client/{id}/report`
-takes `assetType` of `picture`, `event`, `request`, `campaign`, `comment`
-(`main/app/routers/client/report.py:31`). So this is UI wiring only: drop
-`ReportSheet.show(..., assetType: 'picture', assetId: photo.id)` into the photo
-viewer's ⋯ menu, and the same with `'comment'` onto a comment row's long-press.
-Photos are the app's primary user-generated content; a reviewer who looks for a
-way to flag one and does not find it is a 1.2 rejection, whatever the recording
-shows. Recommend fixing this before the build is resubmitted — then the
-recording can show it and the table above becomes all ✅.
+Two things changed beyond the wiring, both worth knowing before the recording
+is shot:
+
+- **Blocking is no longer only inside a DM.** It is on the ⋯ menu of both
+  profile screens, which is where a reviewer looks for it. The chat room's own
+  Block is unchanged.
+- **"Child safety or exploitation" is now its own report reason**, separate
+  from "inappropriate content", and the moderation queue sorts those reports
+  ahead of everything else. That is the in-app route the published CSAE
+  standards describe, and it is what Google Play's Child Safety Standards
+  policy requires as well.
+
+Server side: `POST /client/{id}/report` takes `assetType` of `picture`,
+`event`, `request`, `campaign`, `comment`, `user`, and `reason` of
+`inappropriate_content`, `spam`, `harassment`, `copyright`, `child_safety`,
+`other` (`main/app/routers/client/report.py`). Three inappropriate-content
+reports still take an item out of circulation automatically; an account report
+resolves to a suspension from the admin console. **Needs `alembic upgrade head`
+on the main service** — the two new values are Postgres enum values
+(migration `rep01`).
 
 2. Photo purchases go through Paystack, not In-App Purchase. Checkout opens
 Paystack's hosted page in an in-app WebView (`checkout_page.dart`,
@@ -142,12 +156,16 @@ EVENT CODE for face search: [DEMO_EVENT_CODE]
    Photos priced at 0 are free and are saved without any payment step.
 
 5. USER-GENERATED CONTENT. Photos and events are uploaded by photographers;
-   comments and job requests are written by users. To report content: ⋯ on an
-   event or feed card > "Report ..." > choose a reason (inappropriate content,
-   spam, harassment, copyright, other). Three inappropriate-content reports
-   take an item out of circulation automatically. To block a user: open a
-   direct message with them, ⋯ > Block. A block stops messages in both
-   directions.
+   comments and job requests are written by users. Everything a user can post
+   can be reported from the ⋯ menu on it — a photo (⋯ in the photo viewer), an
+   event or a feed card (⋯ on the card), or a comment (long-press it). Choose a
+   reason: inappropriate content, spam, harassment, child safety or
+   exploitation, copyright, other. Three inappropriate-content reports take an
+   item out of circulation automatically, and child-safety reports are triaged
+   ahead of all other moderation.
+   To report or block the person rather than the post: open their profile and
+   use ⋯ > "Report account" or ⋯ > Block. Block is also on the ⋯ menu of a
+   direct message. A block stops messages in both directions.
 
 6. MESSAGING. Chats tab. Direct messages are end-to-end encrypted; events have
    their own chat rooms. Attachments are images, video, audio and files.
@@ -314,8 +332,8 @@ or any licensed profession. Three areas where we hold or need authorisation:
    identity verification — a government ID document reviewed by our team —
    before they can publish and sell, and they accept terms confirming they own
    or are licensed to sell what they upload. Anyone can report a photo, album,
-   comment, ad or job request for copyright infringement or for any other
-   reason, and three inappropriate-content reports remove an item from
+   comment, ad, job request or account for copyright infringement or for any
+   other reason, and three inappropriate-content reports remove an item from
    circulation pending review. Our terms are at https://jperg.com/terms.
 
 Supporting documents — Data Protection Commission registration, the Audiomack
@@ -341,12 +359,15 @@ trip.
 4. Paid content — select a priced photo, open checkout, complete the
    Paystack test payment, show the photo under Profile → Purchased and download
    it.
-5. User-generated content + moderation — show photos, a comment being
-   posted, then report something (⋯ → Report → pick a reason → confirm the
-   success state) and block someone (open a DM → ⋯ → Block → show the
-   blocked banner). If the photo/comment report from the warning at the top of
-   this file gets wired in, report a photo here — that is the one Apple
-   will look for.
+5. User-generated content + moderation — show photos and a comment being
+   posted, then show reporting and blocking. Report **a photo** specifically
+   (photo viewer → ⋯ → Report photo → pick a reason → confirm the success
+   state): photos are the app's primary user-generated content and that is the
+   one Apple will look for. Then long-press a comment → Report comment, and
+   block someone from their **profile** (⋯ → Block → show the confirmation) —
+   on the profile rather than inside a DM, so the control is where a reviewer
+   looks for it. Let the reason list stay on screen long enough to read "Child
+   safety or exploitation".
 6. Account deletion — Settings → Account & Security → Delete account →
    confirm → show that it signs out. Use the secondary account.
 

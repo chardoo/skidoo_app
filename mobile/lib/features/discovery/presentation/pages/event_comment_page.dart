@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/data/datasources/feed_comment_data_source.dart';
 import 'package:jperg_app/components/comments/comment_dialogs.dart';
+import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart'
+    show reportCommentAction;
 import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
@@ -458,6 +460,13 @@ class _EventCommentSheetState extends State<_EventCommentSheet>
         context,
         ext: ext,
         onConfirm: () => _deleteComment(msg),
+      ),
+      // Everybody but the author. See [reportCommentAction].
+      onReport: reportCommentAction(
+        context,
+        ext: ext,
+        commentId: msg.id,
+        isMine: mine,
       ),
     );
   }
@@ -988,6 +997,13 @@ class _InlineCommentContentState extends State<_InlineCommentContent>
         context,
         ext: ext,
         onConfirm: () => _deleteComment(msg),
+      ),
+      // Everybody but the author. See [reportCommentAction].
+      onReport: reportCommentAction(
+        context,
+        ext: ext,
+        commentId: msg.id,
+        isMine: mine,
       ),
     );
   }

@@ -6,20 +6,26 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 
-/// Shows a bottom sheet with Edit / Delete options.
-/// [onEdit] and [onDelete] receive no arguments — callers close over
-/// the specific comment they need.
+/// Shows a bottom sheet with Edit / Delete / Report options.
+/// [onEdit], [onDelete] and [onReport] receive no arguments — callers close
+/// over the specific comment they need.
+///
+/// The three are offered to three different people. Edit is the author's
+/// alone; delete is also the creator's, moderating their own album; report is
+/// everybody *but* the author's — reporting your own words is not a thing
+/// anyone wants to do, and the server would take it.
 void showCommentOptionsSheet(
   BuildContext context, {
   required AppThemeExtension ext,
   required VoidCallback onEdit,
   required VoidCallback onDelete,
+  VoidCallback? onReport,
   bool canEdit = true,
   bool canDelete = true,
 }) {
   // Nothing on offer, nothing to open. A sheet with an empty list reads as a
   // broken screen rather than as "you may not do this".
-  if (!canEdit && !canDelete) return;
+  if (!canEdit && !canDelete && onReport == null) return;
 
   showModalBottomSheet<void>(
     context: context,
@@ -71,6 +77,25 @@ void showCommentOptionsSheet(
                 onTap: () {
                   Navigator.of(context).pop();
                   onDelete();
+                },
+              ),
+            // The only way to flag a comment anywhere in the app.
+            //
+            // It matters more here than it reads: the feed promotes one
+            // comment onto the card above the caption, so a stranger's words
+            // are put in front of everyone scrolling past. The server has
+            // accepted `assetType: "comment"` since that shipped — and three
+            // inappropriate-content reports already take a comment out of
+            // that rotation — but nothing on any screen could file one.
+            if (onReport != null)
+              ListTile(
+                leading: Icon(Icons.flag_outlined,
+                    color: Colors.redAccent, size: 22.sp),
+                title: Text('Report comment',
+                    style: TextStyle(color: Colors.redAccent, fontSize: 15.sp)),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onReport();
                 },
               ),
           ],
