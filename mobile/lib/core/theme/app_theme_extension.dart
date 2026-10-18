@@ -199,6 +199,23 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     mediaBackdropVeil: Color(0x80F7F7F2), // background 50 %
   );
 
+  /// The brand green, in the shade that is legible on this theme's ground.
+  ///
+  /// [accentGold] is #1D9E75 — the rebrand green, token name and all — and it
+  /// is only 3.15:1 against the light background, under the 4.5:1 that text
+  /// and glyphs need. [accentGoldDark] (#16795B) is its declared partner and
+  /// clears it, so this is the palette used as intended rather than a fourth
+  /// colour invented at a call site.
+  ///
+  /// Decided off the *ground* rather than `Theme.of(context).brightness`,
+  /// because the ground is what the colour actually sits on: a theme that set
+  /// one and not the other would still come out right.
+  ///
+  /// This decision was written out by hand wherever it was needed, which is
+  /// how the app ended up drawing one badge in three colours. Call this.
+  Color get accentOnGround =>
+      homeBackground.computeLuminance() > 0.5 ? accentGoldDark : accentGold;
+
   @override
   AppThemeExtension copyWith({
     Color? homeBackground,

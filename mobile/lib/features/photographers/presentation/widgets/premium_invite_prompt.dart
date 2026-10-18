@@ -128,7 +128,7 @@ class PremiumInvitePrompt {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.verified_rounded,
-                    color: ext.accentGold, size: 24.sp),
+                    color: ext.accentOnGround, size: 24.sp),
               ),
               SizedBox(height: AppSpacing.lg.h),
               Text(

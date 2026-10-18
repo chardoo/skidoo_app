@@ -227,7 +227,8 @@ class _VerificationFormState extends State<VerificationForm> {
       return _StatusCard(
         ext: ext,
         icon: Icons.verified_rounded,
-        tone: ext.accentGold,
+        // The ground-resolved green, same as the badge the account will wear.
+        tone: ext.accentOnGround,
         title: 'Verified',
         body: 'Your identity has been confirmed.',
       );

@@ -35,6 +35,7 @@ import 'package:jperg_app/features/search/presentation/pages/search_event_photos
 import 'package:jperg_app/models/photographer/photographer_event.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// Everything the header states about a creator.
 ///
@@ -640,8 +641,7 @@ class _IdentityRow extends StatelessWidget {
                     ),
                     if (profile.verified) ...[
                       SizedBox(width: 4.w),
-                      Icon(Icons.verified_rounded,
-                          size: 15.r, color: ext.infoBlue),
+                      const VerifiedBadge(size: 15),
                     ],
                   ],
                 ),

@@ -24,6 +24,9 @@ import 'package:jperg_app/features/gallery/presentation/found/pages/found_photo_
 import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/create_bottom_sheet.dart';
 import 'package:jperg_app/features/user_profile/data/repositories/profile_overview_repository.dart';
+import 'package:jperg_app/features/user_profile/data/owned_events.dart';
+import 'package:jperg_app/features/user_profile/presentation/pages/owned_album_page.dart';
+import 'package:jperg_app/features/user_profile/presentation/widgets/album_download_bar.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:jperg_app/features/settings/presentation/pages/settings_page.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_photo_grid.dart';
@@ -66,6 +69,7 @@ class UserProfilePage extends StatefulWidget {
 class UserProfilePageState extends State<UserProfilePage>
     with SingleTickerProviderStateMixin {
   final _repo = ProfileOverviewRepository();
+  final _ownedRepo = OwnedEventsRepository();
   late final TabController _tabs;
 
   ProfileOverview _overview = ProfileOverview.empty;
@@ -81,6 +85,16 @@ class UserProfilePageState extends State<UserProfilePage>
   int _purchasedPage = 1;
   bool _purchasedHasMore = false;
   bool _loadingMorePurchased = false;
+
+  /// Albums this person owns — "My Events", above Purchased in the same tab.
+  ///
+  /// Two different rights share that tab deliberately: both answer "what
+  /// photos are mine", and they answer it differently. Purchased is what they
+  /// paid for. Owned is what was shot *for* them — the wedding, the
+  /// conference — granted by email before they may even have had an account,
+  /// and free to download at full resolution. Neither contains the other.
+  List<OwnedEvent> _ownedEvents = const [];
+  bool _loadingOwnedEvents = true;
 
   /// An event tile has to fetch the event before it can open it; this keeps a
   /// second tap from starting a second fetch.
@@ -164,6 +178,12 @@ class UserProfilePageState extends State<UserProfilePage>
       if (_savesLoadedAt != AppCacheSignals.saves.value) _loadBookmarks(),
       if (_purchasesLoadedAt != GalleryRefreshSignal.revision.value)
         _loadPurchased(),
+      // Always, unlike the grids above. Ownership is granted by somebody
+      // else, on a server, with nothing happening in this app to signal it —
+      // there is no local revision that could move. A photographer naming
+      // you an owner while you have the app open should show up the next
+      // time you open your profile, and the call is one cheap page.
+      _loadOwnedEvents(),
     ]);
   }
 
@@ -191,8 +211,34 @@ class UserProfilePageState extends State<UserProfilePage>
   /// header — the figures are the first thing on screen and the cheapest to
   /// fetch.
   Future<void> _load() async {
-    await Future.wait(
-        [_loadHeader(), _loadLiked(), _loadBookmarks(), _loadPurchased()]);
+    await Future.wait([
+      _loadHeader(),
+      _loadLiked(),
+      _loadBookmarks(),
+      _loadPurchased(),
+      _loadOwnedEvents(),
+    ]);
+  }
+
+  /// The albums this person owns.
+  ///
+  /// The repository swallows its own errors and answers with an empty page,
+  /// which is what is wanted here: My Events sits above Purchased in the same
+  /// scroll view, and a throw would take somebody's purchases down with it
+  /// over a section that may well be empty anyway.
+  Future<void> _loadOwnedEvents() async {
+    try {
+      final page = await _ownedRepo.getOwnedEvents();
+      if (!mounted) return;
+      setState(() {
+        _ownedEvents = page.items;
+        _loadingOwnedEvents = false;
+      });
+    } finally {
+      if (mounted && _loadingOwnedEvents) {
+        setState(() => _loadingOwnedEvents = false);
+      }
+    }
   }
 
   Future<void> _loadHeader() async {
@@ -593,6 +639,18 @@ class UserProfilePageState extends State<UserProfilePage>
     );
   }
 
+  /// Open one of the albums this person owns.
+  ///
+  /// No refresh on the way back: nothing on that screen changes what this one
+  /// shows. Downloading photos does not alter the album, and the download
+  /// itself keeps running regardless of which screen is on top — the bar at
+  /// the top of this tab is watching the same notifier the album screen is.
+  void _openOwnedAlbum(OwnedEvent event) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => OwnedAlbumPage(event: event)),
+    );
+  }
+
   void _openBroadcasts() {
     Navigator.of(context)
         .push(MaterialPageRoute<void>(builder: (_) => const BroadcastsPage()))
@@ -752,6 +810,17 @@ class UserProfilePageState extends State<UserProfilePage>
                 photos: _purchased,
                 loading: _loadingPurchased,
                 ext: ext,
+                // My Events first, then the purchases underneath it,
+                // unchanged. A progress bar rides at the very top whenever an
+                // album download is running — including one started on the
+                // album screen and left, which is the point of putting it
+                // here rather than only there.
+                header: _MyEventsSection(
+                  events: _ownedEvents,
+                  loading: _loadingOwnedEvents,
+                  ext: ext,
+                  onOpen: _openOwnedAlbum,
+                ),
                 emptyTitle: 'No purchased photos yet',
                 emptyIcon: AppIcons.fileCheck,
                 emptyHint: 'All your purchased photos live here.',
@@ -1006,6 +1075,136 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
       old.tabBar != tabBar ||
       old.background != background ||
       old.hairline != hairline;
+}
+
+/// "My Events" — the albums this person owns, above their purchases.
+///
+/// A horizontal row of covers rather than a grid, because it shares the tab
+/// with Purchased and a second full-height grid would bury the purchases
+/// under a scroll nobody expects. Most people own a handful of albums; the
+/// row holds them without taking the screen.
+///
+/// Draws nothing at all when there are none, rather than an empty state. An
+/// empty My Events is the normal condition for most accounts — somebody who
+/// has never been photographed at an event owns no albums, and that is not a
+/// gap in their profile worth captioning.
+class _MyEventsSection extends StatelessWidget {
+  const _MyEventsSection({
+    required this.events,
+    required this.loading,
+    required this.ext,
+    required this.onOpen,
+  });
+
+  final List<OwnedEvent> events;
+  final bool loading;
+  final AppThemeExtension ext;
+  final void Function(OwnedEvent) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    // The bar first, and outside the `isEmpty` check: a download started on
+    // an album screen has to stay visible after coming back here, even for
+    // somebody whose list has since been emptied.
+    const bar = AlbumDownloadBar();
+
+    if (loading && events.isEmpty) return bar;
+    if (events.isEmpty) return bar;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        bar,
+        Padding(
+          padding: EdgeInsets.fromLTRB(14.w, 14.h, 14.w, 8.h),
+          child: Row(
+            children: [
+              Text('My Events', style: AppTypography.subtitle),
+              SizedBox(width: 6.w),
+              Text(
+                '${events.length}',
+                style: AppTypography.caption.copyWith(color: ext.searchHintColor),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 132.h,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: 14.w),
+            itemCount: events.length,
+            separatorBuilder: (_, __) => SizedBox(width: 10.w),
+            itemBuilder: (_, i) => _AlbumCard(
+              event: events[i],
+              ext: ext,
+              onTap: () => onOpen(events[i]),
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(14.w, 18.h, 14.w, 6.h),
+          child: Text('Purchased', style: AppTypography.subtitle),
+        ),
+      ],
+    );
+  }
+}
+
+/// One album cover, its name, and how many photos are in it.
+class _AlbumCard extends StatelessWidget {
+  const _AlbumCard({
+    required this.event,
+    required this.ext,
+    required this.onTap,
+  });
+
+  final OwnedEvent event;
+  final AppThemeExtension ext;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 108.w,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 108.w,
+                height: 88.h,
+                child: event.coverUrl.isEmpty
+                    // An album with no cover yet — a real state, because the
+                    // cover is optional at creation.
+                    ? Container(
+                        color: ext.accentGold.withValues(alpha: 0.12),
+                        child: Icon(Icons.photo_library_rounded,
+                            color: ext.accentGold, size: 26.sp),
+                      )
+                    : JpergImage(imageUrl: event.coverUrl, fit: BoxFit.cover),
+              ),
+            ),
+            SizedBox(height: 5.h),
+            Text(
+              event.name.isEmpty ? 'Untitled album' : event.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.captionBold,
+            ),
+            Text(
+              '${event.photoCount} '
+              '${event.photoCount == 1 ? 'photo' : 'photos'}',
+              style: AppTypography.micro.copyWith(color: ext.searchHintColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// The third tab is a doorway rather than a list: Broadcasts is its own screen

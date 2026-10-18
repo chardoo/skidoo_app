@@ -19,6 +19,7 @@ import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_setup_entry.dart';
 import 'package:jperg_app/features/auth/presentation/widgets/onboarding_step_scaffold.dart';
 import 'package:jperg_app/features/auth/onboarding_step.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// A photographer's portfolio — the first-time setup and every later edit.
 ///
@@ -287,7 +288,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
             ),
             if (_verifiedByAdmin) ...[
               SizedBox(width: 6.w),
-              Icon(Icons.verified_rounded, color: ext.accentGold, size: 18.sp),
+              const VerifiedBadge(size: 18),
             ],
           ],
         ),

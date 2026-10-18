@@ -26,7 +26,21 @@ class ProfilePhotoGrid extends StatefulWidget {
     required this.onOpen,
     this.onLoadMore,
     this.loadingMore = false,
+    this.header,
   });
+
+  /// Drawn above the grid, inside the same scroll view.
+  ///
+  /// Inside rather than stacked above it in a Column because this tab has one
+  /// scrollable and must keep having one: two would mean the header scrolling
+  /// independently of the photos under it, and the pull-to-refresh wrapping
+  /// this grid would stop reaching the top.
+  ///
+  /// Shown in every state, including the empty one. "My Events" sits above
+  /// Purchased, and somebody who owns an album but has never bought a photo
+  /// is precisely who needs to see it — the old empty state replaced the
+  /// whole tab, header and all.
+  final Widget? header;
 
   final List<ProfilePhoto> photos;
   final bool loading;
@@ -109,6 +123,85 @@ class _ProfilePhotoGridState extends State<ProfilePhotoGrid> {
     final removeTooltip = widget.removeTooltip;
     final onRemove = widget.onRemove;
     final onOpen = widget.onOpen;
+
+    // With a header, every state is the same scroll view with a different
+    // sliver under the header — otherwise "loading" and "empty" would each
+    // return a widget that throws the header away.
+    if (widget.header != null) {
+      return NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (onLoadMore == null || loadingMore) return false;
+          final metrics = notification.metrics;
+          if (metrics.axis != Axis.vertical) return false;
+          if (metrics.pixels >= metrics.maxScrollExtent - 400) onLoadMore();
+          return false;
+        },
+        child: CustomScrollView(
+          controller: _controller,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverToBoxAdapter(child: widget.header),
+            if (widget.loading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 48),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              )
+            else if (photos.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: AppEmptyState(
+                    icon: widget.emptyIcon,
+                    message: widget.emptyTitle,
+                    hint: widget.emptyHint,
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: EdgeInsets.all(2.w),
+                sliver: SliverGrid(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 2,
+                    mainAxisSpacing: 2,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) {
+                      if (i >= photos.length) {
+                        return Center(
+                          child: SizedBox(
+                            width: 18.w,
+                            height: 18.w,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: ext.accentGold),
+                          ),
+                        );
+                      }
+                      final photo = photos[i];
+                      return ProfilePhotoTile(
+                        photo: photo,
+                        ext: ext,
+                        removeIcon: removeIcon,
+                        removeTooltip: removeTooltip,
+                        onRemove:
+                            onRemove == null ? null : () => onRemove(photo),
+                        onOpen: () => onOpen(photo),
+                      );
+                    },
+                    childCount: photos.length + (loadingMore ? 3 : 0),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     if (widget.loading) {
       return const Center(child: CircularProgressIndicator());

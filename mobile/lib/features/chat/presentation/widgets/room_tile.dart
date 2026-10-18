@@ -7,6 +7,7 @@ import 'package:jperg_app/features/chat/presentation/chat_time.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/room_avatar.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/system_notice_text.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// One row of the inbox: avatar, name, the last thing said, and when.
 class RoomTile extends StatelessWidget {
@@ -68,8 +69,11 @@ class RoomTile extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (room.hasAdminParticipant) ...[
-                                Icon(Icons.verified_rounded,
-                                    size: 14.sp, color: ext.infoBlue),
+                                // Same tick, same green — a reader should not
+                                // have to learn two marks. What it claims here
+                                // is narrower, hence the label.
+                                const VerifiedBadge(
+                                    size: 14, semanticLabel: 'Official account'),
                                 SizedBox(width: AppSpacing.xs.w),
                               ],
                               Flexible(

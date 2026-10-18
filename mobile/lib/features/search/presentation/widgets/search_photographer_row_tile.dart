@@ -6,6 +6,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
 import 'package:jperg_app/features/search/presentation/widgets/search_result_row.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// A Photographers result: avatar, name, "Arts & Culture · 1K followers".
 class SearchPhotographerRowTile extends StatelessWidget {
@@ -46,8 +47,7 @@ class SearchPhotographerRowTile extends StatelessWidget {
       trailing: photographer.isVerified
           ? Padding(
               padding: EdgeInsets.only(right: AppSpacing.xs.w),
-              child: Icon(Icons.verified_rounded,
-                  color: ext.accentGold, size: 16.sp),
+              child: const VerifiedBadge(),
             )
           : null,
       semanticLabel: '${photographer.name}, ${_subtitle()}',

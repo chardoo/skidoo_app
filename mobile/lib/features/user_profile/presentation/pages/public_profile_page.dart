@@ -17,6 +17,7 @@ import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/user_profile/data/repositories/public_profile_repository.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_actions.dart';
 import 'package:jperg_app/features/user_profile/presentation/widgets/profile_more_options_sheet.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// Somebody else's profile — the screen the People chip in search opens.
 ///
@@ -263,7 +264,7 @@ class _Identity extends StatelessWidget {
             ),
             if (profile.verified) ...[
               SizedBox(width: 4.w),
-              Icon(Icons.verified_rounded, size: 16.r, color: ext.infoBlue),
+              const VerifiedBadge(),
             ],
           ],
         ),

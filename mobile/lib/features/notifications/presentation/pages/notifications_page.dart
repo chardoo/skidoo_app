@@ -736,6 +736,10 @@ _Look _lookFor(String type) {
     'event_comment_reply' =>
       (icon: Icons.chat_bubble_rounded, color: social),
     'welcome' => (icon: Icons.celebration_rounded, color: photos),
+    // The creator welcome, which lands on Earnings. Without a case it fell to
+    // the generic bell at the bottom, which is the one row where a new
+    // photographer is told where to go next.
+    'creator_welcome' => (icon: Icons.camera_alt_rounded, color: photos),
     'password_reset_success' => (
         icon: Icons.lock_reset_rounded,
         color: account
