@@ -42,6 +42,7 @@ import 'package:jperg_app/features/music/presentation/widgets/feed_music_pill.da
 import 'package:jperg_app/features/music/presentation/widgets/feed_volume_button.dart';
 import 'package:jperg_app/features/music/presentation/widgets/music_track_sheet.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// One full-screen page of the TikTok-style vertical feed — the photo/video
 /// carousel fills the entire page edge-to-edge, with the caption and action
@@ -1280,6 +1281,14 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
                                     ),
                                   ),
                                 ),
+                                // After the name rather than before it, so an
+                                // ellipsised long name does not push the badge
+                                // off the row — the tick is the part that must
+                                // survive the truncation.
+                                if (event.photographerVerified) ...[
+                                  SizedBox(width: 4.w),
+                                  const VerifiedBadge(size: 14, onImage: true),
+                                ],
                               ],
                             ),
                           ),

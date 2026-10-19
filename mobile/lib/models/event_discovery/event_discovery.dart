@@ -186,6 +186,12 @@ class EventDiscovery {
   /// when the photographer has no avatar set.
   final String? photographerProfileUrl;
 
+  /// Whether this creator carries the verified badge, so the card can draw the
+  /// tick beside their name without asking per card — the feed renders dozens
+  /// of names, and a lookup each would be dozens of round trips. Comes from
+  /// `verified_by_admin` on the nested user object.
+  final bool photographerVerified;
+
   final List<EventPicture> pictures;
   final int likes;
   final int dislikes;
@@ -231,6 +237,7 @@ class EventDiscovery {
     required this.photographerName,
     required this.photographerId,
     this.photographerProfileUrl,
+    this.photographerVerified = false,
     required this.pictures,
     this.likes = 0,
     this.dislikes = 0,
@@ -252,6 +259,7 @@ class EventDiscovery {
           'name': photographerName,
           'is_followed': isFollowed,
           if (photographerProfileUrl != null) 'profile_url': photographerProfileUrl,
+          'verified': photographerVerified,
         },
         'pictures': pictures.map((p) => p.toMap()).toList(),
         'likes': likes,
@@ -284,6 +292,7 @@ class EventDiscovery {
       photographerName: photographerName,
       photographerId: photographerId,
       photographerProfileUrl: photographerProfileUrl,
+      photographerVerified: photographerVerified,
       pictures: pictures ?? this.pictures,
       likes: likes ?? this.likes,
       dislikes: dislikes ?? this.dislikes,
@@ -331,6 +340,11 @@ class EventDiscovery {
       photographerProfileUrl: (user['profile_url'] as String?)?.isNotEmpty == true
           ? user['profile_url'] as String
           : null,
+      // `verified` is what the feed sends; `verified_by_admin` is the column's
+      // own name and what the profile endpoints answer with. Either is read,
+      // so a card built from a profile payload keeps its badge.
+      photographerVerified: user['verified'] == true ||
+          user['verified_by_admin'] == true,
       pictures: pics,
       likes: (event['likes'] as num?)?.toInt() ?? 0,
       dislikes: (event['dislikes'] as num?)?.toInt() ?? 0,

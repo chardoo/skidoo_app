@@ -8,6 +8,7 @@ import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/common/widgets/app_empty_state.dart';
 import 'package:jperg_app/core/common/widgets/app_error_view.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// Which list to show first when the page opens.
 enum FollowListTab { followers, following }
@@ -337,15 +338,26 @@ class _FollowTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  entry.name.isEmpty ? 'Unknown' : entry.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        entry.name.isEmpty ? 'Unknown' : entry.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ext.greetingColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (entry.isVerified) ...[
+                      const SizedBox(width: 4),
+                      const VerifiedBadge(size: 14),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(

@@ -25,6 +25,7 @@ class VerifiedBadge extends StatelessWidget {
     this.isVerified = true,
     this.size,
     this.semanticLabel = 'Verified',
+    this.onImage = false,
   });
 
   /// Whether to draw anything at all.
@@ -39,6 +40,15 @@ class VerifiedBadge extends StatelessWidget {
   /// something more specific than "verified" — an official account, say.
   final String semanticLabel;
 
+  /// True where the badge sits over a photo rather than on the page.
+  ///
+  /// The colour does not change — the point of this widget is that the badge
+  /// is one colour everywhere — but it picks up the same shadows the name
+  /// beside it carries, because the green has to hold against whatever the
+  /// photo happens to be behind it. Without them it disappears into a bright
+  /// frame.
+  final bool onImage;
+
   /// The default glyph size, in sp. Matches the name line it usually sits on.
   static const double defaultSize = 16;
 
@@ -51,7 +61,16 @@ class VerifiedBadge extends StatelessWidget {
       child: Icon(
         Icons.verified_rounded,
         size: (size ?? defaultSize).sp,
-        color: ext.accentOnGround,
+        // Over a photo the ground is the photo, not the page, so the shade is
+        // the dark-ground one — the same green the name beside it is drawn
+        // against in both themes.
+        color: onImage ? ext.accentGold : ext.accentOnGround,
+        shadows: onImage
+            ? const [
+                Shadow(blurRadius: 12, color: Colors.black87),
+                Shadow(blurRadius: 4, color: Colors.black54),
+              ]
+            : null,
       ),
     );
   }

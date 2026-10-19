@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// Slim header row shown above a feed card's media: creator avatar + name,
 /// an "owner" badge for the current user's own posts, a Follow pill, and a
@@ -107,6 +108,13 @@ class PostHeader extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // The verified tick, beside the name — the same badge
+                      // search and the profile screens draw, so a creator is
+                      // recognisable from the feed without opening them.
+                      if (event.photographerVerified) ...[
+                        SizedBox(width: 4.w),
+                        VerifiedBadge(size: 14, onImage: onImage),
+                      ],
                       if (isOwner) ...[
                         SizedBox(width: 6.w),
                         OwnerPill(ext: ext),

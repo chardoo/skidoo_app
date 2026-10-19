@@ -31,6 +31,10 @@ class FollowEntry {
   final bool? notify;
   final DateTime? followedAt;
 
+  /// Whether this account carries the verified badge, so a following list
+  /// draws the same tick beside the name that search and the profile do.
+  final bool isVerified;
+
   const FollowEntry({
     required this.id,
     required this.type,
@@ -38,6 +42,7 @@ class FollowEntry {
     this.profileUrl,
     this.notify,
     this.followedAt,
+    this.isVerified = false,
   });
 
   bool get isPhotographer => type == 'photographer';
@@ -49,6 +54,7 @@ class FollowEntry {
         profileUrl: profileUrl,
         notify: notify ?? this.notify,
         followedAt: followedAt,
+        isVerified: isVerified,
       );
 
   factory FollowEntry.fromJson(Map<String, dynamic> json) {
@@ -66,6 +72,8 @@ class FollowEntry {
           : null,
       notify: json['notify'] is bool ? json['notify'] as bool : null,
       followedAt: parsedAt,
+      isVerified:
+          json['verified_by_admin'] == true || json['verified'] == true,
     );
   }
 }
@@ -82,6 +90,11 @@ class SuggestedPhotographer {
   final int followerCount;
   final double? matchScore;
   final String? profileUrl;
+
+  /// Whether this creator carries the verified badge. The endpoint has always
+  /// sent `verified_by_admin`; the model simply dropped it, so the suggestion
+  /// rows were the one creator list with no tick on them.
+  final bool isVerified;
 
   /// What this creator shoots — "Events & Nature". Shown beside the follower
   /// count.
@@ -101,6 +114,7 @@ class SuggestedPhotographer {
     this.matchScore,
     this.profileUrl,
     this.category,
+    this.isVerified = false,
   });
 
   /// The creator's category line, in the order the payload is worth reading.
@@ -156,6 +170,8 @@ class SuggestedPhotographer {
       matchScore: (json['match_score'] as num?)?.toDouble(),
       profileUrl: rawUrl is String && rawUrl.isNotEmpty ? rawUrl : null,
       category: _categoryOf(json),
+      isVerified:
+          json['verified_by_admin'] == true || json['verified'] == true,
     );
   }
 }

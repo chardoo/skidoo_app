@@ -7,6 +7,7 @@ import 'package:jperg_app/core/utils/number_format.dart';
 import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
+import 'package:jperg_app/core/common/widgets/verified_badge.dart';
 
 /// A run of suggested creators, each with its own Follow button.
 ///
@@ -171,15 +172,28 @@ class SuggestedCreatorRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      suggestion.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Flexible, so a long name ellipsises rather than
+                        // pushing the tick out of the row.
+                        Flexible(
+                          child: Text(
+                            suggestion.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ext.greetingColor,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        if (suggestion.isVerified) ...[
+                          SizedBox(width: 4.w),
+                          const VerifiedBadge(size: 14),
+                        ],
+                      ],
                     ),
                     SizedBox(height: 2.h),
                     Text(
