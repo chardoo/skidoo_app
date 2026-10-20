@@ -74,7 +74,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
   String _userId = '';
   String? _profilePhotoUrl;
   String? _studioImageUrl;
-  String _studioName = '';
+  String _name = '';
   String _location = '';
   String _bio = '';
   Set<String> _specialties = {};
@@ -118,8 +118,10 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         _userId = userId;
         _profilePhotoUrl = profile['profile_url'] as String?;
         _studioImageUrl = profile['studio_image_url'] as String?;
-        _studioName =
-            (profile['studio_name'] ?? profile['name'] ?? '').toString();
+        // `name` first now. Both carry the same value, and `studio_name` is
+        // only still read so an older server (or a row written before the
+        // merge) still fills the field. See the backend's account_name.py.
+        _name = (profile['name'] ?? profile['studio_name'] ?? '').toString();
         _bio = (profile['bio'] ?? '').toString();
         _location = (profile['location'] ?? '').toString();
         _specialties =
@@ -129,10 +131,10 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         _verifiedByAdmin = profile['verified_by_admin'] == true;
         _originalSamples = samples;
         // Heuristic for "never set up a portfolio before": no bio, no
-        // studio name, no specialties, no samples yet. Used to decide
+        // name, no specialties, no samples yet. Used to decide
         // whether saving should chain into verification (first time) or
         // just save-and-return (editing an existing portfolio).
-        _isFirstTimeSetup = _studioName.isEmpty &&
+        _isFirstTimeSetup = _name.isEmpty &&
             _bio.isEmpty &&
             _specialties.isEmpty &&
             samples.isEmpty;
@@ -164,7 +166,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
       }
       await sl<UpdatePhotographerProfileUseCase>().call(
         photographerId: _userId,
-        studioName: data.studioName,
+        name: data.name,
         bio: data.bio,
         location: data.location,
         specialties: data.specialties.toList(),
@@ -230,7 +232,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
           PortfolioForm(
             initialProfilePhotoUrl: _profilePhotoUrl,
             initialStudioImageUrl: _studioImageUrl,
-            initialStudioName: _studioName,
+            initialName: _name,
             initialLocation: _location,
             initialBio: _bio,
             initialSpecialties: _specialties,

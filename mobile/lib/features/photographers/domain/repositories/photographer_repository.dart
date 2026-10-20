@@ -34,7 +34,7 @@ abstract class PhotographerRepository {
   /// [uploadProfilePhoto] / [uploadStudioImage].
   Future<void> updatePhotographerProfile({
     required String photographerId,
-    String? studioName,
+    String? name,
     String? bio,
     List<String>? specialties,
     String? location,

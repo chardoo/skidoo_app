@@ -28,7 +28,10 @@ class SearchPhotographerRowTile extends StatelessWidget {
         countLabel(photographer.followerCount, 'follower'),
     ];
     if (parts.isNotEmpty) return parts.join(' · ');
-    if (photographer.studioName.isNotEmpty) return photographer.studioName;
+    // The studio name used to sit here, and it is the account's name now —
+    // the line above this row already shows it, so a row with no specialty
+    // and no followers said the same thing twice. The handle is what is left
+    // to say. See the backend's app/utils/account_name.py.
     return photographer.username.isEmpty ? '' : '@${photographer.username}';
   }
 

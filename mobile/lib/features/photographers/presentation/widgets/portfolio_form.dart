@@ -26,7 +26,7 @@ class PortfolioFormData {
   const PortfolioFormData({
     this.newProfilePhoto,
     this.newStudioImage,
-    required this.studioName,
+    required this.name,
     required this.bio,
     required this.location,
     required this.specialties,
@@ -42,7 +42,7 @@ class PortfolioFormData {
   /// personal avatar, uploaded via
   /// `POST /photographer/profile/{id}/studio-image`.
   final XFile? newStudioImage;
-  final String studioName;
+  final String name;
   final String bio;
 
   /// "Accra, Ghana". Shown under the name everywhere a photographer appears in
@@ -73,7 +73,7 @@ class PortfolioForm extends StatefulWidget {
     required this.onChanged,
     this.initialProfilePhotoUrl,
     this.initialStudioImageUrl,
-    this.initialStudioName = '',
+    this.initialName = '',
     this.initialBio = '',
     this.initialLocation = '',
     this.initialSpecialties = const {},
@@ -83,7 +83,7 @@ class PortfolioForm extends StatefulWidget {
   final ValueChanged<PortfolioFormData> onChanged;
   final String? initialProfilePhotoUrl;
   final String? initialStudioImageUrl;
-  final String initialStudioName;
+  final String initialName;
   final String initialBio;
   final String initialLocation;
   final Set<String> initialSpecialties;
@@ -95,7 +95,7 @@ class PortfolioForm extends StatefulWidget {
 
 class _PortfolioFormState extends State<PortfolioForm> {
   late final TextEditingController _nameCtrl =
-      TextEditingController(text: widget.initialStudioName);
+      TextEditingController(text: widget.initialName);
   late final TextEditingController _bioCtrl =
       TextEditingController(text: widget.initialBio);
   /// The city half only. The country is picked, never typed — see
@@ -143,7 +143,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
     widget.onChanged(PortfolioFormData(
       newProfilePhoto: _newProfilePhoto,
       newStudioImage: _newStudioImage,
-      studioName: _nameCtrl.text.trim(),
+      name: _nameCtrl.text.trim(),
       bio: _bioCtrl.text.trim(),
       location: _composedLocation,
       specialties: _specialties,
@@ -239,9 +239,17 @@ class _PortfolioFormState extends State<PortfolioForm> {
           ),
         ),
         SizedBox(height: AppSpacing.xxl.h),
-        _FieldLabel('Studio name', ext: ext),
+        // One name, whether somebody works under their own or a studio's. The
+        // label said "Studio name" and the hint said "Username", for a field
+        // that is simply what the account is called — and the server held it
+        // in two columns to match. See the backend's app/utils/account_name.py.
+        _FieldLabel('Name', ext: ext),
         SizedBox(height: 6.h),
-        _TextInput(controller: _nameCtrl, hint: 'Username', ext: ext),
+        _TextInput(
+          controller: _nameCtrl,
+          hint: 'e.g. Mensah Studios',
+          ext: ext,
+        ),
         SizedBox(height: AppSpacing.lg.h),
         // Two controls, because the two halves are not the same kind of
         // answer. There is no list of every town worth offering, so a city is

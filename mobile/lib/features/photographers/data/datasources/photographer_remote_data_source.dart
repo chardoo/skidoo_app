@@ -28,7 +28,7 @@ abstract class PhotographerRemoteDataSource {
   Future<Map<String, dynamic>> getPhotographerProfile(String photographerId);
   Future<void> updatePhotographerProfile({
     required String photographerId,
-    String? studioName,
+    String? name,
     String? bio,
     List<String>? specialties,
     String? location,
@@ -241,14 +241,17 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
   @override
   Future<void> updatePhotographerProfile({
     required String photographerId,
-    String? studioName,
+    String? name,
     String? bio,
     List<String>? specialties,
     String? location,
   }) async {
     try {
       final formData = dio.FormData.fromMap({
-        if (studioName != null) 'studio_name': studioName,
+        // `name`, not `studio_name`. There is one name per account on the
+        // server now — either field sets both — and this field was always the
+        // account's display name wearing the other one's label.
+        if (name != null) 'name': name,
         if (bio != null) 'bio': bio,
         if (location != null) 'location': location,
         if (specialties != null) 'specialties': jsonEncode(specialties),

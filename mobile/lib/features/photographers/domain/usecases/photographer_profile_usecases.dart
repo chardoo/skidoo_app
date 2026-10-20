@@ -15,14 +15,14 @@ class UpdatePhotographerProfileUseCase {
 
   Future<void> call({
     required String photographerId,
-    String? studioName,
+    String? name,
     String? bio,
     List<String>? specialties,
     String? location,
   }) =>
       _repository.updatePhotographerProfile(
         photographerId: photographerId,
-        studioName: studioName,
+        name: name,
         bio: bio,
         specialties: specialties,
         location: location,

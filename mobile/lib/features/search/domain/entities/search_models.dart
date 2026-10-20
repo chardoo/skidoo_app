@@ -203,7 +203,6 @@ class SearchPhotographerRow extends Equatable {
     required this.bio,
     required this.specialty,
     required this.specialties,
-    required this.studioName,
     required this.studioImageUrl,
     required this.isVerified,
     required this.followerCount,
@@ -224,7 +223,6 @@ class SearchPhotographerRow extends Equatable {
 
   /// The full list, uncapped — for anywhere that wants more than the line.
   final List<String> specialties;
-  final String studioName;
   final String studioImageUrl;
   final bool isVerified;
   final int followerCount;
@@ -237,13 +235,15 @@ class SearchPhotographerRow extends Equatable {
     final specialties = SearchJson.strings(json['specialties']);
     return SearchPhotographerRow(
       id: SearchJson.str(json, ['id']),
-      name: SearchJson.str(json, ['name', 'userName']),
+      // `studio_name` is the same value as `name` server-side (one name per
+      // account — see the backend's account_name.py), so it is read only as a
+      // fallback for a row an older server answered with.
+      name: SearchJson.str(json, ['name', 'userName', 'studio_name']),
       username: SearchJson.str(json, ['username']),
       profileUrl: SearchJson.avatar(json),
       bio: SearchJson.str(json, ['bio']),
       specialty: SearchJson.category(json),
       specialties: specialties,
-      studioName: SearchJson.str(json, ['studio_name', 'studioName']),
       studioImageUrl:
           SearchJson.str(json, ['studio_image_url', 'studioImageUrl']),
       isVerified: SearchJson.boolOf(
@@ -263,7 +263,6 @@ class SearchPhotographerRow extends Equatable {
         bio,
         specialty,
         specialties,
-        studioName,
         studioImageUrl,
         isVerified,
         followerCount,
