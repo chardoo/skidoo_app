@@ -29,7 +29,7 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
         'email': event.email,
         'password': event.password,
         'contact': event.contact,
-        'name': event.userName.isNotEmpty ? event.userName : 'user',
+        'name': event.name.isNotEmpty ? event.name : 'user',
       };
       await _registerUseCase(RegisterParams(fields: fields));
       emit(state.copyWith(

@@ -49,11 +49,11 @@ Widget host(Widget page) => ScreenUtilInit(
 /// "how many fields are currently complaining" without naming each message.
 Finder get _errors => find.textContaining('*');
 
-/// The inputs in the order the page lays them out: email, username, phone,
+/// The inputs in the order the page lays them out: email, name, phone,
 /// password, confirm. Asserted in [_pumpSignup] so a reordered form fails
 /// here rather than silently testing the wrong box.
 const _email = 0;
-const _username = 1;
+const _name = 1;
 const _password = 3;
 const _confirm = 4;
 
@@ -61,7 +61,7 @@ Future<void> _pumpSignup(WidgetTester t) async {
   await t.pumpWidget(host(const SignUpPage()));
   await t.pump();
   expect(find.byType(TextField), findsNWidgets(5),
-      reason: 'email, username, phone, password, confirm');
+      reason: 'email, name, phone, password, confirm');
 }
 
 void main() {
@@ -94,7 +94,7 @@ void main() {
     await t.enterText(find.byType(TextField).at(_email), 'jane@example.com');
     await t.pump();
 
-    // The regression: this found four errors — username, phone, password and
+    // The regression: this found four errors — name, phone, password and
     // confirm — under boxes that were still empty and never touched.
     expect(_errors, findsNothing);
   });
@@ -128,11 +128,11 @@ void main() {
       (t) async {
     await _pumpSignup(t);
 
-    await t.enterText(find.byType(TextField).at(_username), 'jane');
+    await t.enterText(find.byType(TextField).at(_name), 'jane');
     await t.pump();
     expect(_errors, findsNothing);
 
-    await t.enterText(find.byType(TextField).at(_username), '');
+    await t.enterText(find.byType(TextField).at(_name), '');
     await t.pump();
 
     // Touched and now empty: this one has earned its error.

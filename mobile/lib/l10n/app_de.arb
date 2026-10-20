@@ -18,7 +18,7 @@
   "signupCreateAccount": "Konto erstellen",
   "signupSubtitle": "Entdecken Sie besondere Momente",
   "signupEmailAddress": "E-Mail-Adresse",
-  "signupUsername": "Benutzername",
+  "signupFullName": "Name",
   "signupPhoneNumber": "Telefonnummer",
   "signupPassword": "Passwort",
   "signupConfirmPassword": "Passwort bestätigen",

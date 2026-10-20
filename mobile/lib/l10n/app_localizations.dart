@@ -188,11 +188,11 @@ abstract class AppLocalizations {
   /// **'Email address'**
   String get signupEmailAddress;
 
-  /// No description provided for @signupUsername.
+  /// No description provided for @signupFullName.
   ///
   /// In en, this message translates to:
-  /// **'Username'**
-  String get signupUsername;
+  /// **'Name'**
+  String get signupFullName;
 
   /// No description provided for @signupPhoneNumber.
   ///

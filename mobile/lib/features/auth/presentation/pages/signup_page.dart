@@ -83,7 +83,7 @@ class _SignUpViewState extends State<_SignUpView>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _usernameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _contactController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -100,7 +100,7 @@ class _SignUpViewState extends State<_SignUpView>
     // Rebuild as the user types so the Create-account button enables/disables.
     for (final c in [
       _emailController,
-      _usernameController,
+      _nameController,
       _contactController,
       _passwordController,
       _confirmPasswordController,
@@ -123,7 +123,7 @@ class _SignUpViewState extends State<_SignUpView>
 
   bool get _requiredTextFilled =>
       _emailController.text.trim().isNotEmpty &&
-      _usernameController.text.trim().isNotEmpty &&
+      _nameController.text.trim().isNotEmpty &&
       _contactController.text.trim().isNotEmpty &&
       _passwordController.text.isNotEmpty &&
       _confirmPasswordController.text.isNotEmpty;
@@ -131,7 +131,7 @@ class _SignUpViewState extends State<_SignUpView>
   @override
   void dispose() {
     _emailController.dispose();
-    _usernameController.dispose();
+    _nameController.dispose();
     _contactController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -145,7 +145,7 @@ class _SignUpViewState extends State<_SignUpView>
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
             contact: _contactController.text.trim(),
-            userName: _usernameController.text.trim(),
+            name: _nameController.text.trim(),
           ));
     }
   }
@@ -314,13 +314,21 @@ class _SignUpViewState extends State<_SignUpView>
                               ),
                               SizedBox(height: 14.h),
 
-                              // ── Username ───────────────────────────────────
+                              // ── Name ───────────────────────────────────────
+                              //
+                              // This field was labelled "Username" and has
+                              // always been sent as `name`: people typed
+                              // `jane_doe` expecting a handle and had it
+                              // printed as their name on every screen. The
+                              // handle is generated from the email server-side
+                              // and nobody is asked for one.
                               AppTextField(
-                                controller: _usernameController,
+                                controller: _nameController,
                                 label: AppLocalizations.of(context)!
-                                    .signupUsername,
-                                hint: 'e.g. jane_doe',
+                                    .signupFullName,
+                                hint: 'e.g. Jane Doe',
                                 prefixIcon: Icons.person_outline_rounded,
+                                textCapitalization: TextCapitalization.words,
                                 textInputAction: TextInputAction.next,
                                 validator: Validators.nameValidator,
                                 autovalidateMode:

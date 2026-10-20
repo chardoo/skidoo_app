@@ -10,17 +10,17 @@ class SignUpSubmitted extends SignUpEvent {
   final String email;
   final String password;
   final String contact;
-  final String userName;
+  final String name;
 
   const SignUpSubmitted({
     required this.email,
     required this.password,
     required this.contact,
-    required this.userName,
+    required this.name,
   });
 
   @override
-  List<Object?> get props => [email, password, contact, userName];
+  List<Object?> get props => [email, password, contact, name];
 }
 
 class SignUpErrorCleared extends SignUpEvent {

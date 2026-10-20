@@ -55,7 +55,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signupEmailAddress => 'Email address';
 
   @override
-  String get signupUsername => 'Username';
+  String get signupFullName => 'Name';
 
   @override
   String get signupPhoneNumber => 'Phone number';
