@@ -14,7 +14,7 @@ import 'package:jperg_app/core/deep_links/deep_link.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/gallery/data/saved_photos.dart';
-import 'package:jperg_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
+import 'package:jperg_app/features/gallery/domain/usecases/get_original_photo_usecase.dart';
 import 'package:jperg_app/features/photo_comments/data/picture_like_service.dart';
 import 'package:jperg_app/features/photo_comments/presentation/pages/photo_comment_sheet.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
@@ -28,8 +28,12 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 ///    A link previews as a card in every messaging app, keeps working when the
 ///    text is truncated, and costs nothing to produce, so the share sheet opens
 ///    instantly instead of after a round-trip.
-///  • **Download** still fetches the creator-branded overlay image and writes a
-///    real file, because there is nothing to save otherwise.
+///  • **Download** fetches the photograph's own file and writes a real file,
+///    because there is nothing to save otherwise. It fetches the **original**,
+///    with no jperg lockup burned in: the brand belongs on the surfaces the
+///    photo is shown on, not inside a file that outlives all of that context.
+///    The server decides whether this caller may have the clean file — see
+///    [GetOriginalPhotoUseCase].
 ///
 /// This is THE external-share routine for the whole app — every card's "share
 /// to other apps" icon (discovery page, Home "Feed"/"Following", the Found tab,
@@ -90,13 +94,12 @@ Future<void> shareOverlayPhotoExternally(
   );
 
   try {
-    final result =
-        await sl<GetOverlayImageUseCase>()(imageId, photographerName);
+    final result = await sl<GetOriginalPhotoUseCase>()(imageId);
     if (!context.mounted) return;
     _dismissProcessingDialog(context);
 
     final safeId = imageId.replaceAll('/', '_').replaceAll('\\', '_');
-    final filename = 'overlay_$safeId.${result.fileExtension}';
+    final filename = 'jperg_$safeId.${result.fileExtension}';
 
     // ── Mobile: write temp file → OS save/share sheet ────────────────────
     // No `text:` here — this is the Save path, and a caption riding along

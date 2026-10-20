@@ -20,7 +20,7 @@ import 'package:jperg_app/core/widgets/jperg_image.dart';
 ///
 /// It showed two circles labelled "In app" and "External", which had two
 /// faults. **"External" was one word for two different acts** — a link goes
-/// instantly and anybody can open it, while saving fetches the rendered file
+/// instantly and anybody can open it, while saving fetches the file itself
 /// and takes a moment — and the sheet charged the reader with guessing which
 /// they were about to get. And **nothing said what was being shared**, which on
 /// a feed of full-bleed photographs is a real question: the sheet opens over
@@ -191,9 +191,11 @@ class ShareTargetSheet extends StatelessWidget {
                     ext: ext,
                     icon: Icons.download_rounded,
                     title: 'Save the photo',
-                    // The wait and the watermark, said before the tap rather
-                    // than discovered after it — both are surprises otherwise.
-                    detail: 'Watermarked, to your device',
+                    // The wait, said before the tap rather than discovered
+                    // after it. It used to say "Watermarked, to your device" —
+                    // the download carries no mark now, and a line promising
+                    // one would be describing a file nobody gets.
+                    detail: 'Full quality, to your device',
                     semanticLabel: 'Save the photo to this device',
                     onTap: () => close(onDownload!),
                   ),
@@ -305,7 +307,7 @@ class _Preview extends StatelessWidget {
 /// A row rather than a circle in a grid. Circles were what this sheet had, and
 /// they left no room for the second line — which is where the whole difference
 /// between these options lives: one sends a link that opens anywhere, one
-/// fetches a watermarked file and takes a moment. A grid of glyphs makes the
+/// fetches the file itself and takes a moment. A grid of glyphs makes the
 /// reader guess that; a row can simply say it.
 class _Destination extends StatelessWidget {
   const _Destination({

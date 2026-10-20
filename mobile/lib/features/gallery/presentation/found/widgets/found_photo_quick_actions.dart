@@ -85,8 +85,9 @@ class _FoundPhotoQuickActionsState extends State<FoundPhotoQuickActions> {
     _purchased?.ensureLoaded();
   }
 
-  /// Writes the file to the device via the branded-overlay pipeline every other
-  /// download in the app uses.
+  /// Writes the file to the device through the one download path the whole app
+  /// uses. The file is the original — no jperg lockup burned in; see
+  /// [shareOverlayPhotoExternally].
   Future<void> _download() async {
     if (_downloading) return;
     setState(() => _downloading = true);

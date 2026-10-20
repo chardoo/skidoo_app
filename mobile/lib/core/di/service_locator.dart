@@ -74,13 +74,13 @@ import 'package:jperg_app/features/gallery/data/repositories/found_repository_im
 import 'package:jperg_app/features/gallery/domain/repositories/found_repository.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_found_photos_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/found/bloc/found_bloc.dart';
-import 'package:jperg_app/features/gallery/data/datasources/overlay_remote_data_source.dart';
+import 'package:jperg_app/features/gallery/data/datasources/original_photo_remote_data_source.dart';
 import 'package:jperg_app/features/gallery/data/repositories/gallery_repository_impl.dart';
-import 'package:jperg_app/features/gallery/data/repositories/overlay_repository_impl.dart';
+import 'package:jperg_app/features/gallery/data/repositories/original_photo_repository_impl.dart';
 import 'package:jperg_app/features/gallery/domain/repositories/gallery_repository.dart';
-import 'package:jperg_app/features/gallery/domain/repositories/overlay_repository.dart';
+import 'package:jperg_app/features/gallery/domain/repositories/original_photo_repository.dart';
 import 'package:jperg_app/features/gallery/domain/usecases/get_gallery_usecase.dart';
-import 'package:jperg_app/features/gallery/domain/usecases/get_overlay_usecase.dart';
+import 'package:jperg_app/features/gallery/domain/usecases/get_original_photo_usecase.dart';
 import 'package:jperg_app/features/gallery/presentation/bloc/gallery_bloc.dart';
 import 'package:jperg_app/features/home/data/datasources/home_remote_data_source.dart';
 import 'package:jperg_app/features/home/data/repositories/home_repository_impl.dart';
@@ -288,13 +288,13 @@ Future<void> setupServiceLocator() async {
   sl.registerFactory<FoundBloc>(
       () => FoundBloc(getFoundPhotosUseCase: sl<GetFoundPhotosUseCase>()));
 
-  // Overlay (shared across gallery + event pictures)
-  sl.registerSingleton<OverlayRemoteDataSource>(
-      OverlayRemoteDataSourceImpl(sl<Api>()));
-  sl.registerSingleton<OverlayRepository>(
-      OverlayRepositoryImpl(sl<OverlayRemoteDataSource>()));
-  sl.registerSingleton<GetOverlayImageUseCase>(
-      GetOverlayImageUseCase(sl<OverlayRepository>()));
+  // The file behind a photo (shared across gallery + event pictures)
+  sl.registerSingleton<OriginalPhotoRemoteDataSource>(
+      OriginalPhotoRemoteDataSourceImpl(sl<Api>()));
+  sl.registerSingleton<OriginalPhotoRepository>(
+      OriginalPhotoRepositoryImpl(sl<OriginalPhotoRemoteDataSource>()));
+  sl.registerSingleton<GetOriginalPhotoUseCase>(
+      GetOriginalPhotoUseCase(sl<OriginalPhotoRepository>()));
 
   // ── Cart feature ──────────────────────────────────────────────────────────
   sl.registerSingleton<CartRemoteDataSource>(

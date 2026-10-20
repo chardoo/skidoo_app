@@ -84,18 +84,31 @@ void main() {
       await openSheet(t);
 
       expect(find.text('Anyone with the link can open it'), findsOneWidget);
-      expect(find.text('Watermarked, to your device'), findsOneWidget);
+      expect(find.text('Full quality, to your device'), findsOneWidget);
     });
 
-    testWidgets('the watermark is said before the tap, not after', (t) async {
-      // Somebody saving a photo to post elsewhere should learn it carries a
-      // mark while they can still change their mind.
+    testWidgets('what the save produces is said before the tap, not after',
+        (t) async {
+      // Somebody saving a photo should know what lands on their phone while
+      // they can still change their mind.
+      //
+      // This used to insist on the word "Watermarked", because the saved file
+      // carried a mark and discovering it afterwards was the surprise worth
+      // preventing. The download now fetches the unbadged original — see
+      // OriginalPhotoRemoteDataSource — so that line would be describing a
+      // file nobody gets. The rule it was protecting is unchanged: the row
+      // says what the tap produces, up front.
       await openSheet(t);
 
       expect(
-        find.textContaining('Watermarked'),
+        find.textContaining('Full quality'),
         findsOneWidget,
-        reason: 'the save row has to disclose the mark up front',
+        reason: 'the save row has to say what it hands you, up front',
+      );
+      expect(
+        find.textContaining('Watermark'),
+        findsNothing,
+        reason: 'the saved file carries no mark — promising one is a lie',
       );
     });
 

@@ -194,9 +194,11 @@ class _FoundActionRailState extends State<FoundActionRail> {
 
   /// Hands the photo to the OS share sheet — other apps, Messages, AirDrop.
   ///
-  /// Goes through the branded-overlay pipeline, so a photo leaving the app is
-  /// watermarked however it leaves. [_toggleSave] is not in that family at all
-  /// — a bookmark moves no pixels anywhere.
+  /// What travels is a link and its context, not the file: see
+  /// [shareOverlayPhotoExternally], where the share branch returns before
+  /// anything is fetched. So no pixels leave the app down this path at all,
+  /// and the recipient gets a card that opens the photo here. [_toggleSave] is
+  /// not in that family either — a bookmark moves nothing anywhere.
   Future<void> _shareExternally() async {
     if (_sharing) return;
     setState(() => _sharing = true);
