@@ -634,8 +634,11 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
     emit(toggle.state);
 
     // The profile's Liked tab holds its grid rather than refetching on every
-    // visit, so this is what tells it an event joined or left the list.
-    AppCacheSignals.likes.bump();
+    // visit, and is told an event joined or left the list by whichever of the
+    // two chokepoints carries this reaction — `AppInterceptors`
+    // `._likeChangingPaths` for the REST road below, `_sendLikeChange` for the
+    // socket one. Not restated here: a bump at the call site is a bump the
+    // next call site has to remember.
 
     // No socket, no room lookup: go straight to REST.
     //

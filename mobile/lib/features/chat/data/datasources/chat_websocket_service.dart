@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/core/utils/server_time.dart';
 import 'package:jperg_app/features/chat/data/local/chat_database.dart';
@@ -1047,43 +1048,62 @@ class ChatWebSocketService {
     _sendOrQueue(payload, clientId: clientId, roomId: roomId);
   }
 
+  /// A frame that changes what the signed-in user has liked.
+  ///
+  /// The six senders below go through this rather than straight to [_sendRaw]
+  /// so the cache signal is stated once. The profile's Liked tab holds its grid
+  /// for the session and refetches only when [AppCacheSignals.likes] moves, so
+  /// a like sent without moving it does not appear there until the app is
+  /// restarted — which is exactly what both of the chat room's hearts did. The
+  /// HTTP half of the same rule is `AppInterceptors._likeChangingPaths`.
+  ///
+  /// Bumped even when the socket is down and [_sendRaw] drops the frame. The
+  /// signal does not claim a like was recorded, only that this grid cannot be
+  /// trusted to still match the server; refetching to find nothing changed is
+  /// the cheap mistake, and showing a stale grid is the expensive one.
+  void _sendLikeChange(Map<String, dynamic> frame) {
+    _sendRaw(frame);
+    AppCacheSignals.likes.bump();
+  }
+
   /// Send a like for an event.
-  void sendLike(String eventId, {String? roomId}) => _sendRaw({
+  void sendLike(String eventId, {String? roomId}) => _sendLikeChange({
         'type': 'like',
         'event_id': eventId,
         if (roomId != null) 'room_id': roomId
       });
 
   /// Remove a like for an event.
-  void sendUnlike(String eventId, {String? roomId}) => _sendRaw({
+  void sendUnlike(String eventId, {String? roomId}) => _sendLikeChange({
         'type': 'unlike',
         'event_id': eventId,
         if (roomId != null) 'room_id': roomId
       });
 
   /// Send a dislike for an event.
-  void sendDislike(String eventId, {String? roomId}) => _sendRaw({
+  void sendDislike(String eventId, {String? roomId}) => _sendLikeChange({
         'type': 'dislike',
         'event_id': eventId,
         if (roomId != null) 'room_id': roomId
       });
 
   /// Remove a dislike for an event.
-  void sendUndislike(String eventId, {String? roomId}) => _sendRaw({
+  void sendUndislike(String eventId, {String? roomId}) => _sendLikeChange({
         'type': 'undislike',
         'event_id': eventId,
         if (roomId != null) 'room_id': roomId
       });
 
   /// Send a like for a picture.
-  void sendPictureLike(String pictureId, {String? roomId}) => _sendRaw({
+  void sendPictureLike(String pictureId, {String? roomId}) => _sendLikeChange({
         'type': 'picture_like',
         'picture_id': pictureId,
         if (roomId != null) 'room_id': roomId
       });
 
   /// Remove a like for a picture.
-  void sendPictureUnlike(String pictureId, {String? roomId}) => _sendRaw({
+  void sendPictureUnlike(String pictureId, {String? roomId}) =>
+      _sendLikeChange({
         'type': 'picture_unlike',
         'picture_id': pictureId,
         if (roomId != null) 'room_id': roomId

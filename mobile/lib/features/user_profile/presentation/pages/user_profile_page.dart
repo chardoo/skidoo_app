@@ -469,10 +469,10 @@ class UserProfilePageState extends State<UserProfilePage>
       } else {
         await _repo.unlikePhoto(photo.id);
       }
-      // Everything else that shows this like is now wrong; this grid is not,
-      // because the tile came out of it above. Re-stamping is what keeps the
-      // next visit from refetching to be told what it already did.
-      AppCacheSignals.likes.bump();
+      // The request interceptor has already bumped the signal on the way back
+      // — everything else that shows this like is now wrong. This grid is not,
+      // because the tile came out of it above, so re-stamping is what keeps
+      // the next visit from refetching to be told what it already did.
       _likesLoadedAt = AppCacheSignals.likes.value;
       unawaited(_loadHeader());
     } catch (e) {

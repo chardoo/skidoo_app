@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/core/cache/deleted_content.dart';
+import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
@@ -82,6 +83,46 @@ class AppInterceptors extends Interceptor {
     return null;
   }
 
+  /// The endpoints that change what the signed-in user has liked.
+  ///
+  /// Here rather than at the call sites, and this is the point of it. The
+  /// profile's Liked tab keeps its grid for the session and refetches only when
+  /// [AppCacheSignals.likes] moves, so a like recorded without moving it is a
+  /// like that does not appear on that screen until the app is restarted. That
+  /// had happened three times over — the comment sheet's heart, and both of the
+  /// chat room's — because each new way to like something had to remember a
+  /// line that lives nowhere near it.
+  ///
+  /// Every like the app sends over HTTP goes through this interceptor, whatever
+  /// layer sent it, so matching the path here covers the ones that exist and
+  /// the ones nobody has written yet. The socket's half of the same rule is
+  /// [ChatWebSocketService.sendLike] and the five senders beside it.
+  ///
+  /// `/api` optional: most paths are relative to a base URL that already
+  /// carries it, but not every caller builds them the same way.
+  static final List<RegExp> _likeChangingPaths = [
+    // A photo: POST toggles, DELETE removes outright.
+    RegExp(r'^(?:/api)?/chat/pictures/[^/]+/like$'),
+    // An album: POST sets or clears the caller's reaction.
+    RegExp(r'^(?:/api)?/chat/events/[^/]+/reaction$'),
+  ];
+
+  static bool _changesLikes(RequestOptions options) {
+    if (options.method.toUpperCase() == 'GET') return false;
+    final clean = Uri.tryParse(options.path)?.path ?? options.path;
+    return _likeChangingPaths.any((p) => p.hasMatch(clean));
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    // Only on an answer the server actually gave. A failed like changed
+    // nothing, and bumping would cost every liked grid a refetch to be told so.
+    if (_changesLikes(response.requestOptions)) {
+      AppCacheSignals.likes.bump();
+    }
+    handler.next(response);
+  }
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // A 404 on an event-scoped path is the only way the phone finds out an
@@ -155,6 +196,15 @@ bool isJwtExpiredForTest(String token) => _isJwtExpired(token);
 /// on a 404 that had nothing to do with them.
 @visibleForTesting
 String? eventIdInPathForTest(String path) => AppInterceptors._eventIdIn(path);
+
+/// Whether this request is one that changes what the user has liked.
+///
+/// Worth testing directly: it is the only thing that tells the profile's Liked
+/// tab to fetch again, and a pattern that misses a real like endpoint puts the
+/// "my like is not in my likes" bug straight back.
+@visibleForTesting
+bool changesLikesForTest(String method, String path) =>
+    AppInterceptors._changesLikes(RequestOptions(path: path, method: method));
 
 bool _isJwtExpired(String token) {
   try {

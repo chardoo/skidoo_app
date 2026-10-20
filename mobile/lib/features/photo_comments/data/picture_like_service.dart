@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/features/chat/data/datasources/chat_rest_data_source.dart';
 
 /// Manages picture likes via REST  (POST/GET /chat/pictures/{id}/like).
@@ -15,11 +14,12 @@ class PictureLikeService {
   /// Swallows errors so callers can treat it as fire-and-forget.
   Future<PictureReaction> toggleLike(String pictureId) async {
     try {
-      final reaction = await _rest.togglePictureLike(pictureId);
-      // The profile's Liked tab keeps its grid between visits, so a like made
-      // out here is only visible there because of this.
-      AppCacheSignals.likes.bump();
-      return reaction;
+      // Nothing to invalidate by hand: the request interceptor sees every like
+      // the app sends and bumps `AppCacheSignals.likes` itself, which is what
+      // tells the profile's Liked tab to fetch again. See
+      // `AppInterceptors._likeChangingPaths` — stating it here as well is how
+      // the three surfaces that forgot came to disagree with each other.
+      return await _rest.togglePictureLike(pictureId);
     } catch (e) {
       debugPrint('[PictureLike] toggleLike error: $e');
       return PictureReaction.empty();
