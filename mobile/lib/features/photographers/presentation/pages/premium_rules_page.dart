@@ -268,7 +268,7 @@ class _Hero extends StatelessWidget {
         Text(
           status.member
               ? 'What you agreed to'
-              : 'A promise your clients can count on',
+              : 'A brand that prioritizes timely delivery',
           style: TextStyle(
             color: ext.greetingColor,
             fontFamily: AppTypography.displayFontFamily,
