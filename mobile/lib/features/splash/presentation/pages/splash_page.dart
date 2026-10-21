@@ -3,7 +3,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/app_readiness.dart';
+import 'package:jperg_app/core/cache/block_sync.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/cloudinary_transform.dart';
@@ -214,12 +216,41 @@ class _SplashPageState extends State<SplashPage> {
   /// which Dart reports as an unhandled async exception.
   Future<void> _beat() async {
     try {
+      // Taking blocked content off this device, started here and never waited
+      // for. The caches below restore synchronously and draw before any fetch
+      // lands, so this is the earliest the phone can find out — and a takedown
+      // the reader sees for one frame is the thing worth avoiding. It must not
+      // hold the splash: its answer is usually empty, and a slow network is
+      // not a reason to sit on the brand screen. See `BlockSync`.
+      unawaited(_dropBlockedContent());
+
       await Future.wait([
         Future<void>.delayed(_kMinDisplay),
         _warmFirstScreen().timeout(_kMaxWait, onTimeout: () {}),
       ]);
     } catch (e) {
       debugPrint('[Splash] warm-up failed, going on anyway: $e');
+    }
+  }
+
+  /// Asks what has been blocked since this device last heard, and prunes it.
+  ///
+  /// Its own request because the feeds answer with a bare array and cannot
+  /// carry the sync block the event lists do — and because launch is when the
+  /// caches are at their stalest. Signed out as much as signed in: a blocked
+  /// album sits in the feed cache of a reader who never logged in too.
+  Future<void> _dropBlockedContent() async {
+    try {
+      await BlockSync.pull((since) async {
+        final res = await Api().dio.get(
+              '/client/blocked-content',
+              queryParameters: since == null ? null : {'since': since},
+            );
+        final body = res.data;
+        return body is Map<String, dynamic> ? body : null;
+      });
+    } catch (e) {
+      debugPrint('[Splash] block sync failed, going on anyway: $e');
     }
   }
 

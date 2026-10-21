@@ -114,4 +114,43 @@ class FeedCacheService {
       return false;
     }
   }
+
+  /// Drops individual photos out of the cached events, keeping the events.
+  ///
+  /// A blocked photo is not a reason to drop the album around it — the other
+  /// photos are fine and the card still has something to draw. An album left
+  /// with none of them does go: a card with no media renders as a blank, which
+  /// is worse than one fewer card.
+  ///
+  /// Returns whether anything changed, so an untouched cache costs no write.
+  Future<bool> removePictures(Set<String> pictureIds) async {
+    if (pictureIds.isEmpty) return false;
+    try {
+      final current = restore();
+      if (current.isEmpty) return false;
+
+      var changed = false;
+      final kept = <EventDiscovery>[];
+      for (final event in current) {
+        final pics =
+            event.pictures.where((p) => !pictureIds.contains(p.id)).toList();
+        if (pics.length == event.pictures.length) {
+          kept.add(event);
+          continue;
+        }
+        changed = true;
+        if (pics.isNotEmpty) kept.add(event.copyWith(pictures: pics));
+      }
+      if (!changed) return false;
+
+      if (kept.isEmpty) {
+        await _prefs.remove(_key);
+      } else {
+        await save(kept);
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

@@ -222,6 +222,54 @@ class DiskCache {
       return 0;
     }
   }
+
+  /// Rewrite rows in place, for content that has to come *out of* a row rather
+  /// than take the row with it.
+  ///
+  /// A blocked photo is the case: the album it sits in is still there and
+  /// still worth showing, so dropping the whole row would make the album
+  /// disappear from the tab until the next fetch — which reads as the platform
+  /// having lost it rather than as one frame being taken down.
+  ///
+  /// `edit` returns the replacement for a row it changed and null for one it
+  /// did not, so an untouched cache costs a read and no write. `page` and
+  /// `hasMore` are kept for the reason [removeWhere] explains. Never throws.
+  ///
+  /// Returns how many rows were rewritten.
+  Future<int> editWhere(
+    Map<String, dynamic>? Function(Map<String, dynamic> row) edit,
+  ) async {
+    try {
+      final current = restore();
+      if (current.isEmpty) return 0;
+
+      var changed = 0;
+      final next = <Map<String, dynamic>>[];
+      for (final row in current.rows) {
+        final replacement = edit(row);
+        if (replacement == null) {
+          next.add(row);
+        } else {
+          next.add(replacement);
+          changed++;
+        }
+      }
+      if (changed == 0) return 0;
+
+      await _prefs.setString(
+        key,
+        jsonEncode({
+          'page': current.page,
+          'hasMore': current.hasMore,
+          'rows': next,
+        }),
+      );
+      return changed;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[DiskCache] $key editWhere failed: $e');
+      return 0;
+    }
+  }
 }
 
 /// Named instances in the service locator. Constants rather than bare strings

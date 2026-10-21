@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:jperg_app/core/cache/block_sync.dart';
 import 'package:jperg_app/core/cache/deleted_content.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/navigation/app_navigator.dart';
@@ -51,7 +52,50 @@ class AppInterceptors extends Interceptor {
     } catch (_) {
       // Proceed without token if service locator is not ready yet.
     }
+
+    // Tell the server how recently this device heard about blocked content, so
+    // the answer can name whatever has been taken down since. Added here so
+    // the dozen places that fetch events do not each have to remember.
+    //
+    // Scoped to the paths that read it rather than added to every GET: a
+    // request can carry an absolute URL, and a stored asset URL is signed —
+    // one extra query parameter on one of those is a broken signature and a
+    // photo that will not load. See `_blockSyncPaths`.
+    try {
+      if (_wantsBlockSync(options)) {
+        final since = BlockSync.watermark;
+        if (since != null && since.isNotEmpty) {
+          options.queryParameters = {
+            ...options.queryParameters,
+            'blockedSince': since,
+          };
+        }
+      }
+    } catch (_) {
+      // A missing watermark only ever widens the answer. Never worth failing
+      // the request the reader actually asked for.
+    }
+
     handler.next(options);
+  }
+
+  /// Paths that read `blockedSince` and answer with a `blocked` block.
+  ///
+  /// `/api` optional for the same reason the like paths have it that way: not
+  /// every caller builds a path against the same base.
+  static final List<RegExp> _blockSyncPaths = [
+    // An album's photo grid — the list most likely to be holding something
+    // that has since been taken down.
+    RegExp(r'^(?:/api)?/client/events/[^/]+/photos$'),
+    // The dedicated sync, which sends the watermark itself but is matched here
+    // so the two can never disagree about the parameter's name.
+    RegExp(r'^(?:/api)?/client/blocked-content$'),
+  ];
+
+  static bool _wantsBlockSync(RequestOptions options) {
+    if (options.method.toUpperCase() != 'GET') return false;
+    final clean = Uri.tryParse(options.path)?.path ?? options.path;
+    return _blockSyncPaths.any((p) => p.hasMatch(clean));
   }
 
   /// Event-scoped request paths, and where the id sits in them.
@@ -120,6 +164,21 @@ class AppInterceptors extends Interceptor {
     if (_changesLikes(response.requestOptions)) {
       AppCacheSignals.likes.bump();
     }
+
+    // Blocked content, named on whatever request the app happened to be
+    // making. Handled here rather than at each call site for the same reason
+    // the 404 purge below is: there are a dozen places that fetch events and
+    // one of them will always be the one nobody remembered to wire up. See
+    // `BlockSync` — the work is a no-op unless the payload carries ids.
+    //
+    // Not awaited: the reader is waiting for this response, and pruning disk
+    // caches is not something they should wait through. Failures inside are
+    // swallowed and logged there.
+    final body = response.data;
+    if (body is Map && body['blocked'] != null) {
+      unawaited(BlockSync.apply(body['blocked']));
+    }
+
     handler.next(response);
   }
 

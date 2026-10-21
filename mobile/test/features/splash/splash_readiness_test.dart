@@ -85,6 +85,29 @@ class _FakeCache implements FeedCacheService {
     stored = stored.where((e) => e.id != eventId).toList();
     return stored.length != before;
   }
+
+  /// Blocked photos coming out of the cached events. The splash asks for the
+  /// blocked list at launch (see `BlockSync`), so this fake has to answer it —
+  /// the same way the real one does: the album stays unless it is left with
+  /// nothing to draw.
+  @override
+  Future<bool> removePictures(Set<String> pictureIds) async {
+    if (pictureIds.isEmpty) return false;
+    var changed = false;
+    final kept = <EventDiscovery>[];
+    for (final event in stored) {
+      final pics =
+          event.pictures.where((p) => !pictureIds.contains(p.id)).toList();
+      if (pics.length == event.pictures.length) {
+        kept.add(event);
+        continue;
+      }
+      changed = true;
+      if (pics.isNotEmpty) kept.add(event.copyWith(pictures: pics));
+    }
+    if (changed) stored = kept;
+    return changed;
+  }
 }
 
 /// Stands in for the first-page fetch. [completer] left unresolved simulates a
