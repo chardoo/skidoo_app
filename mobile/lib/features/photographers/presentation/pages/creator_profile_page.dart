@@ -9,6 +9,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
 import 'package:jperg_app/core/navigation/app_page_routes.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/common/widgets/blocked_content_notice.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
@@ -1134,21 +1135,33 @@ class _CreatorEventsTabState extends State<CreatorEventsTab> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: event.url.isNotEmpty
-                              ? JpergImage(
-                                  imageUrl: event.url,
-                                  semanticLabel: 'Event photo',
-                                  fit: BoxFit.cover,
-                                  placeholder: (_, __) =>
-                                      const JpergImagePlaceholder(),
-                                  errorWidget: (_, __, ___) =>
-                                      const JpergImagePlaceholder(),
-                                )
-                              : ColoredBox(
-                                  color: ext.avatarBackground,
-                                  child: Icon(Icons.event_rounded,
-                                      color: ext.searchHintColor, size: 36.sp),
-                                ),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              event.url.isNotEmpty
+                                  ? JpergImage(
+                                      imageUrl: event.url,
+                                      semanticLabel: 'Event photo',
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) =>
+                                          const JpergImagePlaceholder(),
+                                      errorWidget: (_, __, ___) =>
+                                          const JpergImagePlaceholder(),
+                                    )
+                                  : ColoredBox(
+                                      color: ext.avatarBackground,
+                                      child: Icon(Icons.event_rounded,
+                                          color: ext.searchHintColor,
+                                          size: 36.sp),
+                                    ),
+                              // Only ever reached by the album's own creator —
+                              // nobody else is sent a blocked row at all. The
+                              // tile stays put and the cover is covered: what
+                              // they need told is what happened to it, not
+                              // that it exists. See BlockedOverlay.
+                              if (event.isBlocked) const BlockedOverlay(),
+                            ],
+                          ),
                         ),
                         Padding(
                           padding: EdgeInsets.symmetric(

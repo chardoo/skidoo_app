@@ -11,6 +11,19 @@ class PhotographerEvent {
   final int? coverWidth;
   final int? coverHeight;
 
+  /// Whether a moderator took this album down, and the reason they gave.
+  ///
+  /// This list is the one place a blocked album still appears: it is the
+  /// creator's own library, and the server sends them the row precisely so
+  /// they can be told. Everyone else is not sent it at all, so this is false
+  /// for them by construction rather than by a check here.
+  ///
+  /// A takedown nobody can see is a takedown that becomes a support ticket —
+  /// the album is missing, nothing says why, and the only reading left is that
+  /// the platform lost it.
+  final bool isBlocked;
+  final String? blockedReason;
+
   const PhotographerEvent({
     required this.id,
     required this.eventName,
@@ -18,6 +31,8 @@ class PhotographerEvent {
     required this.url,
     this.coverWidth,
     this.coverHeight,
+    this.isBlocked = false,
+    this.blockedReason,
   });
 
   /// The cover's shape, so its tile can be laid out at the right size before
@@ -43,6 +58,8 @@ class PhotographerEvent {
           _intOrNull(json['coverWidth'] ?? json['cover_width'] ?? json['width']),
       coverHeight: _intOrNull(
           json['coverHeight'] ?? json['cover_height'] ?? json['height']),
+      isBlocked: json['isBlocked'] == true,
+      blockedReason: json['blockedReason']?.toString(),
     );
   }
 }
