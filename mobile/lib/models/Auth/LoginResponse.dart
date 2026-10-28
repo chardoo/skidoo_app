@@ -1,6 +1,18 @@
 class LoginResponseObject {
   String id = "";
   String name = "";
+
+  /// The public handle — `sarajohnson4821`, generated at signup.
+  ///
+  /// **Read from `username`, not from the response's `uniqueName`.** The login
+  /// payload carries both, and they are different columns: `uniqueName` is
+  /// `User.uiqueName`, the face-recognition person id, which for every account
+  /// that did not sign up as a photographer *is their email address*.
+  ///
+  /// Taking that one put an email under the avatar, and worse, it is what the
+  /// Edit Profile form prefilled its Username field with — so saving the form
+  /// without touching that field sent an address to a field the API accepts
+  /// only as `[A-Za-z0-9_]+`, and an untouched form could not be saved at all.
   String  uniqueName = "";
   String email = "";
   String role = "";
@@ -39,7 +51,12 @@ class LoginResponseObject {
       json["email"] as String,
       json["name"] as String,
       json["role"] as String,
-      json["uniqueName"] as String,
+      // `username` first; the rest are for a server from before that column,
+      // and for the session JSON this used to write. See the field's note.
+      (json["username"] ??
+          json["uniqueName"] ??
+          json["uiqueName"] ??
+          "") as String,
       json["token"] as String,
       json["expiration"] as String,
       json["isValid"] as bool,
@@ -55,7 +72,10 @@ class LoginResponseObject {
       "email": email,
       "name": name,
       "role": role,
-      "uiqueName":  uniqueName,
+      // Written under the name it is actually read back by. It used to be
+      // `uiqueName` here while `fromJson` looked for `uniqueName`, so a
+      // round-trip through this map silently lost the handle.
+      "username":  uniqueName,
       "token": token,
       "expiration": expiration,
       "isValid": isValid,

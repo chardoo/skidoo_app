@@ -201,25 +201,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     try {
       final clientId = await _authService.getUserId();
 
-      // Build server payload using backend field names
-      final serverData = <String, dynamic>{};
-      if (event.name.isNotEmpty) serverData['name'] = event.name;
-      // `username`, not `uiqueName`. The old key was never in the PATCH
-      // schema, so Pydantic dropped it and the edit did nothing while the
-      // screen reported success. It is also the face-recognition person id,
-      // so the version of this that *had* worked would have orphaned the
-      // account's enrolled face on every rename.
-      if (event.uniqueName.isNotEmpty)
-        serverData['username'] = event.uniqueName;
-      if (event.contact.isNotEmpty) serverData['contact'] = event.contact;
-      if (event.countryCode.isNotEmpty)
-        serverData['country_code'] = event.countryCode;
-      if (event.locale.isNotEmpty) serverData['locale'] = event.locale;
-      if (event.preferredLanguage.isNotEmpty)
-        serverData['preferred_language'] = event.preferredLanguage;
-      if (event.timezone.isNotEmpty) serverData['timezone'] = event.timezone;
-      if (event.interestTags.isNotEmpty)
-        serverData['interest_tags'] = event.interestTags;
+      final handleChanged = handleWasEdited(event, state.uniqueName);
+      final serverData = profilePatchFor(event, currentHandle: state.uniqueName);
 
       await _updateProfileUseCase(
           UpdateProfileParams(clientId: clientId, data: serverData));
@@ -227,7 +210,10 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       // Persist the updated values locally
       await _profileRepository.updateLocalProfile({
         'name': event.name,
-        'uniqueName': event.uniqueName,
+        // Not cached unless it was actually sent, or a stale handle — the
+        // email a pre-fix build stored — gets written straight back over the
+        // real one and the next save fails for the same reason again.
+        if (handleChanged) 'uniqueName': event.uniqueName,
         'contact': event.contact,
         'countryCode': event.countryCode,
         'locale': event.locale,
@@ -240,7 +226,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         isUpdateLoading: false,
         isUpdateSuccess: true,
         name: event.name.isNotEmpty ? event.name : state.name,
-        uniqueName: event.uniqueName,
+        uniqueName: handleChanged ? event.uniqueName : state.uniqueName,
         contact: event.contact,
         countryCode: event.countryCode,
         locale: event.locale,
@@ -257,4 +243,48 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
           updateErrorMessage: 'Profile update failed. Please try again.'));
     }
   }
+}
+
+/// Whether the Username field was actually edited.
+///
+/// The handle is the one field on the profile form that the server validates
+/// as a format — `[A-Za-z0-9_]{3,30}` — and the one the app has historically
+/// held a wrong value for. `uiqueName` is the face-recognition person id and
+/// for every account that did not sign up as a photographer it *is* their
+/// email address, so a build that read it as the handle prefilled this field
+/// with something the API can never accept.
+///
+/// Comparing against what is on screen is what keeps that from mattering: an
+/// untouched field is not an edit, so there is nothing to validate and nothing
+/// to send, and saving a phone number stops depending on the format of a value
+/// the person never typed.
+bool handleWasEdited(ProfileUpdateSubmitted event, String currentHandle) =>
+    event.uniqueName.isNotEmpty && event.uniqueName != currentHandle;
+
+/// The PATCH body for a profile edit, keyed by the names the API uses.
+///
+/// Empty values are left out rather than sent as `""`: the endpoint treats
+/// every field as optional and absent means "leave it alone", where an empty
+/// string would mean "clear it".
+///
+/// Pulled out of the handler so the rule above is testable without standing up
+/// nine collaborators to reach it.
+Map<String, dynamic> profilePatchFor(
+  ProfileUpdateSubmitted event, {
+  required String currentHandle,
+}) {
+  final data = <String, dynamic>{};
+  if (event.name.isNotEmpty) data['name'] = event.name;
+  if (handleWasEdited(event, currentHandle)) {
+    data['username'] = event.uniqueName;
+  }
+  if (event.contact.isNotEmpty) data['contact'] = event.contact;
+  if (event.countryCode.isNotEmpty) data['country_code'] = event.countryCode;
+  if (event.locale.isNotEmpty) data['locale'] = event.locale;
+  if (event.preferredLanguage.isNotEmpty) {
+    data['preferred_language'] = event.preferredLanguage;
+  }
+  if (event.timezone.isNotEmpty) data['timezone'] = event.timezone;
+  if (event.interestTags.isNotEmpty) data['interest_tags'] = event.interestTags;
+  return data;
 }
