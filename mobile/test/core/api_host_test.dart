@@ -16,19 +16,41 @@ import 'package:jperg_app/core/config/chat_config.dart';
 
 void main() {
   group('the host', () {
-    test('is production', () {
-      expect(ApiConfig.host, 'https://api.piccotechnologies.com');
+    test('is production unless a build says otherwise', () {
+      // The default, and the one that matters: a release built with
+      // `--dart-define=USE_TEST_API` forgotten must point at production. The
+      // other way round ships a store build talking to a test backend with
+      // nothing in the running app to say so.
+      //
+      // `flutter test` passes no defines, so this is the unflagged build.
+      expect(ApiConfig.useTestApi, isFalse);
+      expect(ApiConfig.host, ApiConfig.production);
+      expect(ApiConfig.environmentName, 'production');
+    });
+
+    test('is always one of the two deployments', () {
+      expect(ApiConfig.host, anyOf(ApiConfig.production, ApiConfig.test));
+    });
+
+    test('the two deployments are different places', () {
+      // A copy-paste that left both pointing at production would make the
+      // switch silently do nothing, which is worse than it not existing.
+      expect(ApiConfig.test, isNot(ApiConfig.production));
     });
 
     test('carries no path and no trailing slash', () {
       // Everything below appends to it. A trailing slash makes `//api`, and a
-      // path makes `/api/api`.
-      expect(ApiConfig.host, isNot(endsWith('/')));
-      expect(Uri.parse(ApiConfig.host).path, isEmpty);
+      // path makes `/api/api`. Asserted for both, since either can be built.
+      for (final h in [ApiConfig.production, ApiConfig.test]) {
+        expect(h, isNot(endsWith('/')), reason: h);
+        expect(Uri.parse(h).path, isEmpty, reason: h);
+      }
     });
 
     test('is https, so the socket can be wss', () {
-      expect(ApiConfig.host, startsWith('https://'));
+      for (final h in [ApiConfig.production, ApiConfig.test]) {
+        expect(h, startsWith('https://'), reason: h);
+      }
     });
   });
 

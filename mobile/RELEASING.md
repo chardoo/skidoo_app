@@ -24,6 +24,47 @@ get either error.
 
 ---
 
+## Which backend the build talks to
+
+Two deployments, and the build picks one. Both hosts are written down in
+`lib/core/config/api_config.dart`; the flag is all that changes.
+
+```bash
+# production — https://api.piccotechnologies.com
+flutter build appbundle --release
+
+# test — https://api-test.piccotechnologies.com
+flutter build appbundle --release --dart-define=USE_TEST_API=true
+```
+
+**Production is the default, deliberately.** A release built with the flag
+forgotten points at production, which is the harmless mistake. The other way
+round puts a store build on a test backend, and nothing in the running app
+would say so.
+
+It is a compile-time constant, so the chosen host is the only one in the
+binary — a test build cannot be talked round to production later, and the same
+flag moves the REST base, the chat REST client and the chat socket together.
+
+If a file is easier to rotate than a flag, Flutter reads one natively:
+
+```bash
+echo '{"USE_TEST_API": "true"}' > env/test.json
+flutter build appbundle --release --dart-define-from-file=env/test.json
+```
+
+For a host that is neither — a laptop running the gateway — name it outright,
+which wins over the flag:
+
+```bash
+flutter run --dart-define=API_HOST=http://192.168.1.10:8000
+```
+
+To confirm what a build points at, `ApiConfig.environmentName` reads
+`production`, `test` or `custom`.
+
+---
+
 ## Why an APK gets "completely shadowed"
 
 A release may hold several APKs, and Play picks one per device: the **highest
