@@ -53,7 +53,13 @@ void main() {
         matching: find.byType(Stack),
       ));
       expect(stack.children.length, 3);
-      expect(stack.children.first, isA<ImageFiltered>()); // blurred copy
+      // The blurred copy, wrapped in the fade that holds it back until the
+      // photo it surrounds has arrived — see media_backdrop_waits_test.dart.
+      // Hidden rather than absent, so the veil below paints the same ground
+      // whether or not there are bands yet.
+      final blurred = stack.children.first;
+      expect(blurred, isA<AnimatedOpacity>());
+      expect((blurred as AnimatedOpacity).child, isA<ImageFiltered>());
       expect(stack.children[1], isA<ColoredBox>()); // veil
       expect(stack.children.last, isA<Text>()); // the real media, on top
     });
