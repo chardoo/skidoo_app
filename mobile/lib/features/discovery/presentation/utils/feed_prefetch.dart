@@ -28,7 +28,7 @@
 /// real HTTP stack) and the arithmetic is where the mistakes are.
 import 'package:flutter/widgets.dart';
 
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
@@ -44,10 +44,20 @@ const int kFeedLoadMoreLookahead = 5;
 
 /// How many cards *below* the active one have their first image warmed.
 ///
-/// One. The card below is the only one a swipe can reach, and each warmed
-/// image is decoded bytes held in the cache — the point of this file is to
-/// stop the wait, not to download the feed.
-const int kFeedWarmAhead = 1;
+/// Three. It was one, and one was right at the time: every photo was fetched
+/// at full resolution — a camera-sized file, often several megabytes — so each
+/// extra warm-up was competing for bandwidth with the card actually on screen.
+/// Warming further ahead would have made scrolling *worse*.
+///
+/// The ladder changed the arithmetic. A feed-sized rung is on the order of a
+/// hundred kilobytes (see `main/app/services/derivatives.py`), so three of them
+/// cost less than one old original, and three cards is roughly what a fast
+/// flick covers before the finger lifts — which is the gesture one-ahead could
+/// never keep up with.
+///
+/// Still not a general prefetcher: every warmed image is decoded bytes held in
+/// the global `ImageCache`, which evicts the photo being looked at to make room.
+const int kFeedWarmAhead = 3;
 
 /// How far either side of the active slide a carousel warms. One in each
 /// direction: a horizontal swipe reaches exactly one slide.
@@ -86,18 +96,28 @@ String? warmableUrl(
   required double devicePixelRatio,
 }) {
   if (!picture.isVideo) return picture.url;
-  return CloudinaryTransform.videoPoster(
+  return MediaTransform.videoPoster(
     picture.url,
     displayWidth: logicalWidth,
     devicePixelRatio: devicePixelRatio,
+    ladder: picture.ladder,
   );
 }
 
-/// Every URL worth warming for a carousel sitting on [current].
+/// One thing worth warming: the URL, and the ladder the widget will later ask
+/// with.
 ///
-/// Deduplicated: the same photo can legitimately appear twice in one event,
-/// and warming it twice is a wasted decode rather than a second copy.
-List<String> urlsToWarm(
+/// The pair travels together because [JpergImage.precache] has to be handed the
+/// same ladder the widget will pass. Warming the original and then requesting a
+/// rung — or the reverse — are two different objects, so the warm-up is a
+/// wasted download rather than a fast first frame.
+typedef WarmTarget = ({String url, ImageLadder ladder});
+
+/// Every target worth warming for a carousel sitting on [current].
+///
+/// Deduplicated by URL: the same photo can legitimately appear twice in one
+/// event, and warming it twice is a wasted decode rather than a second copy.
+List<WarmTarget> urlsToWarm(
   List<EventPicture> pictures,
   int current, {
   required double logicalWidth,
@@ -105,15 +125,22 @@ List<String> urlsToWarm(
   int radius = kCarouselWarmRadius,
 }) {
   final seen = <String>{};
+  final out = <WarmTarget>[];
   for (final index in neighbourIndices(current, pictures.length, radius: radius)) {
+    final picture = pictures[index];
     final url = warmableUrl(
-      pictures[index],
+      picture,
       logicalWidth: logicalWidth,
       devicePixelRatio: devicePixelRatio,
     );
-    if (url != null) seen.add(url);
+    if (url == null || !seen.add(url)) continue;
+    // A photo's URL still has to be turned into a rung, so it carries its
+    // ladder. A video's poster URL came back from `warmableUrl` already
+    // resolved to one — handing the ladder on would try to pick a rung of a
+    // rung, so the pair is deliberately empty.
+    out.add((url: url, ladder: picture.isVideo ? ImageLadder.none : picture.ladder));
   }
-  return seen.toList(growable: false);
+  return out;
 }
 
 /// Whether a pager sitting at [leadingEdge] should be asking for another page.
@@ -183,13 +210,22 @@ void warmEventFirstFrames(
 
   for (final event in events) {
     if (event.pictures.isEmpty) continue;
+    final picture = event.pictures.first;
     final url = warmableUrl(
-      event.pictures.first,
+      picture,
       logicalWidth: width,
       devicePixelRatio: dpr,
     );
     if (url == null) continue;
-    JpergImage.precache(context, url, logicalWidth: width);
+    JpergImage.precache(
+      context,
+      url,
+      logicalWidth: width,
+      // The same ladder the card will pass, or the warmed object and the
+      // requested one are different URLs and nothing was gained. A video's
+      // poster URL is already a rung — see `urlsToWarm`.
+      ladder: picture.isVideo ? ImageLadder.none : picture.ladder,
+    );
   }
 }
 
@@ -204,13 +240,14 @@ void warmCarouselNeighbours(
   final width = MediaQuery.sizeOf(context).width;
   final dpr = MediaQuery.devicePixelRatioOf(context);
 
-  for (final url in urlsToWarm(
+  for (final target in urlsToWarm(
     pictures,
     current,
     logicalWidth: width,
     devicePixelRatio: dpr,
     radius: radius,
   )) {
-    JpergImage.precache(context, url, logicalWidth: width);
+    JpergImage.precache(context, target.url,
+        logicalWidth: width, ladder: target.ladder);
   }
 }

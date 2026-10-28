@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/widgets/image_aspect.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 
@@ -242,6 +243,7 @@ class ZoomablePhoto extends StatelessWidget {
     super.key,
     required this.imageUrl,
     this.knownAspect,
+    this.ladder = ImageLadder.none,
     this.semanticLabel,
     this.onTap,
     this.onZoomChanged,
@@ -255,6 +257,16 @@ class ZoomablePhoto extends StatelessWidget {
 
   /// The server's `width`/`height` as a ratio. Null for legacy records.
   final double? knownAspect;
+
+  /// Which pre-sized copies of the photo exist — see [ImageLadder].
+  ///
+  /// The rung picked covers the photo at its *unzoomed* size, which is also
+  /// all the detail this widget has ever shown: [JpergImage] caps the decode
+  /// at `logicalWidth × devicePixelRatio`, so magnifying past 1x has always
+  /// been magnifying slot-resolution pixels, whatever size file was fetched.
+  /// Sharper zoom means raising that decode cap for the active page, which is
+  /// its own change with its own memory cost — not something a rung affects.
+  final ImageLadder ladder;
 
   final String? semanticLabel;
 
@@ -295,6 +307,7 @@ class ZoomablePhoto extends StatelessWidget {
             aspectRatio: aspect,
             child: JpergImage(
               imageUrl: imageUrl,
+              ladder: ladder,
               // Identical to `cover` once the box is the photo's own shape,
               // which is the steady state. It differs only in the moment
               // before an unmeasured photo resolves, and there `contain`

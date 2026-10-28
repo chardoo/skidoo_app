@@ -233,6 +233,8 @@ class _FoundPhotoFilmstripState extends State<FoundPhotoFilmstrip> {
                 isPurchased: bought,
                 child: JpergImage(
                   imageUrl: photo.url,
+                  ladder: photo.ladder,
+                  blurhash: photo.blurhash,
                   fit: BoxFit.cover,
                   logicalWidth: 64,
                   placeholder: (_, __) => const JpergImagePlaceholder(),

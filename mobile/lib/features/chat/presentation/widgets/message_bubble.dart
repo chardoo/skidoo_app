@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:jperg_app/core/purchase/paid_photo_watermark.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/features/chat/presentation/chat_time.dart';
 import 'package:jperg_app/features/chat/presentation/widgets/mention_text.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
@@ -18,7 +18,7 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 
 /// Returns true when [url] points to a video, using both explicit path
 /// patterns (Cloudinary /video/upload/) and file extensions as fallback.
-bool _isVideoUrl(String url) => CloudinaryTransform.isVideoUrl(url);
+bool _isVideoUrl(String url) => MediaTransform.isVideoUrl(url);
 
 class MessageBubble extends StatefulWidget {
   const MessageBubble({

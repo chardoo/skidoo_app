@@ -1,8 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_blurhash/flutter_blurhash.dart';
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 
 /// High-quality drop-in for [CachedNetworkImage].
 ///
@@ -52,12 +53,26 @@ class JpergImage extends StatelessWidget {
     this.isBlurBackground = false,
     this.colorFilter,
     this.semanticLabel,
+    this.ladder = ImageLadder.none,
+    this.blurhash,
   });
 
   final String imageUrl;
   final BoxFit fit;
   final double? width;
   final double? height;
+
+  /// What this photo knows about its own pre-sized copies — see [ImageLadder].
+  ///
+  /// Left at [ImageLadder.none] the original is fetched and bounded on the
+  /// device, which is correct but means downloading a camera-sized file to
+  /// paint a thumbnail. Pass it wherever the payload carries it.
+  final ImageLadder ladder;
+
+  /// The photo's BlurHash, painted by the default placeholder until the image
+  /// lands — see [JpergImagePlaceholder]. Ignored when a [placeholder] of the
+  /// caller's own is supplied, since that is then what fills the slot.
+  final String? blurhash;
 
   /// Logical display width used to derive the physical-pixel cache width.
   /// When null the widget measures its own layout constraints.
@@ -98,7 +113,7 @@ class JpergImage extends StatelessWidget {
   final String? semanticLabel;
 
   Widget _defaultPlaceholder(BuildContext context, String url) =>
-      const JpergImagePlaceholder(spinner: true);
+      JpergImagePlaceholder(spinner: true, blurhash: blurhash);
 
   /// How wide the decoded frame is kept in memory — and half of the key the
   /// global [ImageCache] files it under, which is why [precache] derives it
@@ -126,7 +141,7 @@ class JpergImage extends StatelessWidget {
   /// to load, and handing an mp4 to an image decoder can only fail.
   ///
   /// Shared with [precache] on purpose: the width is quantised (see
-  /// [CloudinaryTransform]), but two call sites computing it separately is
+  /// [MediaTransform]), but two call sites computing it separately is
   /// still how a warmed URL and a requested one drift apart, and a precache
   /// that misses by one character is a wasted download rather than a fast
   /// first frame.
@@ -135,21 +150,28 @@ class JpergImage extends StatelessWidget {
     required double logical,
     required double dpr,
     required bool isBlurBackground,
+    required ImageLadder ladder,
   }) {
     // Blur backdrops request a tiny version since the blur destroys all
     // detail anyway; everything else is sized to what the slot displays.
     final requestWidth = isBlurBackground ? 80.0 : logical;
     final requestDpr = isBlurBackground ? 1.0 : dpr;
 
-    if (CloudinaryTransform.isVideoUrl(imageUrl)) {
-      return CloudinaryTransform.videoPoster(imageUrl,
-          displayWidth: requestWidth, devicePixelRatio: requestDpr);
+    if (MediaTransform.isVideoUrl(imageUrl)) {
+      // The ladder belongs to the clip, and on R2 its rungs are the poster's —
+      // which is what makes a stored still reachable at all. See
+      // [MediaTransform.videoPoster].
+      return MediaTransform.videoPoster(imageUrl,
+          displayWidth: requestWidth,
+          devicePixelRatio: requestDpr,
+          ladder: ladder);
     }
-    // Cloudinary-optimise the delivery URL: AVIF/WebP, best quality, retina
-    // DPR, sized to the display, and gently sharpened.
-    return CloudinaryTransform.image(imageUrl,
+    // Sized to the slot: the narrowest stored rung that covers it on R2, or an
+    // edge render on Cloudinary.
+    return MediaTransform.image(imageUrl,
         displayWidth: requestWidth,
         devicePixelRatio: requestDpr,
+        ladder: ladder,
         sharpen: !isBlurBackground);
   }
 
@@ -167,7 +189,7 @@ class JpergImage extends StatelessWidget {
   /// to make room for ones nobody asked for.
   ///
   /// **Never pass a video URL.** An image loader handed an `.mp4` downloads the
-  /// clip in order to fail on it. Use `CloudinaryTransform.videoPoster` for the
+  /// clip in order to fail on it. Use `MediaTransform.videoPoster` for the
   /// still, which is what the feed warms for a video slide.
   ///
   /// The provider is assembled exactly as [CachedNetworkImage] assembles its
@@ -184,10 +206,16 @@ class JpergImage extends StatelessWidget {
     String imageUrl, {
     required double logicalWidth,
     bool isBlurBackground = false,
+    ImageLadder ladder = ImageLadder.none,
   }) async {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final url = _deliveryUrl(imageUrl,
-        logical: logicalWidth, dpr: dpr, isBlurBackground: isBlurBackground);
+        logical: logicalWidth,
+        dpr: dpr,
+        isBlurBackground: isBlurBackground,
+        // Must be the same ladder the widget will pass, or the warmed URL and
+        // the requested one are different objects and the warm-up is wasted.
+        ladder: ladder);
     if (url == null) return;
 
     final provider = ResizeImage.resizeIfNeeded(
@@ -214,6 +242,7 @@ class JpergImage extends StatelessWidget {
       logical: logicalWidth ?? availableWidth,
       dpr: MediaQuery.devicePixelRatioOf(context),
       isBlurBackground: isBlurBackground,
+      ladder: ladder,
     );
     // A video with no derivable poster has nothing to load — show the empty
     // slot rather than fetch an mp4 into an image decoder.
@@ -281,16 +310,27 @@ class JpergImage extends StatelessWidget {
 ///
 /// [searchFieldFill] is the same neutral the search field and filter chips
 /// use: clearly a slot, in both themes, without competing with real content.
+///
+/// Given a [blurhash] it paints the photo's own colours instead of that
+/// neutral — the ~28 characters the server stores per photo, decoded on the
+/// device with no network at all. That is the difference between a slot that
+/// reads as loading and one that reads as the photograph arriving, and it is
+/// what makes a fast scroll never show a hole.
 class JpergImagePlaceholder extends StatelessWidget {
   const JpergImagePlaceholder({
     super.key,
     this.spinner = false,
     this.alwaysDark = false,
+    this.blurhash,
   });
 
   /// Adds the centred progress ring. Off by default: on a thumbnail-sized
   /// slot a 20 px spinner is noise, and a grid of them flickers.
   final bool spinner;
+
+  /// The photo's BlurHash, when the payload carried one. Null falls back to
+  /// the flat neutral, which is what every slot had before.
+  final String? blurhash;
 
   /// Pins to the dark palette for surfaces that stay dark in either app theme
   /// — the full-screen photo viewers. Without it those flash a light tile in
@@ -311,6 +351,25 @@ class JpergImagePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = _paletteOf(context, alwaysDark);
+    final hash = blurhash;
+
+    // The hash paints the photo's own colours, so the spinner is dropped with
+    // it: a ring over a recognisable image reads as something being wrong
+    // rather than as something arriving.
+    if (hash != null && hash.isNotEmpty) {
+      return ColoredBox(
+        color: ext.searchFieldFill,
+        child: BlurHash(
+          hash: hash,
+          // Already decoded by the time anything else is; a fade would make
+          // the stand-in itself look like it was loading.
+          duration: Duration.zero,
+          // BlurHash's own image/child plumbing is deliberately unused — the
+          // real photo is drawn by the JpergImage this is a placeholder for.
+          imageFit: BoxFit.cover,
+        ),
+      );
+    }
 
     return ColoredBox(
       color: ext.searchFieldFill,
@@ -338,8 +397,15 @@ class JpergImagePlaceholder extends StatelessWidget {
 /// profile photo shot on a phone is 12–48 MP, which is 50–200 MB of RAM once
 /// decoded, in a 40 px circle. A list of them is an out-of-memory kill, and
 /// that is not hypothetical — it is what took the app down on the campaigns
-/// list. This asks Cloudinary for a version sized to the slot and caps the
-/// decode with [ResizeImage] so a non-Cloudinary URL is bounded too.
+/// list. This asks for a version sized to the slot and caps the decode with
+/// [ResizeImage] so a URL that cannot be resized is bounded too.
+///
+/// On R2, with no [ladder] passed, it currently *is* only bounded rather than
+/// resized: `User.profile_url` records no dimensions, and without the source
+/// width there is no way to tell which rungs of its ladder were rendered — so
+/// asking for one risks a 404 on every avatar in a list. The decode stays
+/// capped either way; the download does not. Giving the avatar its own stored
+/// dimensions is what would fix it.
 ///
 /// Prefer [UserAvatar] where a widget will do; this is for the slots where one
 /// won't.
@@ -347,10 +413,11 @@ ImageProvider boundedNetworkImage(
   BuildContext context,
   String url, {
   required double diameter,
+  ImageLadder ladder = ImageLadder.none,
 }) {
   final dpr = MediaQuery.devicePixelRatioOf(context);
-  final optimised = CloudinaryTransform.image(url,
-      displayWidth: diameter, devicePixelRatio: dpr);
+  final optimised = MediaTransform.image(url,
+      displayWidth: diameter, devicePixelRatio: dpr, ladder: ladder);
   return ResizeImage(
     NetworkImage(optimised),
     width: (diameter * dpr).ceil().clamp(1, 4096),

@@ -113,6 +113,8 @@ class FoundPhotoTile extends StatelessWidget {
                   isPurchased: _bought,
                   child: JpergImage(
                     imageUrl: photo.url,
+                    ladder: photo.ladder,
+                    blurhash: photo.blurhash,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => const JpergImagePlaceholder(),
                     errorWidget: (_, __, ___) => ColoredBox(

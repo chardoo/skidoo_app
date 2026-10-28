@@ -1,4 +1,4 @@
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/utils/server_time.dart';
 
 class ReplyPreview {
@@ -328,7 +328,7 @@ class ChatMessage {
     );
   }
 
-  static bool _isVideoUrl(String url) => CloudinaryTransform.isVideoUrl(url);
+  static bool _isVideoUrl(String url) => MediaTransform.isVideoUrl(url);
 
   Map<String, dynamic> toJson() => {
         'id': id,

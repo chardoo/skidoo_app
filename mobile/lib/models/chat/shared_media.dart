@@ -1,4 +1,4 @@
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/utils/server_time.dart';
 
 /// One cell of the Shared Media grid.
@@ -27,7 +27,7 @@ class SharedMediaItem {
   /// guess, and it guesses wrong for storage backends whose keys don't carry a
   /// meaningful extension. The heuristic stays as the fallback for the history
   /// that predates the flag, which is the same order [ChatMessage] uses.
-  bool get isVideo => isVideoFlag ?? CloudinaryTransform.isVideoUrl(url);
+  bool get isVideo => isVideoFlag ?? MediaTransform.isVideoUrl(url);
 
   factory SharedMediaItem.fromJson(Map<String, dynamic> json) => SharedMediaItem(
         messageId: (json['message_id'] as String?) ?? '',

@@ -1,4 +1,4 @@
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 
 enum MediaType { photo, video }
@@ -35,6 +35,12 @@ class EventPicture {
   /// Duration in seconds for video assets. Null for photos.
   final double? durationSeconds;
 
+  /// Which rendering of the pre-sized copies exists for this photo, and the
+  /// stand-in to paint until one of them arrives. Both null for a Cloudinary
+  /// asset, a video, or a row the backfill has not reached — see [ladder].
+  final int? derivativesVersion;
+  final String? blurhash;
+
   const EventPicture({
     required this.id,
     required this.url,
@@ -50,12 +56,20 @@ class EventPicture {
     this.width,
     this.height,
     this.durationSeconds,
+    this.derivativesVersion,
+    this.blurhash,
   });
 
   /// Same fallback as `Photo.isVideo`: the url settles it when the record
   /// carries no `media_type`.
   bool get isVideo =>
-      mediaType == MediaType.video || CloudinaryTransform.isVideoUrl(url);
+      mediaType == MediaType.video || MediaTransform.isVideoUrl(url);
+
+  /// What to hand [MediaTransform.image] so it can pick a stored rung instead
+  /// of fetching the full-resolution original. The width is half the answer —
+  /// see [ImageLadder].
+  ImageLadder get ladder =>
+      ImageLadder(version: derivativesVersion, sourceWidth: width);
 
   /// Aspect ratio (width ÷ height). Returns null when dimensions are unknown.
   double? get aspectRatio =>
@@ -75,6 +89,11 @@ class EventPicture {
         if (width != null) 'width': width,
         if (height != null) 'height': height,
         if (durationSeconds != null) 'duration_seconds': durationSeconds,
+        // Round-trip through the session cache, or a cached card loses its
+        // ladder and starts fetching originals again on the way back to it.
+        if (derivativesVersion != null)
+          'derivativesVersion': derivativesVersion,
+        if (blurhash != null) 'blurhash': blurhash,
       };
 
   factory EventPicture.fromMap(Map<String, dynamic> json) {
@@ -99,6 +118,10 @@ class EventPicture {
       durationSeconds:
           ((json['durationSeconds'] ?? json['duration_seconds']) as num?)
               ?.toDouble(),
+      derivativesVersion:
+          ((json['derivativesVersion'] ?? json['derivatives_version']) as num?)
+              ?.toInt(),
+      blurhash: json['blurhash']?.toString(),
     );
   }
 }

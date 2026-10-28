@@ -156,6 +156,8 @@ class FoundPhotoStage extends StatelessWidget {
                         ),
                         child: JpergImage(
                           imageUrl: photo.url,
+                          ladder: photo.ladder,
+                          blurhash: photo.blurhash,
                           // Identical to `cover` once the box is the photo's own
                           // shape, which is the steady state. It differs only in
                           // the moment before an unmeasured photo resolves, and

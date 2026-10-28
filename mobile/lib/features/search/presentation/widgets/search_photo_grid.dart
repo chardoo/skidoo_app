@@ -116,6 +116,8 @@ class SearchPhotoTile extends StatelessWidget {
             isPurchased: photoIsBought(photo),
             child: JpergImage(
               imageUrl: photo.url,
+              ladder: photo.ladder,
+              blurhash: photo.blurhash,
               fit: BoxFit.cover,
               width: double.infinity,
               semanticLabel: photo.eventName.isEmpty

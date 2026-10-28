@@ -268,6 +268,7 @@ class _ZoomablePhoto extends StatelessWidget {
     return ZoomablePhoto(
       imageUrl: photo.url,
       knownAspect: photo.aspectRatio,
+      ladder: photo.ladder,
       semanticLabel: 'Photo',
       onTap: onTap,
       onZoomChanged: onZoomChanged,

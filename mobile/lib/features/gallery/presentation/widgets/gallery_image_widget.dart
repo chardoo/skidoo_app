@@ -51,6 +51,8 @@ class GalleryImageWidget extends StatelessWidget {
             // ── Image ─────────────────────────────────────────────────────
             JpergImage(
               imageUrl: photo.url,
+              ladder: photo.ladder,
+              blurhash: photo.blurhash,
               fit: BoxFit.cover,
               width: double.infinity,
               placeholder: (_, __) => Container(

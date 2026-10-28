@@ -10,7 +10,7 @@
 }
 */
 
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 
 class Photo {
   final String id;
@@ -44,6 +44,11 @@ class Photo {
   /// Server-side pixel dimensions. Null for legacy records.
   final int? width;
   final int? height;
+
+  /// The pre-sized copies that exist for this photo, and the stand-in to paint
+  /// until one lands — see [ImageLadder].
+  final int? derivativesVersion;
+  final String? blurhash;
 
   /// Duration in seconds (video only). Null for photos.
   final double? durationSeconds;
@@ -106,7 +111,12 @@ class Photo {
   /// without this such a record loses its play badge and opens in the photo
   /// viewer instead of the player.
   bool get isVideo =>
-      mediaType == 'video' || CloudinaryTransform.isVideoUrl(url);
+      mediaType == 'video' || MediaTransform.isVideoUrl(url);
+
+  /// What to hand [MediaTransform.image] so it fetches a stored rung rather
+  /// than the full-resolution original — see [ImageLadder].
+  ImageLadder get ladder =>
+      ImageLadder(version: derivativesVersion, sourceWidth: width);
 
   /// [eventDate] parsed for date filtering/sorting. Null when the server
   /// sent an empty or non-ISO value.
@@ -127,6 +137,8 @@ class Photo {
       this.mediaType = 'image',
       this.width,
       this.height,
+      this.derivativesVersion,
+      this.blurhash,
       this.durationSeconds,
       this.photographerName = '',
       this.photographerAvatarUrl = '',
@@ -218,6 +230,10 @@ class Photo {
       mediaType: mediaType.isEmpty ? 'image' : mediaType,
       width: (picture['width'] as num?)?.toInt(),
       height: (picture['height'] as num?)?.toInt(),
+      derivativesVersion: ((picture['derivativesVersion'] ??
+              picture['derivatives_version']) as num?)
+          ?.toInt(),
+      blurhash: picture['blurhash']?.toString(),
       durationSeconds:
           ((picture['durationSeconds'] ?? picture['duration_seconds']) as num?)
               ?.toDouble(),
@@ -259,6 +275,10 @@ class Photo {
           (json['media_type'] ?? json['mediaType'] as String?) ?? 'image',
       width: (json['width'] as num?)?.toInt(),
       height: (json['height'] as num?)?.toInt(),
+      derivativesVersion:
+          ((json['derivativesVersion'] ?? json['derivatives_version']) as num?)
+              ?.toInt(),
+      blurhash: json['blurhash']?.toString(),
       durationSeconds:
           ((json['durationSeconds'] ?? json['duration_seconds']) as num?)
               ?.toDouble(),

@@ -44,6 +44,8 @@ class _EventImageSliderState extends State<EventImageSlider> {
                 borderRadius: BorderRadius.circular(14.r),
                 child: JpergImage(
                   imageUrl: widget.pics[i].url,
+                  ladder: widget.pics[i].ladder,
+                  blurhash: widget.pics[i].blurhash,
                   semanticLabel: 'Event photo',
                   fit: BoxFit.cover,
                   placeholder: (context, __) =>

@@ -6,6 +6,7 @@
 /// counts its own loading spinner and so never stops asking, a video URL handed
 /// to an image loader.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
@@ -20,7 +21,12 @@ const _videoUrl =
 /// A video somewhere else, which has no derivable still.
 const _foreignVideoUrl = 'https://example.com/clip.mp4';
 
-EventPicture _pic(String url, {MediaType type = MediaType.photo}) =>
+EventPicture _pic(
+  String url, {
+  MediaType type = MediaType.photo,
+  int? derivativesVersion,
+  int? width,
+}) =>
     EventPicture(
       id: url,
       url: url,
@@ -33,6 +39,8 @@ EventPicture _pic(String url, {MediaType type = MediaType.photo}) =>
       isLikedByUser: false,
       commentsEnabled: true,
       isPurchased: false,
+      derivativesVersion: derivativesVersion,
+      width: width,
     );
 
 String? _warm(EventPicture picture) => warmableUrl(
@@ -104,12 +112,16 @@ void main() {
   });
 
   group('the urls a carousel warms', () {
+    /// Just the URLs. `urlsToWarm` returns each one paired with the ladder the
+    /// widget will ask with — see the ladder group below for that half.
     List<String> warmFor(List<EventPicture> pics, int current) => urlsToWarm(
           pics,
           current,
           logicalWidth: 400,
           devicePixelRatio: 2,
-        );
+        )
+            .map((t) => t.url)
+            .toList();
 
     test('the slide either side, and not the one on screen', () {
       final pics = [
@@ -156,6 +168,44 @@ void main() {
 
     test('a single-slide carousel warms nothing', () {
       expect(warmFor([_pic(_photoUrl)], 0), isEmpty);
+    });
+  });
+
+  group('the ladder a warm-up asks with', () {
+    List<WarmTarget> targetsFor(List<EventPicture> pics, int current) =>
+        urlsToWarm(pics, current, logicalWidth: 400, devicePixelRatio: 2);
+
+    test('is the photo\'s own, so the warmed object is the requested one', () {
+      // Warming the original and then requesting a rung are two different
+      // URLs: the download is paid for and thrown away, which is worse than
+      // not warming at all.
+      final pics = [
+        _pic('https://cdn.example.com/a.jpg'),
+        _pic('https://cdn.example.com/b.jpg',
+            derivativesVersion: 1, width: 4000),
+      ];
+
+      final target = targetsFor(pics, 0).single;
+
+      expect(target.ladder.version, 1);
+      expect(target.ladder.sourceWidth, 4000);
+    });
+
+    test('is empty for a video, whose poster has no ladder of its own', () {
+      // The warmed URL is a Cloudinary poster render, not the stored object,
+      // so there is no rung to pick even when the row carries a version.
+      final pics = [
+        _pic(_photoUrl),
+        _pic(_videoUrl,
+            type: MediaType.video, derivativesVersion: 1, width: 4000),
+      ];
+
+      expect(targetsFor(pics, 0).single.ladder, ImageLadder.none);
+    });
+
+    test('is empty when the row carries no ladder', () {
+      final pics = [_pic('https://cdn.example.com/a.jpg'), _pic(_photoUrl)];
+      expect(targetsFor(pics, 0).single.ladder, ImageLadder.none);
     });
   });
 

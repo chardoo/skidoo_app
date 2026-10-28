@@ -238,16 +238,23 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                     // ── Sharp full image, uncropped — actual size, no forced fill ──
                     child: JpergImage(
                       imageUrl: pic.url,
+                      ladder: pic.ladder,
                       fit: BoxFit.contain,
                       semanticLabel: 'Event photo',
-                      // Non-opaque — the blurred backdrop stays visible behind
-                      // the spinner while the full-res image is still loading.
-                      // The accent reads on that backdrop in either theme;
-                      // white70 disappeared into the light-mode wash.
-                      placeholder: (_, __) => Center(
-                        child: CircularProgressIndicator(
-                            color: ext.accentGold, strokeWidth: 2),
-                      ),
+                      // With a hash in hand the slot shows the photo's own
+                      // colours straight away, which beats a ring over a blur
+                      // of an image that is itself still arriving.
+                      //
+                      // Without one: non-opaque, so the blurred backdrop stays
+                      // visible behind the spinner while the full-res image
+                      // loads. The accent reads on that backdrop in either
+                      // theme; white70 disappeared into the light-mode wash.
+                      placeholder: (_, __) => pic.blurhash != null
+                          ? JpergImagePlaceholder(blurhash: pic.blurhash)
+                          : Center(
+                              child: CircularProgressIndicator(
+                                  color: ext.accentGold, strokeWidth: 2),
+                            ),
                       errorWidget: (_, __, ___) =>
                           const JpergImagePlaceholder(),
                     ),

@@ -21,6 +21,8 @@ class PhotographerSampleTile extends StatelessWidget {
           children: [
             JpergImage(
               imageUrl: sample.url,
+              ladder: sample.ladder,
+              blurhash: sample.blurhash,
               fit: BoxFit.cover,
               placeholder: (_, __) => const JpergImagePlaceholder(),
               errorWidget: (_, __, ___) => Container(

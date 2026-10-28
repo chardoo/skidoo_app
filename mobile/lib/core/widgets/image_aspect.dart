@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 
 /// Aspect ratios recovered from the images themselves, for records the server
 /// never sent `width`/`height` for.
@@ -37,10 +37,10 @@ class ImageAspectCache {
   /// image, so its poster frame stands in — same asset, same proportions.
   /// Null when there's nothing measurable (a video on a non-Cloudinary host).
   static String? _measurableUrl(String url) {
-    if (!CloudinaryTransform.isVideoUrl(url)) return url;
+    if (!MediaTransform.isVideoUrl(url)) return url;
     // A small render is enough: c_limit keeps the source's proportions, and
     // this is the only thing being read off the frame.
-    return CloudinaryTransform.videoPoster(url,
+    return MediaTransform.videoPoster(url,
         displayWidth: 320, devicePixelRatio: 1.0);
   }
 

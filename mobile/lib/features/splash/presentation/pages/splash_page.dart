@@ -8,7 +8,7 @@ import 'package:jperg_app/core/app_readiness.dart';
 import 'package:jperg_app/core/cache/block_sync.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
-import 'package:jperg_app/core/utils/cloudinary_transform.dart';
+import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
 import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
@@ -371,7 +371,7 @@ class _SplashPageState extends State<SplashPage> {
     await Future.wait([
       JpergImage.precache(context, url,
           logicalWidth: width, isBlurBackground: true),
-      if (!CloudinaryTransform.isVideoUrl(url))
+      if (!MediaTransform.isVideoUrl(url))
         JpergImage.precache(context, url, logicalWidth: width),
     ]);
   }

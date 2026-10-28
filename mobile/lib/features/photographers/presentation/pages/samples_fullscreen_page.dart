@@ -77,6 +77,7 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                 // `POST/PUT /photographer/samples` records these, so a sample
                 // opens at its real shape rather than resolving into it.
                 knownAspect: sample.aspectRatio,
+                ladder: sample.ladder,
                 semanticLabel: 'Photographer sample',
                 isActive: i == _current,
                 onZoomChanged: (zoomed) {
