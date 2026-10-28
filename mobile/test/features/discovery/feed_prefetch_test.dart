@@ -171,6 +171,27 @@ void main() {
     });
   });
 
+  group('which pictures are worth warming deeply', () {
+    // The depth of the runway is priced for a rung — ~180 KB. A photograph
+    // with no ladder is fetched at full size, ~2 MB and often much more, so
+    // warming eight of those is tens of megabytes taken from the card the
+    // reader is actually waiting for. This is what made the feed slower after
+    // the depth went up: coverage was 7% of photographs, so nearly every
+    // speculative warm was a camera original.
+    test('a laddered photo is', () {
+      expect(_pic(_photoUrl, derivativesVersion: 1, width: 4000).ladder.exists,
+          isTrue);
+    });
+
+    test('one with no version is not', () {
+      expect(_pic(_photoUrl, width: 4000).ladder.exists, isFalse);
+    });
+
+    test('one with no width is not — the rung cannot be chosen', () {
+      expect(_pic(_photoUrl, derivativesVersion: 1).ladder.exists, isFalse);
+    });
+  });
+
   group('the ladder a warm-up asks with', () {
     List<WarmTarget> targetsFor(List<EventPicture> pics, int current) =>
         urlsToWarm(pics, current, logicalWidth: 400, devicePixelRatio: 2);
@@ -277,6 +298,81 @@ void main() {
 
       expect(askWith(5), isFalse);
       expect(askWith(9), isTrue);
+    });
+  });
+
+  group('how deep the runway goes', () {
+    // The reader who flicks hard is the case this exists for: three cards of
+    // runway was less than one gesture covers, so they outran the loader and
+    // watched a photo assemble itself.
+    test('ten cards are warmed, two of them decoded', () {
+      expect(kFeedWarmAhead, 10);
+      expect(kFeedDecodeAhead, 2);
+    });
+
+    test('only a couple are decoded, because a decoded frame is megabytes', () {
+      // A full-width frame is roughly 1179x1768x4 ~ 8 MB of heap. The gap
+      // between these two is what is fetched to disk instead, and it has to
+      // stay a gap: closing it would put ~80 MB against a 100 MB budget and
+      // evict the photo being looked at.
+      expect(kFeedDecodeAhead, lessThan(kFeedWarmAhead));
+      expect(kFeedDecodeAhead * 8, lessThan(100),
+          reason: 'decoded frames must fit the ImageCache byte budget');
+    });
+
+    test('a carousel decodes its neighbours and disk-warms further ahead', () {
+      expect(kCarouselWarmRadius, 1);
+      expect(kCarouselDiskAhead, greaterThan(kCarouselWarmRadius));
+    });
+  });
+
+  group('the url a warm-up actually fetches', () {
+    // The whole value of warming depends on this: warm one object and request
+    // another, and the download was wasted rather than a fast first frame.
+    test('is the rung the widget will ask for, not the stored original', () {
+      final picture = _pic(
+        'https://images.jperg.com/newImages/abc.jpg',
+        derivativesVersion: 1,
+        width: 2000,
+      );
+      final warmed = deliveryUrlFor(picture, logicalWidth: 128, devicePixelRatio: 3);
+      final rendered = MediaTransform.image(
+        picture.url,
+        displayWidth: 128,
+        devicePixelRatio: 3,
+        ladder: picture.ladder,
+      );
+      expect(warmed, rendered);
+      expect(warmed, endsWith('_640.webp'));
+    });
+
+    test('falls back to the original when the row has no ladder', () {
+      final picture = _pic('https://images.jperg.com/newImages/abc.jpg');
+      expect(
+        deliveryUrlFor(picture, logicalWidth: 128, devicePixelRatio: 3),
+        picture.url,
+      );
+    });
+
+    test('a video warms its poster, and never a rung of a rung', () {
+      final warmed = deliveryUrlFor(
+        _pic(_videoUrl, type: MediaType.video),
+        logicalWidth: 400,
+        devicePixelRatio: 2,
+      );
+      expect(warmed, isNotNull);
+      expect(warmed, isNot(endsWith('.mp4')));
+    });
+
+    test('is null when there is nothing to warm', () {
+      expect(
+        deliveryUrlFor(
+          _pic(_foreignVideoUrl, type: MediaType.video),
+          logicalWidth: 400,
+          devicePixelRatio: 2,
+        ),
+        isNull,
+      );
     });
   });
 }

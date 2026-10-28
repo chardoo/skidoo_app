@@ -12,6 +12,9 @@ import 'package:jperg_app/features/photographers/presentation/widgets/premium_in
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_watcher.dart';
 import 'package:jperg_app/services/auth_service.dart';
+import 'package:jperg_app/core/purchase/ios_photo_purchase.dart';
+import 'package:jperg_app/core/purchase/ios_store.dart';
+import 'package:jperg_app/features/cart/data/datasources/cart_remote_data_source.dart';
 import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
@@ -22,8 +25,14 @@ void main() async {
   // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
   // The default (1000 images / unbounded bytes) is dangerously high for an app
   // that renders full-res photos — each decoded image can be 10–30 MB.
-  // 50 images × ~2 MB avg decoded ≈ 100 MB; well under iOS's 2 GB hard limit.
-  PaintingBinding.instance.imageCache.maximumSize = 50;
+  //
+  // The byte ceiling is the real guard and has not moved: 100 MB, well under
+  // iOS's limit. The *count* is up from 50 because the ladder made entries
+  // much smaller — a grid thumbnail decodes to a few hundred kilobytes, not
+  // megabytes — so 50 slots started evicting photos the reader could still
+  // see while the budget sat half unused. Whichever limit binds first still
+  // wins, so a feed of full-width frames is capped by bytes exactly as before.
+  PaintingBinding.instance.imageCache.maximumSize = 120;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -46,6 +55,23 @@ void main() async {
   // And again on every return to the foreground, so a flag thrown on the admin
   // dashboard reaches an app that is already running. See AppConfigWatcher.
   AppConfigWatcher(sl<AppConfigRepository>().fetch).start();
+
+  // Listen for App Store transactions from launch, not from the checkout
+  // screen. StoreKit replays a purchase that was never finished — somebody
+  // paid, the app was killed before the server granted the photos, and the
+  // transaction comes back on the *next* launch. With nothing listening then,
+  // that buyer has paid for photos they will never receive.
+  //
+  // iOS only, and a no-op elsewhere: Android photo purchases go through
+  // Paystack.
+  if (IosStore.instance.isSupported) {
+    final purchase = IosPhotoPurchase(sl<CartRemoteDataSource>());
+    IosStore.instance.start(resolver: (details) async {
+      final clientId = await sl<AuthService>().getUserId();
+      if (clientId.isEmpty) return;
+      await purchase.resumeUnfinished(details, clientId: clientId);
+    }).ignore();
+  }
 
   // Prints once per launch. Its absence means the running binary predates the
   // deep-link session fixes, and any report from it is about the old code —

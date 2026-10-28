@@ -26,8 +26,11 @@
 /// The decisions are pure functions — [urlsToWarm], [neighbourIndices] and
 /// [shouldLoadMore] — because the effects are untestable (precacheImage wants a
 /// real HTTP stack) and the arithmetic is where the mistakes are.
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
+import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
@@ -42,26 +45,51 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 /// anyway, just later.
 const int kFeedLoadMoreLookahead = 5;
 
-/// How many cards *below* the active one have their first image warmed.
+/// How many cards *below* the active one are warmed at all.
 ///
-/// Three. It was one, and one was right at the time: every photo was fetched
-/// at full resolution — a camera-sized file, often several megabytes — so each
-/// extra warm-up was competing for bandwidth with the card actually on screen.
-/// Warming further ahead would have made scrolling *worse*.
+/// Ten. It was one, then three, and both were right at the time: every photo
+/// was fetched at full resolution — a camera-sized file, often several
+/// megabytes — so each extra warm-up competed for bandwidth with the card
+/// actually on screen, and warming further ahead made scrolling *worse*.
 ///
-/// The ladder changed the arithmetic. A feed-sized rung is on the order of a
-/// hundred kilobytes (see `main/app/services/derivatives.py`), so three of them
-/// cost less than one old original, and three cards is roughly what a fast
-/// flick covers before the finger lifts — which is the gesture one-ahead could
-/// never keep up with.
+/// The ladder changed the arithmetic twice over. A feed rung is ~180 KB and a
+/// thumbnail rung ~14 KB (see `main/app/services/derivatives.py`), and the
+/// images now come off a CDN edge in ~30 ms rather than a second. Ten cards is
+/// roughly what a hard flick covers, which is the gesture three-ahead still
+/// could not keep up with — the reader outran the loader and watched a photo
+/// assemble itself.
 ///
-/// Still not a general prefetcher: every warmed image is decoded bytes held in
-/// the global `ImageCache`, which evicts the photo being looked at to make room.
-const int kFeedWarmAhead = 3;
+/// Ten is only affordable because of the split below: warming is two different
+/// operations, and only the first two cards pay the expensive one.
+const int kFeedWarmAhead = 10;
 
-/// How far either side of the active slide a carousel warms. One in each
-/// direction: a horizontal swipe reaches exactly one slide.
+/// How many of those cards are decoded into memory, ready to paint.
+///
+/// Two. A decoded full-width frame is roughly `1179 × 1768 × 4` ≈ **8 MB** of
+/// RAM, so ten of them would be 80 MB against a 100 MB budget — and the
+/// `ImageCache` would evict the photo being looked at to hold photos nobody
+/// has reached. That is the jank this is supposed to remove, not cause.
+///
+/// Everything from here to [kFeedWarmAhead] is warmed to **disk** instead, by
+/// [warmToDisk]: the bytes are fetched and stored, nothing is decoded, and the
+/// cost is a few hundred kilobytes of file rather than megabytes of heap. When
+/// the reader arrives, the image loads from local disk — tens of milliseconds,
+/// no network — instead of starting a request at the moment it is needed.
+const int kFeedDecodeAhead = 2;
+
+/// How far either side of the active slide a carousel decodes into memory.
+///
+/// One in each direction: a horizontal swipe reaches exactly one slide, and
+/// these are full-width frames under the same memory budget as the cards.
 const int kCarouselWarmRadius = 1;
+
+/// How far *ahead* in a carousel is warmed to disk.
+///
+/// Forward only, and further than [kCarouselWarmRadius] reaches. Somebody
+/// flicking through an event's photos goes one way, fast, and the slide behind
+/// has usually been decoded already on the way past. Disk-warmed, so the depth
+/// costs files rather than heap — see [kFeedDecodeAhead].
+const int kCarouselDiskAhead = 6;
 
 /// Which slide indices to warm around [current], clamped to the list.
 ///
@@ -174,11 +202,115 @@ bool shouldLoadMore({
   return heading + lookahead >= itemCount - 1;
 }
 
+/// Fetch [url] into the disk cache without decoding it.
+///
+/// The cheap half of warming. `JpergImage.precache` decodes into the global
+/// `ImageCache` — megabytes of heap per frame — which is right for a card
+/// about to be painted and ruinous for one ten swipes away. This stores the
+/// bytes and stops, so a deep runway costs files rather than memory.
+///
+/// Fire-and-forget, and deliberately silent: a warm-up is an optimisation, and
+/// one that fails — offline, a 404, a cancelled scroll — must behave exactly
+/// as though it had never been attempted. The error is swallowed rather than
+/// logged because a reader flicking past twenty cards would otherwise fill the
+/// log with failures that changed nothing.
+///
+/// The URL must be the *delivery* URL — the rung the widget will later ask
+/// for, not the stored original. See [deliveryUrlFor].
+void warmToDisk(String url) {
+  if (url.isEmpty) return;
+  if (!_inFlight.add(url)) return;
+  _queue.add(url);
+  _pump();
+}
+
+/// How many warm-ups may be on the wire at once.
+///
+/// Three. Not a tuning detail — the whole reason a deep runway is safe.
+///
+/// These were fired the instant they were decided, one `unawaited` per URL, so
+/// a single swipe could put the ten cards ahead *plus* six carousel slides on
+/// the wire together: sixteen parallel requests racing the one image the reader
+/// is actually waiting for. The visible photo lost that race, and because the
+/// carousel will not advance off a slide that has not settled (see
+/// `media_readiness.dart`) the reader was then held on it — so a feature meant
+/// to remove the wait produced a longer one.
+///
+/// A queue fixes the ordering rather than the depth: the runway still fills,
+/// it just stops competing. Three is enough to keep the connection busy on a
+/// phone and few enough to leave room for the fetch that matters.
+const int kWarmConcurrency = 3;
+
+final _queue = <String>[];
+final _inFlight = <String>{};
+var _active = 0;
+
+void _pump() {
+  while (_active < kWarmConcurrency && _queue.isNotEmpty) {
+    final url = _queue.removeAt(0);
+    _active++;
+    unawaited(_download(url));
+  }
+}
+
+Future<void> _download(String url) async {
+  try {
+    await JpergImageCache.instance.downloadFile(url);
+  } catch (_) {
+    // See warmToDisk: a warm-up that fails must look like one that never ran.
+  } finally {
+    _active--;
+    _inFlight.remove(url);
+    _pump();
+  }
+}
+
+/// Forget what is queued, for tests — the queue is process-wide state.
+@visibleForTesting
+void resetWarmQueue() {
+  _queue.clear();
+  _inFlight.clear();
+  _active = 0;
+}
+
+/// The URL a widget will actually request for [picture] at [logicalWidth].
+///
+/// The rung, not the stored original — warming one and requesting the other
+/// are two different objects, and the warm-up would be a wasted download.
+/// Mirrors what `JpergImage` resolves internally.
+String? deliveryUrlFor(
+  EventPicture picture, {
+  required double logicalWidth,
+  required double devicePixelRatio,
+}) {
+  final base = warmableUrl(
+    picture,
+    logicalWidth: logicalWidth,
+    devicePixelRatio: devicePixelRatio,
+  );
+  if (base == null || base.isEmpty) return null;
+  // A video's poster URL came back already resolved to a rung; picking a rung
+  // of a rung would produce an object that was never written.
+  if (picture.isVideo) return base;
+  return MediaTransform.image(
+    base,
+    displayWidth: logicalWidth,
+    devicePixelRatio: devicePixelRatio,
+    ladder: picture.ladder,
+  );
+}
+
 /// Warm the first frame of each of the next [ahead] cards.
 ///
 /// The first picture only. It is the one the card opens on, and the rest of
 /// that event's carousel is warmed by the carousel itself once the card is
 /// in front of somebody.
+///
+/// Two tiers, and the split is the point. The next [decodeAhead] cards are
+/// decoded into memory so they paint the instant they arrive; everything
+/// behind them to [ahead] is fetched to disk only. The reader who flicks hard
+/// past six cards still finds every one of them local — they just spend a
+/// decode on arrival instead of a network round trip.
 ///
 /// Fire-and-forget by design: a warm-up that loses a race with the swipe it
 /// was meant to beat has simply not helped, and must not make anything wait.
@@ -187,10 +319,41 @@ void warmNextCards(
   List<EventDiscovery> events,
   int current, {
   int ahead = kFeedWarmAhead,
+  int decodeAhead = kFeedDecodeAhead,
 }) {
   final end = (current + ahead + 1).clamp(0, events.length);
   final start = (current + 1).clamp(0, end);
-  warmEventFirstFrames(context, events.sublist(start, end));
+  if (start >= end) return;
+
+  final decodeEnd = (current + decodeAhead + 1).clamp(start, end);
+  warmEventFirstFrames(context, events.sublist(start, decodeEnd));
+
+  if (decodeEnd >= end || !context.mounted) return;
+  final width = MediaQuery.sizeOf(context).width;
+  final dpr = MediaQuery.devicePixelRatioOf(context);
+  for (final event in events.sublist(decodeEnd, end)) {
+    if (event.pictures.isEmpty) continue;
+    final picture = event.pictures.first;
+    // A photo with no ladder is fetched at full size — a camera original,
+    // ~2 MB and often far more. The depth above is priced for a ~180 KB rung,
+    // so warming eight of those is tens of megabytes of speculative traffic
+    // for cards the reader may never reach, and it is taken from the card
+    // they are looking at right now.
+    //
+    // This is not a transitional guard. Coverage is whatever the backfill has
+    // reached — it was 7% of photographs when this was written — and a feed
+    // mixes laddered and un-laddered albums freely, so the depth has to be
+    // decided per photograph rather than assumed for all of them. An
+    // un-laddered card simply loads when it arrives, exactly as it did before
+    // any of this existed.
+    if (!picture.ladder.exists) continue;
+    final url = deliveryUrlFor(
+      picture,
+      logicalWidth: width,
+      devicePixelRatio: dpr,
+    );
+    if (url != null) warmToDisk(url);
+  }
 }
 
 /// Warm the opening frame of each of [events].
@@ -230,11 +393,18 @@ void warmEventFirstFrames(
 }
 
 /// Warm the slides either side of [current] in one event's carousel.
+///
+/// Two tiers, as with the cards. [radius] slides either side are decoded and
+/// ready to paint; the next [diskAhead] *forward* are fetched to disk. Forward
+/// only for the deep tier, because that is the direction somebody flicking
+/// through an event's photos is going — the slide behind was decoded on the
+/// way past it.
 void warmCarouselNeighbours(
   BuildContext context,
   List<EventPicture> pictures,
   int current, {
   int radius = kCarouselWarmRadius,
+  int diskAhead = kCarouselDiskAhead,
 }) {
   if (!context.mounted || pictures.length < 2) return;
   final width = MediaQuery.sizeOf(context).width;
@@ -249,5 +419,21 @@ void warmCarouselNeighbours(
   )) {
     JpergImage.precache(context, target.url,
         logicalWidth: width, ladder: target.ladder);
+  }
+
+  // Past what the decoded tier reaches, to the end of the run.
+  final from = current + radius + 1;
+  final to = (current + diskAhead + 1).clamp(0, pictures.length);
+  for (var i = from; i < to; i++) {
+    // Only where a rung exists — the depth is priced for one. See the same
+    // guard in [warmNextCards] for why this is a standing rule and not a
+    // temporary one.
+    if (!pictures[i].ladder.exists) continue;
+    final url = deliveryUrlFor(
+      pictures[i],
+      logicalWidth: width,
+      devicePixelRatio: dpr,
+    );
+    if (url != null) warmToDisk(url);
   }
 }

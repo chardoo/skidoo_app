@@ -30,6 +30,22 @@ EventPicture _pic(String url) => EventPicture(
 Future<void> _neverSettles(BuildContext _, String __, double ___) =>
     Completer<void>().future;
 
+/// The same, but it remembers what it was asked for.
+///
+/// Readiness is keyed on the URL that is actually fetched — the *delivery*
+/// URL, the rung or Cloudinary transform the slide really renders, not the
+/// stored original. A test that seeds `markResolved` with the raw URL is
+/// answering a question nobody asked, so it reads the key back from the warm
+/// itself rather than re-deriving the arithmetic and drifting from it.
+class _RecordingWarmer {
+  final List<String> asked = <String>[];
+
+  Future<void> call(BuildContext _, String url, double __) {
+    asked.add(url);
+    return Completer<void>().future;
+  }
+}
+
 void main() {
   group('the rule', () {
     test('two blank slides is the one move refused', () {
@@ -211,12 +227,15 @@ void main() {
     });
 
     testWidgets('allows it the moment the destination arrives', (t) async {
-      final readiness = MediaReadiness(warmer: _neverSettles);
+      final warmer = _RecordingWarmer();
+      final readiness = MediaReadiness(warmer: warmer.call);
       addTearDown(readiness.dispose); // safety net; the body disposes too
       await t.pumpWidget(host([_pic(_a), _pic(_b)], readiness));
       await t.pump();
 
-      readiness.markResolved(_b);
+      // The slide in front and the one after it are tracked, in that order.
+      expect(warmer.asked, hasLength(2));
+      readiness.markResolved(warmer.asked[1]);
       await swipeForward(t);
 
       expect(pageOf(t), 1);
@@ -227,12 +246,14 @@ void main() {
     testWidgets('allows it once the slide being left has arrived', (t) async {
       // The other half of the rule: leaving something real is always allowed,
       // whatever is coming next.
-      final readiness = MediaReadiness(warmer: _neverSettles);
+      final warmer = _RecordingWarmer();
+      final readiness = MediaReadiness(warmer: warmer.call);
       addTearDown(readiness.dispose); // safety net; the body disposes too
       await t.pumpWidget(host([_pic(_a), _pic(_b)], readiness));
       await t.pump();
 
-      readiness.markResolved(_a);
+      expect(warmer.asked, hasLength(2));
+      readiness.markResolved(warmer.asked[0]);
       await swipeForward(t);
 
       expect(pageOf(t), 1);

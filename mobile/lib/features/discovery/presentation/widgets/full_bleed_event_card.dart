@@ -320,7 +320,10 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
 
     final width = MediaQuery.sizeOf(context).width;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    String? urlAt(int at) => warmableUrl(
+    // The delivery URL, which is the key the slide was tracked under — see
+    // card_photo_preview's _trackAround. Asking with the stored original
+    // misses every entry and reports nothing as ready.
+    String? urlAt(int at) => deliveryUrlFor(
           pics[at],
           logicalWidth: width,
           devicePixelRatio: dpr,

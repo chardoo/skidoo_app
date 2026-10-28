@@ -123,7 +123,12 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     for (final at in [index, index + 1]) {
       if (at < 0 || at >= widget.pics.length) continue;
-      final url = warmableUrl(
+      // The *delivery* URL — the rung the slide will actually render — not the
+      // stored original. Tracking the original warmed a camera-sized file that
+      // nothing then asked for, and left the gate open on a download the
+      // widget was still waiting for: the blurhash sat there while the rung it
+      // really wanted was fetched, un-warmed, from scratch.
+      final url = deliveryUrlFor(
         widget.pics[at],
         logicalWidth: width,
         devicePixelRatio: dpr,
@@ -149,7 +154,8 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
 
     final width = MediaQuery.sizeOf(context).width;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    String? urlAt(int at) => warmableUrl(
+    // Same key the slide was tracked under — see _trackAround.
+    String? urlAt(int at) => deliveryUrlFor(
           widget.pics[at],
           logicalWidth: width,
           devicePixelRatio: dpr,
