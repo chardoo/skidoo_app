@@ -27,7 +27,27 @@ class ProfilePhotoGrid extends StatefulWidget {
     this.onLoadMore,
     this.loadingMore = false,
     this.header,
+    this.failed = false,
+    this.onRetry,
   });
+
+  /// The last fetch for this grid failed.
+  ///
+  /// Distinct from having nothing, and the distinction is the whole reason
+  /// this exists. The loaders behind these tabs caught their errors into a
+  /// `debugPrint` and left the list as it was, so a 500 drew "Nothing liked
+  /// yet" — the app stating as fact something it had just failed to find out.
+  /// A real bug in the like endpoint sat behind that wording for as long as it
+  /// did because the screen was reassuring about it.
+  ///
+  /// Only consulted when there is nothing to show. A grid that already has a
+  /// page keeps drawing it: a failed *refresh* of something correct on screen
+  /// is not worth replacing it with an apology.
+  final bool failed;
+
+  /// Runs the fetch again. Null leaves the failure state without a way out,
+  /// which is worth avoiding wherever the caller can reload.
+  final VoidCallback? onRetry;
 
   /// Drawn above the grid, inside the same scroll view.
   ///
@@ -154,11 +174,13 @@ class _ProfilePhotoGridState extends State<ProfilePhotoGrid> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: AppEmptyState(
-                    icon: widget.emptyIcon,
-                    message: widget.emptyTitle,
-                    hint: widget.emptyHint,
-                  ),
+                  child: widget.failed
+                      ? _Failed(onRetry: widget.onRetry)
+                      : AppEmptyState(
+                          icon: widget.emptyIcon,
+                          message: widget.emptyTitle,
+                          hint: widget.emptyHint,
+                        ),
                 ),
               )
             else
@@ -207,6 +229,7 @@ class _ProfilePhotoGridState extends State<ProfilePhotoGrid> {
       return const Center(child: CircularProgressIndicator());
     }
     if (photos.isEmpty) {
+      if (widget.failed) return _Failed(onRetry: widget.onRetry);
       return _Empty(
         title: widget.emptyTitle,
         hint: widget.emptyHint,
@@ -281,5 +304,29 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ScrollableEmptyState(
         child: AppEmptyState(icon: icon, message: title, hint: hint),
+      );
+}
+
+/// "We could not load this", as opposed to "there is nothing here".
+///
+/// Says the app failed rather than that the reader has nothing, and offers the
+/// one useful thing — asking again. Drawn through [AppEmptyState] like every
+/// other empty screen, so a tab that could not load still looks like this app.
+class _Failed extends StatelessWidget {
+  const _Failed({this.onRetry});
+
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => ScrollableEmptyState(
+        child: AppEmptyState(
+          icon: AppIcons.warning,
+          message: 'Could not load this',
+          hint: onRetry == null
+              ? 'Check your connection and come back in a moment.'
+              : ' to load it again.',
+          actionLabel: onRetry == null ? null : 'Tap here',
+          onAction: onRetry,
+        ),
       );
 }

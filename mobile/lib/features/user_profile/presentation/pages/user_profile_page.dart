@@ -111,6 +111,20 @@ class UserProfilePageState extends State<UserProfilePage>
   int _likesLoadedAt = -1;
   int _savesLoadedAt = -1;
 
+  /// Whether the last fetch for each grid failed, so the tab can say so.
+  ///
+  /// These used to be swallowed: the catch wrote a `debugPrint` and left the
+  /// list alone, so a 500 drew "Nothing liked yet" and the app asserted
+  /// something it had just failed to find out. A real bug in the picture-like
+  /// endpoint hid behind that wording — likes were disappearing and the screen
+  /// said, reassuringly, that there had never been any.
+  ///
+  /// Cleared on the next success rather than before the request: a grid with a
+  /// page already drawn keeps it while a refresh is in flight.
+  bool _likedFailed = false;
+  bool _savedFailed = false;
+  bool _purchasedFailed = false;
+
   /// The same, for purchases — against [GalleryRefreshSignal], which checkout
   /// already bumps. A new signal was not wanted: "the set of photos this
   /// person owns changed" is exactly what that one means, and the gallery is
@@ -271,10 +285,14 @@ class UserProfilePageState extends State<UserProfilePage>
           _liked = page.photos;
           _likedPage = 1;
           _likedHasMore = page.hasMore;
+          _likedFailed = false;
         });
       }
     } catch (e) {
       debugPrint('[UserProfilePage] liked ERROR: $e');
+      // Not stamping `_likesLoadedAt` above is what makes the next visit try
+      // again; this is what makes the current one admit it did not work.
+      if (mounted) setState(() => _likedFailed = true);
     } finally {
       if (mounted && _loadingLiked) setState(() => _loadingLiked = false);
     }
@@ -335,10 +353,12 @@ class UserProfilePageState extends State<UserProfilePage>
           _bookmarked = saved.photos;
           _savedPage = 1;
           _savedHasMore = saved.hasMore;
+          _savedFailed = false;
         });
       }
     } catch (e) {
       debugPrint('[UserProfilePage] bookmarks ERROR: $e');
+      if (mounted) setState(() => _savedFailed = true);
     } finally {
       if (mounted && _loadingBookmarks)
         setState(() => _loadingBookmarks = false);
@@ -409,10 +429,12 @@ class UserProfilePageState extends State<UserProfilePage>
           _purchased = bought.photos;
           _purchasedPage = 1;
           _purchasedHasMore = bought.hasMore;
+          _purchasedFailed = false;
         });
       }
     } catch (e) {
       debugPrint('[UserProfilePage] purchased ERROR: $e');
+      if (mounted) setState(() => _purchasedFailed = true);
     } finally {
       if (mounted && _loadingPurchased) {
         setState(() => _loadingPurchased = false);
@@ -783,6 +805,8 @@ class UserProfilePageState extends State<UserProfilePage>
                 onOpen: (photo) => _openTile(_liked, photo),
                 onLoadMore: _likedHasMore ? _loadMoreLiked : null,
                 loadingMore: _loadingMoreLiked,
+                failed: _likedFailed,
+                onRetry: _loadLiked,
               ),
             ),
             _Refreshable(
@@ -801,6 +825,8 @@ class UserProfilePageState extends State<UserProfilePage>
                 onOpen: (photo) => _openTile(_bookmarked, photo),
                 onLoadMore: _savedHasMore ? _loadMoreBookmarks : null,
                 loadingMore: _loadingMoreSaved,
+                failed: _savedFailed,
+                onRetry: _loadBookmarks,
               ),
             ),
             _Refreshable(
@@ -832,6 +858,8 @@ class UserProfilePageState extends State<UserProfilePage>
                 onOpen: (photo) => _openTile(_purchased, photo),
                 onLoadMore: _purchasedHasMore ? _loadMorePurchased : null,
                 loadingMore: _loadingMorePurchased,
+                failed: _purchasedFailed,
+                onRetry: _loadPurchased,
               ),
             ),
             _Refreshable(
