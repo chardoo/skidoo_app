@@ -24,12 +24,31 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 /// real answer, not a way out of it: somebody advertising nationally should not
 /// have to name a city they do not mean.
 class LocationPickerSheet extends StatefulWidget {
-  const LocationPickerSheet({super.key, this.title, this.repo});
+  const LocationPickerSheet({
+    super.key,
+    this.title,
+    this.repo,
+    this.initialCountryCode,
+  });
 
   final String? title;
 
   /// Injectable so tests can drive the sheet without a network.
   final LocationRepository? repo;
+
+  /// Open straight on the town step, for a caller that already knows the
+  /// country — the profile form, which asks for it in its own field.
+  ///
+  /// Asking twice would be the bug this was added to fix in reverse: a form
+  /// where the country is already answered should offer towns inside that
+  /// answer, not a second country list. The country step is still reachable
+  /// by going back, so this narrows the starting point without taking the
+  /// choice away.
+  ///
+  /// Ignored when it names no country the service returned, which leaves the
+  /// country step as the first thing shown — the behaviour every other caller
+  /// has.
+  final String? initialCountryCode;
 
   /// Opens the picker and returns the chosen place, or null if it was
   /// dismissed. Scrollable because the second step is a search results list
@@ -42,12 +61,17 @@ class LocationPickerSheet extends StatefulWidget {
     BuildContext context, {
     String? title,
     LocationRepository? repo,
+    String? initialCountryCode,
   }) {
     return showModalBottomSheet<Place>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => LocationPickerSheet(title: title, repo: repo),
+      builder: (_) => LocationPickerSheet(
+        title: title,
+        repo: repo,
+        initialCountryCode: initialCountryCode,
+      ),
     );
   }
 
@@ -94,7 +118,21 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
     setState(() {
       _countries = countries;
       _loading = false;
+      // Skip the country step when the caller already knows the answer. Done
+      // here rather than in initState because the match needs the real list:
+      // the `Place` that the town search is scoped by has to be the service's
+      // own row, not one assembled from a bare code.
+      _country ??= _matchInitialCountry(countries);
     });
+  }
+
+  Place? _matchInitialCountry(List<Place> countries) {
+    final wanted = widget.initialCountryCode?.trim().toUpperCase();
+    if (wanted == null || wanted.isEmpty) return null;
+    for (final country in countries) {
+      if (country.countryCode.toUpperCase() == wanted) return country;
+    }
+    return null;
   }
 
   void _pickCountry(Place country) {

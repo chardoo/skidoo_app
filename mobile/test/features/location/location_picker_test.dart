@@ -54,7 +54,11 @@ Widget _host(Widget child) => ScreenUtilInit(
 
 /// Pumps the sheet as a real modal so the pop value can be read — which is the
 /// whole contract of the picker.
-Future<Place?> _openPicker(WidgetTester tester, _FakeRepo repo) async {
+Future<Place?> _openPicker(
+  WidgetTester tester,
+  _FakeRepo repo, {
+  String? initialCountryCode,
+}) async {
   Place? chosen;
   await tester.pumpWidget(_host(Builder(builder: (context) {
     return ElevatedButton(
@@ -63,7 +67,10 @@ Future<Place?> _openPicker(WidgetTester tester, _FakeRepo repo) async {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (_) => LocationPickerSheet(repo: repo),
+          builder: (_) => LocationPickerSheet(
+            repo: repo,
+            initialCountryCode: initialCountryCode,
+          ),
         );
       },
       child: const Text('open'),
@@ -329,6 +336,53 @@ void main() {
       // matches on its own.
       await t.tap(find.text('Add a location'));
       expect(added, isTrue);
+    });
+  });
+
+  group('opening on a country the caller already knows', () {
+    testWidgets('skips the country step and searches inside it', (t) async {
+      // The profile form asks for the country in its own field. Offering a
+      // second country list under "Region" is what made that field look like
+      // it was asking for a country again — the bug this exists to prevent.
+      final repo = _FakeRepo(results: const [_accra]);
+      await _openPicker(t, repo, initialCountryCode: 'GH');
+
+      // Straight onto the town step: the country list is not on screen.
+      expect(find.text('Kenya'), findsNothing);
+      expect(find.text('Nigeria'), findsNothing);
+
+      await t.enterText(find.byType(TextField).last, 'acc');
+      await t.pump(const Duration(milliseconds: 400));
+      await t.pumpAndSettle();
+
+      // Scoped to Ghana, which is the half that makes the list towns in the
+      // country rather than towns anywhere.
+      expect(repo.queries, ['acc@GH']);
+      expect(find.text('Accra'), findsOneWidget);
+    });
+
+    testWidgets('lower case is still a match', (t) async {
+      final repo = _FakeRepo(results: const [_accra]);
+      await _openPicker(t, repo, initialCountryCode: 'gh');
+
+      expect(find.text('Kenya'), findsNothing);
+    });
+
+    testWidgets('a country the service does not list is ignored', (t) async {
+      // Falls back to asking, rather than scoping the search to a code
+      // nothing can match and showing an empty town list forever.
+      final repo = _FakeRepo();
+      await _openPicker(t, repo, initialCountryCode: 'ZZ');
+
+      expect(find.text('Ghana'), findsOneWidget);
+      expect(find.text('Kenya'), findsOneWidget);
+    });
+
+    testWidgets('no code given keeps the country step, as before', (t) async {
+      final repo = _FakeRepo();
+      await _openPicker(t, repo);
+
+      expect(find.text('Ghana'), findsOneWidget);
     });
   });
 }

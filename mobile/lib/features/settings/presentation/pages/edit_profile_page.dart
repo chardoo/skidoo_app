@@ -14,6 +14,9 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
+import 'package:jperg_app/features/location/data/models/place.dart';
+import 'package:jperg_app/features/location/data/repositories/location_repository.dart';
+import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:jperg_app/features/settings/data/profile_options.dart';
 import 'package:jperg_app/features/user_profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
@@ -41,6 +44,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late String _timezone;
   late Set<String> _interests;
 
+  /// The town, and the whole record behind it.
+  ///
+  /// Two values rather than one because a name is not a location: the
+  /// coordinates are what the ad and request boards rank distance by, so the
+  /// `Place` the search returned is what gets saved, and [_region] is only
+  /// what the field prints. See `features/location/data/models/place.dart`.
+  ///
+  /// Read from `GET /api/location` rather than from the profile state, which
+  /// has never carried a location.
+  String _region = '';
+  Place? _regionPlace;
+
+  /// What the account already had, so an untouched field saves nothing.
+  Place? _savedRegionPlace;
+
+  /// Set once the country dropdown is used, so the stored location arriving a
+  /// moment later cannot overwrite a choice already made. [_readStoredRegion]
+  /// is a network read started in `initState`; without this, picking a country
+  /// quickly enough had it silently replaced.
+  bool _countryTouched = false;
+
+  final LocationRepository _locations = LocationRepository();
+
   /// The avatar as it stands. Seeded from the session, replaced by whatever
   /// the upload returns — the profile state this screen reads has never
   /// carried one.
@@ -63,6 +89,91 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _timezone = state.timezone;
     _interests = state.interestTags.toSet();
     _readStoredPhoto();
+    _readStoredRegion();
+  }
+
+  /// The town already on the account, for the Region field to open on.
+  ///
+  /// Silent on failure: an empty field prompting for a town is a far better
+  /// outcome on this screen than an error banner over a form somebody opened
+  /// to change their phone number.
+  Future<void> _readStoredRegion() async {
+    final context = await _locations.context();
+    if (!mounted || context == null) return;
+    final place = context.place;
+    setState(() {
+      _savedRegionPlace = place;
+      _regionPlace = place;
+      _region = context.location ?? '';
+      // The account's own country wins over the profile row's when the two
+      // disagree: `PUT /api/location` writes both together, so the location's
+      // is the more recently stated of the two. Never over a choice the person
+      // has already made on this form, though — see [_countryTouched].
+      if (!_countryTouched && (context.countryCode ?? '').isNotEmpty) {
+        _country = context.countryCode!;
+      }
+    });
+  }
+
+  /// Store the town, if it changed.
+  ///
+  /// Skipped entirely when it did not: this is a second request on a form
+  /// whose other fields go somewhere else, and re-sending an unchanged place
+  /// would overwrite `country_code` for somebody who only edited their name.
+  Future<void> _saveRegion() async {
+    final place = _regionPlace;
+    if (place == null || place == _savedRegionPlace) return;
+    try {
+      await _locations.setLocation(place);
+      _savedRegionPlace = place;
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Could not save your region. Try again.');
+      }
+    }
+  }
+
+  /// Moving country empties the town.
+  ///
+  /// "Accra, Nigeria" is not a place. Leaving the old town behind would also
+  /// leave its coordinates behind, and those are what distance is measured
+  /// from — so the board would rank somebody against a point in a country they
+  /// just said they had left.
+  void _onCountryChanged(String code) {
+    setState(() {
+      _countryTouched = true;
+      if (code == _country) return;
+      _country = code;
+      _region = '';
+      _regionPlace = null;
+    });
+  }
+
+  /// Pick a town inside the country already chosen on this form.
+  ///
+  /// The sheet opens on its town step rather than its country step — that is
+  /// the whole fix. Choosing a country here and then being handed a second
+  /// country list is what made this field look like it was asking the same
+  /// question twice.
+  Future<void> _pickRegion() async {
+    final place = await LocationPickerSheet.show(
+      context,
+      title: 'Your region',
+      repo: _locations,
+      initialCountryCode: _country.isEmpty ? null : _country,
+    );
+    if (place == null || !mounted) return;
+    setState(() {
+      _regionPlace = place;
+      // "Anywhere in Ghana" is a real answer in that sheet, and it means no
+      // town — so the field goes back to empty rather than printing a country
+      // name into a field labelled Region.
+      _region = place.isCountryWide ? '' : place.label;
+      // Kept in step with the dropdown above. The sheet can reach its country
+      // step by going back, so the two must not be able to disagree — and
+      // `PUT /api/location` writes the country anyway.
+      if (place.countryCode.isNotEmpty) _country = place.countryCode;
+    });
   }
 
   Future<void> _readStoredPhoto() async {
@@ -118,10 +229,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
+  /// Why this handle cannot be saved, or null when it can.
+  ///
+  /// The API accepts `[A-Za-z0-9_]{3,30}`. Checked here so a bad handle is a
+  /// sentence under the field rather than a 422 the form cannot explain —
+  /// and only when it was actually edited, because an untouched field is not
+  /// something the person using the screen can be asked to fix.
+  static final _handleAllowed = RegExp(r'^[A-Za-z0-9_]+$');
+
+  String? _handleProblem(String handle, {required bool changed}) {
+    if (!changed) return null;
+    if (handle.length < 3) return 'A username needs at least 3 characters.';
+    if (handle.length > 30) return 'A username can be at most 30 characters.';
+    if (!_handleAllowed.hasMatch(handle)) {
+      return 'Letters, numbers and underscores only.';
+    }
+    return null;
+  }
+
   void _save() {
+    final state = context.read<UserProfileBloc>().state;
+    final handle = _username.text.trim();
+    final problem =
+        _handleProblem(handle, changed: handle != state.uniqueName);
+    if (problem != null) {
+      AppSnackBar.error(context, problem);
+      return;
+    }
+
+    // The town goes to its own endpoint, which is also the only one that can
+    // store the coordinates behind it — the profile PATCH has no field for
+    // either. Not awaited: the profile save below is what the screen's
+    // success and error states are wired to, and a region that fails to store
+    // is reported on its own rather than by failing the whole form.
+    _saveRegion();
+
     context.read<UserProfileBloc>().add(ProfileUpdateSubmitted(
           name: _name.text.trim(),
-          uniqueName: _username.text.trim(),
+          uniqueName: handle,
           contact: _phone.text.trim(),
           countryCode: _country,
           locale: _locale,
@@ -219,7 +364,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       label: 'Country',
                       value: _country,
                       options: kCountryOptions,
-                      onChanged: (v) => setState(() => _country = v),
+                      onChanged: _onCountryChanged,
+                      ext: ext,
+                    ),
+                    // A town inside the country chosen above, not a second
+                    // country list. The field this used to be was bound to
+                    // `locale` and labelled "Region", so picking Ghana and
+                    // then opening "Region" offered "English (US)" and
+                    // "French (France)" — which reads as being asked for a
+                    // country again, and stored something else entirely.
+                    _RegionField(
+                      value: _region,
+                      countryCode: _country,
+                      onTap: _pickRegion,
                       ext: ext,
                     ),
                     _Dropdown(
@@ -229,8 +386,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       onChanged: (v) => setState(() => _language = v),
                       ext: ext,
                     ),
+                    // The locale, under its own name. It is a language-and-
+                    // country pair used for formatting, which is why offering
+                    // it as "Region" was the whole confusion.
                     _Dropdown(
-                      label: 'Region',
+                      label: 'Locale',
                       value: _locale,
                       options: kLocaleOptions,
                       onChanged: (v) => setState(() => _locale = v),
@@ -553,6 +713,86 @@ class _Dropdown extends StatelessWidget {
                 DropdownMenuItem(value: entry.key, child: Text(entry.value)),
             ],
             onChanged: (v) => v == null ? null : onChanged(v),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The Region row: a town, chosen from a search inside the country above.
+///
+/// A tappable field rather than a dropdown, because there is no list to put in
+/// one. Towns come from a geocoder — the app has never shipped a town list and
+/// could not keep one — so the control has to be a search, and the search is
+/// the sheet every other part of the app already picks places with.
+class _RegionField extends StatelessWidget {
+  const _RegionField({
+    required this.value,
+    required this.countryCode,
+    required this.onTap,
+    required this.ext,
+  });
+
+  /// The town's name, or empty when none is set.
+  final String value;
+
+  /// Only used for the hint — the sheet is what scopes the search.
+  final String countryCode;
+
+  final VoidCallback onTap;
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    final country = kCountryOptions[countryCode];
+    final empty = value.trim().isEmpty;
+    // Naming the country in the hint is what tells somebody the list they are
+    // about to see is towns in *their* country, before they tap it.
+    final hint = country == null
+        ? 'Choose a town or city'
+        : 'Choose a town or city in $country';
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacing.lg.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Label('Region', ext),
+          SizedBox(height: AppSpacing.xs.h),
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w, vertical: AppSpacing.md.h),
+              decoration: BoxDecoration(
+                color: ext.cardSurface,
+                borderRadius: BorderRadius.circular(AppRadius.md.r),
+                border: Border.all(
+                    color: ext.searchHintColor.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_outlined,
+                      size: 18.sp, color: ext.searchHintColor),
+                  SizedBox(width: AppSpacing.sm.w),
+                  Expanded(
+                    child: Text(
+                      empty ? hint : value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: empty ? ext.searchHintColor : ext.greetingColor,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 20.sp, color: ext.searchHintColor),
+                ],
+              ),
+            ),
           ),
         ],
       ),
