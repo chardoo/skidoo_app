@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/error/exceptions.dart';
+import 'package:jperg_app/core/purchase/ios_photo_purchase.dart';
+import 'package:jperg_app/core/purchase/ios_store.dart';
+import 'package:jperg_app/features/cart/data/datasources/cart_remote_data_source.dart';
 import 'package:jperg_app/core/utils/gallery_refresh_signal.dart';
 import 'package:jperg_app/features/gallery/data/purchased_photos.dart';
 import 'package:jperg_app/features/cart/domain/repositories/cart_repository.dart';
@@ -17,6 +22,17 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   /// the basket is a list of picture ids and the server prices it. See
   /// [_onPaymentInitiated].
   final CartRepository _repository;
+
+  /// Built on first use rather than in the constructor.
+  ///
+  /// Two reasons, and the second is the one that bit. It reaches into the
+  /// service locator, so constructing it eagerly makes every test that builds
+  /// a CartBloc register a CartRemoteDataSource it has no use for. And on
+  /// Android it is never touched at all — photo purchases there go through
+  /// Paystack — so building it there is work for a path that does not exist.
+  IosPhotoPurchase? _iosPurchaseOrNull;
+  IosPhotoPurchase get _iosPurchase =>
+      _iosPurchaseOrNull ??= IosPhotoPurchase(sl<CartRemoteDataSource>());
   final DownloadImageUseCase _downloadImageUseCase;
   final AuthService _authService;
 
@@ -31,6 +47,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemRemoved>(_onItemRemoved);
     on<CartItemsReplaced>(_onItemsReplaced);
     on<CartPaymentInitiated>(_onPaymentInitiated);
+    on<CartIosQuoteUpdated>(_onIosQuoteUpdated);
     on<CartPaymentCompleted>(_onPaymentCompleted);
     on<CartImageDownloaded>(_onImageDownloaded);
     on<CartCleared>(_onCartCleared);
@@ -49,8 +66,12 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(state.copyWith(
       items: updated,
       totalAmount: _calculateTotal(updated),
+      // The old figure is for the old basket.
+      clearIosQuote: true,
       successMessage: 'Image added to cart.',
     ));
+
+    _refreshIosQuote(emit);
   }
 
   void _onItemRemoved(CartItemRemoved event, Emitter<CartState> emit) {
@@ -58,8 +79,12 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(state.copyWith(
       items: updated,
       totalAmount: _calculateTotal(updated),
+      // The old figure is for the old basket.
+      clearIosQuote: true,
       successMessage: 'Image removed.',
     ));
+
+    _refreshIosQuote(emit);
   }
 
   void _onItemsReplaced(CartItemsReplaced event, Emitter<CartState> emit) {
@@ -67,11 +92,38 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     emit(state.copyWith(
       items: updated,
       totalAmount: _calculateTotal(updated),
+      // The old figure is for the old basket.
+      clearIosQuote: true,
       // No success message: this is a screen setting up its own basket before
       // checking out, not a person adding something. "Image added to cart."
       // for each of nine photos would be nine snackbars nobody asked for.
       clearMessages: true,
     ));
+
+    _refreshIosQuote(emit);
+  }
+
+  /// Re-price the basket for the App Store after it changes.
+  ///
+  /// Fire-and-forget, and iOS-only. A failed preview leaves the button showing
+  /// the subtotal it already had rather than blanking it: a price that is a
+  /// little optimistic beats a basket that looks broken, and Apple's own sheet
+  /// states the real figure before anybody is charged either way.
+  void _refreshIosQuote(Emitter<CartState> emit) {
+    if (!IosStore.instance.isSupported) return;
+    final ids = state.items.map((i) => i.id).toList();
+    if (ids.isEmpty) return;
+    unawaited(_iosPurchase.preview(pictureIds: ids).then((quote) {
+      if (quote != null && !isClosed) add(CartIosQuoteUpdated(quote));
+    }));
+  }
+
+  void _onIosQuoteUpdated(
+      CartIosQuoteUpdated event, Emitter<CartState> emit) {
+    // Ignored if the basket moved on while the preview was in flight — the
+    // figure would be for a basket that no longer exists.
+    if (state.items.isEmpty) return;
+    emit(state.copyWith(iosQuote: event.quote));
   }
 
   Future<void> _onPaymentInitiated(
@@ -85,6 +137,19 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     try {
       final email = await _authService.getEmail();
       final clientId = await _authService.getUserId();
+
+      // On an iPhone, photos are sold through the App Store. Apple requires
+      // anything consumed inside the app to go through In-App Purchase, and
+      // routing a card payment around it is what the 3.1.1 rejection was
+      // about. Everywhere else keeps Paystack, which is the flow below.
+      //
+      // Bookings are deliberately untouched by this: hiring a photographer is
+      // a real-world service under guideline 3.1.3(e) and stays on Paystack on
+      // every platform.
+      if (IosStore.instance.isSupported) {
+        await _payWithAppStore(clientId, emit);
+        return;
+      }
       // The server prices the basket from the picture ids. This used to send
       // `totalAmount.toString()` to /payments/initialize, which is a Dart
       // double — "60.0" — and the endpoint parsed it with int(), so every
@@ -110,6 +175,60 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         paymentUrl: authUrl,
         referenceId: referenceId,
       ));
+    } on NetworkException catch (e) {
+      emit(state.copyWith(
+          status: CartStatus.paymentFailure, errorMessage: e.message));
+    } on ServerException catch (e) {
+      emit(state.copyWith(
+          status: CartStatus.paymentFailure, errorMessage: e.message));
+    } catch (e) {
+      emit(state.copyWith(
+          status: CartStatus.paymentFailure,
+          errorMessage: 'Payment failed. Please try again.'));
+    }
+  }
+
+  /// Buy the basket through the App Store, and settle it with the server.
+  ///
+  /// Ends in exactly the same state as the card path — the photos land in the
+  /// gallery and the basket empties — so everything downstream of a successful
+  /// checkout is shared rather than written twice.
+  Future<void> _payWithAppStore(
+      String clientId, Emitter<CartState> emit) async {
+    final ids = state.items.map((i) => i.id).toList();
+    try {
+      final quote = await _iosPurchase.quote(
+        clientId: clientId,
+        pictureIds: ids,
+      );
+      final granted = await _iosPurchase.buy(clientId: clientId, quote: quote);
+      if (granted <= 0) {
+        emit(state.copyWith(
+            status: CartStatus.paymentFailure,
+            errorMessage: 'Payment went through but the photos did not arrive. '
+                'They will appear shortly — check your Gallery.'));
+        return;
+      }
+
+      GalleryRefreshSignal.bump();
+      purchasedPhotosOrNull()?.add(ids);
+      emit(state.copyWith(
+        status: CartStatus.paymentSuccess,
+        items: [],
+        totalAmount: 0,
+        referenceId: '',
+        successMessage: 'Payment successful! Check your Gallery.',
+      ));
+    } on PurchaseCancelled {
+      // Backing out of the App Store sheet is an ordinary thing to do, not a
+      // failure worth an error message. `paymentAbandoned` is the state that
+      // already means exactly this for a closed Paystack page: the basket is
+      // kept so the next tap on Buy does not start from nothing, and nothing
+      // is said out loud.
+      emit(state.copyWith(status: CartStatus.paymentAbandoned));
+    } on StoreUnavailable catch (e) {
+      emit(state.copyWith(
+          status: CartStatus.paymentFailure, errorMessage: e.message));
     } on NetworkException catch (e) {
       emit(state.copyWith(
           status: CartStatus.paymentFailure, errorMessage: e.message));

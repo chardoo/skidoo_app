@@ -102,6 +102,12 @@ dependencies:
   # Push notifications. No web implementation — every call site is guarded by
   # kIsWeb in PushNotificationService, which is the only file that imports this.
   onesignal_flutter: ^5.3.4
+  in_app_purchase: ^3.3.1
+  # Direct, not transitive: core/purchase/ios_photo_purchase.dart reads the
+  # order token back off a transaction, and the field it lives on belongs to
+  # the StoreKit subtypes (SK2PurchaseDetails / AppStorePurchaseDetails) rather
+  # than the platform-neutral PurchaseDetails.
+  in_app_purchase_storekit: ^0.4.0
 
 dependency_overrides:
   # url_launcher_ios 6.3.0 has a Swift bug (UIApplication Launcher conformance).

@@ -25,6 +25,36 @@ abstract class CartRemoteDataSource {
     required String clientId,
     required List<Map<String, String>> pictures,
   });
+
+  /// POST /client/payments/ios/intent
+  ///
+  /// Agrees what this basket costs on iOS and which App Store product pays for
+  /// it. Nothing is bought or granted here — it records the basket so the
+  /// transaction that comes back later can be matched to it.
+  Future<Map<String, dynamic>> iosIntent({
+    required String clientId,
+    required List<String> pictureIds,
+  });
+
+  /// GET /client/payments/ios/quote
+  ///
+  /// What this basket would cost on iOS, without committing to anything. Used
+  /// to label the Pay button honestly: the iOS total is not the sum of the
+  /// photo prices.
+  Future<Map<String, dynamic>> iosQuote({
+    required List<String> pictureIds,
+  });
+
+  /// POST /client/payments/ios/verify
+  ///
+  /// Hands Apple's signed transaction to the server, which verifies the
+  /// signature and grants the photos. The app never decides this itself — see
+  /// `core/purchase/ios_store.dart`.
+  Future<Map<String, dynamic>> iosVerify({
+    required String clientId,
+    required String orderToken,
+    required String signedTransaction,
+  });
 }
 
 class CartRemoteDataSourceImpl implements CartRemoteDataSource {
@@ -178,6 +208,94 @@ class CartRemoteDataSourceImpl implements CartRemoteDataSource {
     } catch (e) {
       if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
       throw app_ex.ServerException('Download failed: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> iosIntent({
+    required String clientId,
+    required List<String> pictureIds,
+  }) async {
+    try {
+      final res = await _api.dio.post(
+        '/client/payments/ios/intent',
+        data: jsonEncode({'clientId': clientId, 'pictureIds': pictureIds}),
+      );
+      if (res.data == null) {
+        throw const app_ex.ServerException('iOS intent returned null.');
+      }
+      return res.data as Map<String, dynamic>;
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      // The server's own words where it has any: "this basket is more than a
+      // single App Store purchase can cover" tells somebody what to do about
+      // it, which a status code does not.
+      final data = err.response?.data;
+      final error = data is Map ? data['error'] : null;
+      final message = error is Map ? error['message'] as String? : null;
+      throw app_ex.ServerException(
+          message ?? 'Could not start this purchase (${err.response?.statusCode})');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> iosVerify({
+    required String clientId,
+    required String orderToken,
+    required String signedTransaction,
+  }) async {
+    try {
+      final res = await _api.dio.post(
+        '/client/payments/ios/verify',
+        data: jsonEncode({
+          'clientId': clientId,
+          'orderToken': orderToken,
+          'signedTransaction': signedTransaction,
+        }),
+      );
+      if (res.data == null) {
+        throw const app_ex.ServerException('iOS verify returned null.');
+      }
+      return res.data as Map<String, dynamic>;
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      final data = err.response?.data;
+      final error = data is Map ? data['error'] : null;
+      final message = error is Map ? error['message'] as String? : null;
+      throw app_ex.ServerException(
+          message ?? 'Could not confirm this purchase (${err.response?.statusCode})');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> iosQuote({
+    required List<String> pictureIds,
+  }) async {
+    try {
+      final res = await _api.dio.get(
+        '/client/payments/ios/quote',
+        queryParameters: {'pictureIds': pictureIds.join(',')},
+      );
+      if (res.data == null) {
+        throw const app_ex.ServerException('iOS quote returned null.');
+      }
+      return res.data as Map<String, dynamic>;
+    } on dio.DioException catch (err) {
+      if (err.response == null) throw const app_ex.NetworkException();
+      final data = err.response?.data;
+      final error = data is Map ? data['error'] : null;
+      final message = error is Map ? error['message'] as String? : null;
+      throw app_ex.ServerException(
+          message ?? 'Could not price this basket (${err.response?.statusCode})');
+    } catch (e) {
+      if (e is app_ex.NetworkException || e is app_ex.ServerException) rethrow;
+      throw app_ex.ServerException('Unexpected error: $e');
     }
   }
 }

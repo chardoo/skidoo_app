@@ -78,3 +78,18 @@ class CartCleared extends CartEvent {
 class CartMessageDismissed extends CartEvent {
   const CartMessageDismissed();
 }
+
+/// The App Store has priced the basket.
+///
+/// Carries what the buyer will actually be charged, which on iOS is not the
+/// sum of the photo prices — see [CartState.iosQuote]. Its own event because
+/// the preview is asynchronous and must not block the basket from updating.
+class CartIosQuoteUpdated extends CartEvent {
+  const CartIosQuoteUpdated(this.quote);
+
+  final IosQuote quote;
+
+  @override
+  List<Object?> get props => [quote.productId, quote.charged];
+}
+
