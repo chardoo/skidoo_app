@@ -15,14 +15,20 @@ import 'package:jperg_app/l10n/app_localizations.dart';
 /// "has the user interacted" is `_fields.any(...)`, and the `_validate()` it
 /// then runs writes an `errorText` onto every field the form owns regardless
 /// of that field's own mode. So the first character typed into the email box
-/// — or one paste into it — put a red error under the four fields nobody had
+/// — or one paste into it — put a red error under the three fields nobody had
 /// reached yet, which reads as a broken form before you have finished the
 /// first line of it.
 ///
 /// `password_live_validation_test` exercised the same setting and passed,
 /// because its fixture is a form with **one** field: where there is only one,
 /// "any field was touched" and "this field was touched" cannot be told apart.
-/// These use the real page, with its five.
+/// These use the real page, with its four.
+///
+/// Four, not five: the phone number left this form when App Store review
+/// refused the app under guideline 5.1.1(v) for requiring information its core
+/// function does not need. The counts and indices below move with it, which is
+/// the point of asserting them — a form that quietly grew the field back would
+/// fail here.
 mixin _Unused {
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -49,19 +55,20 @@ Widget host(Widget page) => ScreenUtilInit(
 /// "how many fields are currently complaining" without naming each message.
 Finder get _errors => find.textContaining('*');
 
-/// The inputs in the order the page lays them out: email, name, phone,
-/// password, confirm. Asserted in [_pumpSignup] so a reordered form fails
-/// here rather than silently testing the wrong box.
+/// The inputs in the order the page lays them out: email, name, password,
+/// confirm. Asserted in [_pumpSignup] so a reordered form fails here rather
+/// than silently testing the wrong box.
 const _email = 0;
 const _name = 1;
-const _password = 3;
-const _confirm = 4;
+const _password = 2;
+const _confirm = 3;
 
 Future<void> _pumpSignup(WidgetTester t) async {
   await t.pumpWidget(host(const SignUpPage()));
   await t.pump();
-  expect(find.byType(TextField), findsNWidgets(5),
-      reason: 'email, name, phone, password, confirm');
+  expect(find.byType(TextField), findsNWidgets(4),
+      reason: 'email, name, password, confirm — and no phone number, '
+          'which guideline 5.1.1(v) does not allow this form to require');
 }
 
 void main() {
@@ -87,15 +94,15 @@ void main() {
     expect(_errors, findsNothing);
   });
 
-  testWidgets('typing a valid email leaves the other four fields alone',
+  testWidgets('typing a valid email leaves the other three fields alone',
       (t) async {
     await _pumpSignup(t);
 
     await t.enterText(find.byType(TextField).at(_email), 'jane@example.com');
     await t.pump();
 
-    // The regression: this found four errors — name, phone, password and
-    // confirm — under boxes that were still empty and never touched.
+    // The regression: this found errors under name, password and confirm —
+    // boxes that were still empty and had never been touched.
     expect(_errors, findsNothing);
   });
 

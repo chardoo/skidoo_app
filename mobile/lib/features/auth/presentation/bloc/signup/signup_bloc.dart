@@ -25,10 +25,13 @@ class SignUpBloc extends Bloc<SignUpEvent, SignUpState> {
       SignUpSubmitted event, Emitter<SignUpState> emit) async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
+      // No `contact` key at all, so the multipart body carries no phone field
+      // rather than an empty one — see [SignUpSubmitted]. The server treats a
+      // blank and an absent number the same way, but sending nothing is the
+      // honest description of a form that no longer asks.
       final fields = {
         'email': event.email,
         'password': event.password,
-        'contact': event.contact,
         'name': event.name.isNotEmpty ? event.name : 'user',
       };
       await _registerUseCase(RegisterParams(fields: fields));

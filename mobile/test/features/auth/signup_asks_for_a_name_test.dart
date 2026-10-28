@@ -82,9 +82,10 @@ void main() {
     await t.pumpWidget(_host(const SignUpPage()));
     await t.pump();
 
-    // Five fields: email, name, phone, password, confirm. A sixth would mean
-    // somebody put the handle back.
-    expect(find.byType(TextField), findsNWidgets(5));
+    // Four fields: email, name, password, confirm. A fifth would mean somebody
+    // put the handle back — or the phone number, which guideline 5.1.1(v) does
+    // not allow this form to require.
+    expect(find.byType(TextField), findsNWidgets(4));
     expect(find.textContaining('sername'), findsNothing);
     expect(find.textContaining('andle'), findsNothing);
   });

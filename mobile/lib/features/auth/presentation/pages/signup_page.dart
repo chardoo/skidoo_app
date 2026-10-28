@@ -11,7 +11,6 @@ import 'package:jperg_app/features/auth/presentation/pages/login_page.dart';
 import 'package:jperg_app/core/common/widgets/app_inline_banner.dart';
 import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/common/widgets/jperg_logo.dart';
-import 'package:jperg_app/core/common/widgets/app_phone_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/config/legal_links.dart';
@@ -84,7 +83,6 @@ class _SignUpViewState extends State<_SignUpView>
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
-  final _contactController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   late final AnimationController _fadeCtrl;
@@ -101,7 +99,6 @@ class _SignUpViewState extends State<_SignUpView>
     for (final c in [
       _emailController,
       _nameController,
-      _contactController,
       _passwordController,
       _confirmPasswordController,
     ]) {
@@ -121,10 +118,13 @@ class _SignUpViewState extends State<_SignUpView>
     }
   }
 
+  /// No phone number in here — see the comment where the field used to be.
+  /// It gated the Create-account button, which is what made it required in the
+  /// sense guideline 5.1.1(v) means: not a red asterisk, but a screen you
+  /// cannot leave without answering.
   bool get _requiredTextFilled =>
       _emailController.text.trim().isNotEmpty &&
       _nameController.text.trim().isNotEmpty &&
-      _contactController.text.trim().isNotEmpty &&
       _passwordController.text.isNotEmpty &&
       _confirmPasswordController.text.isNotEmpty;
 
@@ -132,7 +132,6 @@ class _SignUpViewState extends State<_SignUpView>
   void dispose() {
     _emailController.dispose();
     _nameController.dispose();
-    _contactController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _fadeCtrl.dispose();
@@ -144,7 +143,6 @@ class _SignUpViewState extends State<_SignUpView>
       context.read<SignUpBloc>().add(SignUpSubmitted(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
-            contact: _contactController.text.trim(),
             name: _nameController.text.trim(),
           ));
     }
@@ -336,17 +334,21 @@ class _SignUpViewState extends State<_SignUpView>
                               ),
                               SizedBox(height: 14.h),
 
-                              // ── Contact (with country dial-code dropdown) ──
-                              AppPhoneField(
-                                controller: _contactController,
-                                label: AppLocalizations.of(context)!
-                                    .signupPhoneNumber,
-                                hint: 'e.g. 241234567',
-                                validator: Validators.nationalPhoneValidator,
-                                autovalidateMode:
-                                    AutovalidateMode.onUserInteraction,
-                              ),
-                              SizedBox(height: 14.h),
+                              // No phone number here. App Store review refused
+                              // the app under guideline 5.1.1(v) — an app may
+                              // not *require* personal information its core
+                              // function does not need — and this one did not
+                              // need it: nothing signs in with a phone number,
+                              // every verification code goes to the email
+                              // address, and the one SMS an account can trigger
+                              // already checks whether there is a number first.
+                              //
+                              // Removed rather than made optional. The server
+                              // still accepts `contact`, and Settings ▸ Edit
+                              // Profile is where somebody who wants to give one
+                              // does — so the field is offered where it is
+                              // genuinely a choice, and absent from the one
+                              // screen nobody can get past without filling in.
 
                               // ── Password ───────────────────────────────────
                               AppPasswordField(
