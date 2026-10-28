@@ -276,20 +276,30 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                       // underneath while that happens, rather than two ghosts
                       // overlapping.
                       fadeInDuration: Duration.zero,
-                      // With a hash in hand the slot shows the photo's own
-                      // colours straight away, which beats a ring over a blur
-                      // of an image that is itself still arriving.
+                      // A ring on the ground, never a stand-in for the photo.
                       //
-                      // Without one: non-opaque, so the blurred backdrop stays
-                      // visible behind the spinner while the full-res image
-                      // loads. The accent reads on that backdrop in either
-                      // theme; white70 disappeared into the light-mode wash.
-                      placeholder: (_, __) => pic.blurhash != null
-                          ? JpergImagePlaceholder(blurhash: pic.blurhash)
-                          : Center(
-                              child: CircularProgressIndicator(
-                                  color: ext.accentGold, strokeWidth: 2),
-                            ),
+                      // This used to paint the BlurHash when the row carried
+                      // one: the photo's own colours, instantly, which reads
+                      // well on a thumbnail and badly here, where the slot is
+                      // the whole screen. Full-bleed, a BlurHash is a blurred
+                      // picture of what you are waiting for — and the
+                      // complaint about opening an album was exactly that, a
+                      // shadow of the image appearing before the image.
+                      //
+                      // It was also the last of three blurs in that sequence,
+                      // after the backdrop that did not wait and the fade that
+                      // eased the photo up through it, and the only one still
+                      // standing once those went. The slider beside this one
+                      // has always used a flat ground for the same reason —
+                      // see `event_image_slider`.
+                      //
+                      // Thumbnails keep theirs: a grid tile is small enough
+                      // that a hash reads as the cell filling in rather than
+                      // as the photo arriving wrong.
+                      placeholder: (_, __) => Center(
+                        child: CircularProgressIndicator(
+                            color: ext.accentGold, strokeWidth: 2),
+                      ),
                       errorWidget: (_, __, ___) =>
                           const JpergImagePlaceholder(),
                     ),
