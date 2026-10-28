@@ -67,12 +67,25 @@ class MediaTransform {
   /// — an asset with no ladder, or one whose source width was never recorded —
   /// an R2 URL comes back unchanged, which is the behaviour every row had
   /// before the ladder existed.
+  /// [maxPhysicalWidth] caps how many device pixels are asked for, whatever
+  /// the slot and the screen density work out to.
+  ///
+  /// For a full-bleed feed card the honest arithmetic is: a 393 pt card on a
+  /// 3x screen is 1179 device pixels, so rung selection reaches past 1080 and
+  /// takes 1600 — **549 KB where 1080 is 204 KB**, measured. What that buys is
+  /// the difference between painting 1080 px into a 1179 px slot (a 1.09x
+  /// upscale, invisible at that density) and painting 1179 of 1600 available.
+  /// Not worth 2.7x the bytes and a larger frame to decode on the way past.
+  ///
+  /// Null means no cap, which is what a viewer somebody has deliberately
+  /// opened and can pinch into should have.
   static String image(
     String url, {
     required double displayWidth,
     required double devicePixelRatio,
     ImageLadder ladder = ImageLadder.none,
     bool sharpen = true,
+    int? maxPhysicalWidth,
   }) {
     if (_isCloudinary(url)) {
       return _cloudinaryImage(
@@ -80,11 +93,12 @@ class MediaTransform {
         displayWidth: displayWidth,
         devicePixelRatio: devicePixelRatio,
         sharpen: sharpen,
+        maxPhysicalWidth: maxPhysicalWidth,
       );
     }
     return _rungUrl(
           url,
-          target: _physicalWidth(displayWidth, devicePixelRatio),
+          target: _cappedWidth(displayWidth, devicePixelRatio, maxPhysicalWidth),
           ladder: ladder,
         ) ??
         url;
@@ -221,6 +235,7 @@ class MediaTransform {
     required double displayWidth,
     required double devicePixelRatio,
     required bool sharpen,
+    int? maxPhysicalWidth,
   }) {
     final transforms = <String>[
       'f_auto', // AVIF/WebP when the device supports it
@@ -235,7 +250,7 @@ class MediaTransform {
       // which this did — asked a 3x phone for ~3840 px where 1179 was wanted,
       // roughly ten times the pixel area. One axis also keeps the CDN cache
       // key space half the size.
-      'w_${_steppedWidth(displayWidth, devicePixelRatio)}',
+      'w_${_steppedWidth(displayWidth, devicePixelRatio, maxPhysicalWidth)}',
       if (sharpen) 'e_sharpen:40', // gentle crispness
     ].join(',');
 
@@ -250,14 +265,20 @@ class MediaTransform {
   static int _physicalWidth(double displayWidth, double dpr) =>
       (displayWidth * math.max(dpr, 1.0)).ceil();
 
+  /// The physical width to ask for, never more than [cap].
+  static int _cappedWidth(double displayWidth, double dpr, int? cap) {
+    final want = _physicalWidth(displayWidth, dpr);
+    return cap == null ? want : math.min(want, cap);
+  }
+
   /// Physical width rounded up to the nearest 160 px.
   ///
   /// The rounding is for Cloudinary's cache, not for the picture: a unique
   /// width per device size means a separate render and a separate cached object
   /// for every viewport in the wild. Rungs need no equivalent — their widths
   /// are the quantisation.
-  static int _steppedWidth(double displayWidth, double dpr) {
-    final raw = _physicalWidth(displayWidth, dpr);
+  static int _steppedWidth(double displayWidth, double dpr, [int? cap]) {
+    final raw = _cappedWidth(displayWidth, dpr, cap);
     final stepped = ((raw / 160).ceil()) * 160;
     return stepped.clamp(160, _maxDimension);
   }

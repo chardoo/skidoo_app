@@ -32,6 +32,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:jperg_app/core/cache/jperg_image_cache.dart';
 import 'package:jperg_app/core/utils/media_transform.dart';
+import 'package:jperg_app/core/utils/network_quality.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 
@@ -45,37 +46,85 @@ import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 /// anyway, just later.
 const int kFeedLoadMoreLookahead = 5;
 
+/// The most device pixels a feed card ever asks for.
+///
+/// 1080, which pins a full-bleed card to the 1080 rung. Measured on the live
+/// CDN, same photograph:
+///
+///     rung 1080   204 KB
+///     rung 1600   549 KB
+///
+/// A 393 pt card on a 3x screen is 1179 device pixels, so uncapped selection
+/// reaches past 1080 and takes 1600 — 2.7x the bytes, and a larger frame to
+/// decode, to avoid a 1.09x upscale that cannot be seen at that density.
+///
+/// Only the feed is capped. A viewer somebody has deliberately opened and can
+/// pinch into passes nothing and gets the rung its slot actually wants.
+///
+/// This is the **ceiling**, not the answer: [feedMaxPhysicalWidth] lowers it
+/// further on a slow connection.
+const int kFeedMaxPhysicalWidth = 1080;
+
+/// The cap a feed card should ask with right now.
+///
+/// [kFeedMaxPhysicalWidth] is as wide as the feed ever goes; this is as wide as
+/// *this connection* can afford, measured from the images already fetched — see
+/// [NetworkQuality]. On a 3 Mbps mobile link the 1080 rung takes over half a
+/// second and the 640 rung takes under a fifth of one, and in a phone-width
+/// card the difference in the picture is hard to find.
+///
+/// One function so warming and rendering cannot disagree: both ask here, and a
+/// card warmed at one size must be requested at the same size or the warm-up
+/// is a wasted download. (The estimate is deliberately slow to change for the
+/// same reason — see `NetworkQuality._hysteresis`.)
+int feedMaxPhysicalWidth() {
+  final measured = NetworkQuality.instance.feedMaxPhysicalWidth;
+  return measured < kFeedMaxPhysicalWidth ? measured : kFeedMaxPhysicalWidth;
+}
+
 /// How many cards *below* the active one are warmed at all.
 ///
-/// Ten. It was one, then three, and both were right at the time: every photo
-/// was fetched at full resolution — a camera-sized file, often several
-/// megabytes — so each extra warm-up competed for bandwidth with the card
-/// actually on screen, and warming further ahead made scrolling *worse*.
+/// Fourteen. It was one, then three, then ten, and each was right for what a
+/// warm cost at the time: originally every photo was fetched at full
+/// resolution — a camera file, 2 MB on average and up to 8 — so each extra
+/// warm-up competed with the card on screen and warming deeper made scrolling
+/// *worse*.
 ///
-/// The ladder changed the arithmetic twice over. A feed rung is ~180 KB and a
-/// thumbnail rung ~14 KB (see `main/app/services/derivatives.py`), and the
-/// images now come off a CDN edge in ~30 ms rather than a second. Ten cards is
-/// roughly what a hard flick covers, which is the gesture three-ahead still
-/// could not keep up with — the reader outran the loader and watched a photo
-/// assemble itself.
+/// Three things have since changed what a warm costs, all measured rather than
+/// assumed. A capped feed rung is **204 KB** (see [kFeedMaxPhysicalWidth]). It
+/// arrives off a warm Cloudflare edge in **~0.15 s** — `cf-cache-status: HIT`,
+/// TTFB ~0.10 s. And no more than [kWarmConcurrency] are ever in flight, so a
+/// runway cannot outbid the visible card however deep it goes.
 ///
-/// Ten is only affordable because of the split below: warming is two different
-/// operations, and only the first two cards pay the expensive one.
-const int kFeedWarmAhead = 10;
+/// Fourteen × 204 KB is under 3 MB of speculative traffic, and at three at a
+/// time it fills in roughly `14 / 3 × 0.15 s` ≈ 0.7 s — comfortably inside the
+/// second and a half a hard flick takes. Past that is waste: it fetches cards
+/// a flick does not reach.
+///
+/// Affordable only because of the split below. Warming is two different
+/// operations and only the first [kFeedDecodeAhead] cards pay the expensive
+/// one — and only photographs that have a rung are warmed at all, since an
+/// un-laddered one is still a multi-megabyte original.
+const int kFeedWarmAhead = 14;
 
 /// How many of those cards are decoded into memory, ready to paint.
 ///
-/// Two. A decoded full-width frame is roughly `1179 × 1768 × 4` ≈ **8 MB** of
-/// RAM, so ten of them would be 80 MB against a 100 MB budget — and the
-/// `ImageCache` would evict the photo being looked at to hold photos nobody
-/// has reached. That is the jank this is supposed to remove, not cause.
+/// Three. This tier is bounded by **memory, not bandwidth**, which is why it
+/// did not move with [kFeedWarmAhead]: a decoded 1080-wide frame is roughly
+/// `1080 × 1620 × 4` ≈ **7 MB** of RAM, so fourteen would be 98 MB against a
+/// 100 MB budget and the `ImageCache` would evict the photo being looked at to
+/// hold photos nobody has reached. That is the jank this is meant to remove.
+///
+/// Three rather than two because the cap above shrank the frame — 7 MB where
+/// an uncapped 1179-wide frame was 8.3 MB — and because three is where a flick
+/// that lands early stops finding an undecoded card.
 ///
 /// Everything from here to [kFeedWarmAhead] is warmed to **disk** instead, by
 /// [warmToDisk]: the bytes are fetched and stored, nothing is decoded, and the
 /// cost is a few hundred kilobytes of file rather than megabytes of heap. When
 /// the reader arrives, the image loads from local disk — tens of milliseconds,
 /// no network — instead of starting a request at the moment it is needed.
-const int kFeedDecodeAhead = 2;
+const int kFeedDecodeAhead = 3;
 
 /// How far either side of the active slide a carousel decodes into memory.
 ///
@@ -254,8 +303,17 @@ void _pump() {
 }
 
 Future<void> _download(String url) async {
+  final started = DateTime.now();
   try {
-    await JpergImageCache.instance.downloadFile(url);
+    final info = await JpergImageCache.instance.downloadFile(url);
+    // What that cost, so the next card can be sized for this connection —
+    // see [NetworkQuality]. A cache hit is excluded by the size floor only by
+    // luck, so it is excluded explicitly: it measures the disk, not the link.
+    final bytes = await info.file.length();
+    NetworkQuality.instance.record(
+      bytes: bytes,
+      elapsed: DateTime.now().difference(started),
+    );
   } catch (_) {
     // See warmToDisk: a warm-up that fails must look like one that never ran.
   } finally {
@@ -282,6 +340,7 @@ String? deliveryUrlFor(
   EventPicture picture, {
   required double logicalWidth,
   required double devicePixelRatio,
+  int? maxPhysicalWidth,
 }) {
   final base = warmableUrl(
     picture,
@@ -289,6 +348,7 @@ String? deliveryUrlFor(
     devicePixelRatio: devicePixelRatio,
   );
   if (base == null || base.isEmpty) return null;
+  final cap = maxPhysicalWidth ?? feedMaxPhysicalWidth();
   // A video's poster URL came back already resolved to a rung; picking a rung
   // of a rung would produce an object that was never written.
   if (picture.isVideo) return base;
@@ -297,6 +357,7 @@ String? deliveryUrlFor(
     displayWidth: logicalWidth,
     devicePixelRatio: devicePixelRatio,
     ladder: picture.ladder,
+    maxPhysicalWidth: cap,
   );
 }
 
@@ -388,6 +449,7 @@ void warmEventFirstFrames(
       // requested one are different URLs and nothing was gained. A video's
       // poster URL is already a rung — see `urlsToWarm`.
       ladder: picture.isVideo ? ImageLadder.none : picture.ladder,
+      maxPhysicalWidth: feedMaxPhysicalWidth(),
     );
   }
 }
@@ -418,7 +480,9 @@ void warmCarouselNeighbours(
     radius: radius,
   )) {
     JpergImage.precache(context, target.url,
-        logicalWidth: width, ladder: target.ladder);
+        logicalWidth: width,
+        ladder: target.ladder,
+        maxPhysicalWidth: feedMaxPhysicalWidth());
   }
 
   // Past what the decoded tier reaches, to the end of the run.

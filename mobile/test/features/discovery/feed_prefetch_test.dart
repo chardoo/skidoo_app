@@ -305,19 +305,43 @@ void main() {
     // The reader who flicks hard is the case this exists for: three cards of
     // runway was less than one gesture covers, so they outran the loader and
     // watched a photo assemble itself.
-    test('ten cards are warmed, two of them decoded', () {
-      expect(kFeedWarmAhead, 10);
-      expect(kFeedDecodeAhead, 2);
+    test('fourteen cards are warmed, three of them decoded', () {
+      expect(kFeedWarmAhead, 14);
+      expect(kFeedDecodeAhead, 3);
     });
 
-    test('only a couple are decoded, because a decoded frame is megabytes', () {
-      // A full-width frame is roughly 1179x1768x4 ~ 8 MB of heap. The gap
-      // between these two is what is fetched to disk instead, and it has to
-      // stay a gap: closing it would put ~80 MB against a 100 MB budget and
-      // evict the photo being looked at.
+    test('the runway fills inside a flick', () {
+      // A capped rung is ~204 KB off a warm edge in ~0.15 s, at
+      // kWarmConcurrency at a time. Depth beyond what a flick reaches is
+      // fetching cards nobody arrives at.
+      final seconds = kFeedWarmAhead / kWarmConcurrency * 0.15;
+      expect(seconds, lessThan(1.5),
+          reason: 'a hard flick is about a second and a half');
+    });
+
+    test('only a few are decoded, because a decoded frame is megabytes', () {
+      // A capped 1080-wide frame is roughly 1080x1620x4 ~ 7 MB of heap. The
+      // gap between these two is what is fetched to disk instead, and it has
+      // to stay a gap: closing it would put ~98 MB against a 100 MB budget
+      // and evict the photo being looked at.
       expect(kFeedDecodeAhead, lessThan(kFeedWarmAhead));
-      expect(kFeedDecodeAhead * 8, lessThan(100),
+      expect(kFeedDecodeAhead * 7, lessThan(100),
           reason: 'decoded frames must fit the ImageCache byte budget');
+    });
+
+    test('warming is throttled, so a deep runway cannot starve the card', () {
+      // The depth above is only safe because of this: sixteen unthrottled
+      // fetches once beat the visible photo to the connection and the reader
+      // was held on a slide that never settled.
+      expect(kWarmConcurrency, lessThanOrEqualTo(4));
+      expect(kWarmConcurrency, greaterThan(0));
+    });
+
+    test('the feed caps itself at the 1080 rung', () {
+      // 204 KB against 549 KB for the 1600, measured. See
+      // kFeedMaxPhysicalWidth.
+      expect(kFeedMaxPhysicalWidth, 1080);
+      expect(MediaTransform.rungs, contains(kFeedMaxPhysicalWidth));
     });
 
     test('a carousel decodes its neighbours and disk-warms further ahead', () {

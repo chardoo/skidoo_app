@@ -241,10 +241,20 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                 children: [
                   MediaBackdrop(
                     url: pic.url,
+                    // The same two the child passes, and they have to be: the
+                    // backdrop holds its blur back until *this* photo has
+                    // arrived, and it finds "this photo" by building the same
+                    // request. A different ladder or cap is a different rung,
+                    // and a wait on a file the card never fetches.
+                    ladder: pic.ladder,
+                    maxPhysicalWidth: feedMaxPhysicalWidth(),
                     // ── Sharp full image, uncropped — actual size, no forced fill ──
                     child: JpergImage(
                       imageUrl: pic.url,
                       ladder: pic.ladder,
+                      // The same cap the warm-up used, or the card requests a
+                      // rung nothing fetched — see kFeedMaxPhysicalWidth.
+                      maxPhysicalWidth: feedMaxPhysicalWidth(),
                       fit: BoxFit.contain,
                       semanticLabel: 'Event photo',
                       // With a hash in hand the slot shows the photo's own

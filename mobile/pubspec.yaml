@@ -15,6 +15,28 @@ dependencies:
 
   cupertino_icons: ^1.0.2
   http: ^1.1.0
+
+  # The platform's own HTTP stacks, for image delivery — see
+  # core/cache/platform_http_client.dart.
+  #
+  # Dart's own `HttpClient` (dart:io, BoringSSL) speaks HTTP/1.1 only. These
+  # two give **HTTP/3 over QUIC**: NSURLSession on iOS, Cronet on Android. The
+  # win is not multiplexing — at three concurrent warms, keep-alive already
+  # amortises connection setup — it is loss recovery. HTTP/1.1 over TCP stalls
+  # the whole connection on a dropped packet; QUIC recovers per stream, which
+  # is the difference between a photo arriving and a photo arriving eventually
+  # on the mobile networks most of this app's readers are on.
+  #
+  # Scoped to the image cache on purpose. Both expose a `package:http` Client,
+  # which `HttpFileService` takes directly, so no bridge is needed there — and
+  # images are where throughput and loss actually matter. Dio keeps dart:io
+  # (see the note in core/cache/platform_http_client.dart).
+  #
+  # Android depends on Google Play Services for Cronet by default, falling back
+  # to dart:io where that is absent. `--dart-define=cronetHttpNoPlay=true`
+  # switches to the embedded Cronet instead, at a few MB of download.
+  cupertino_http: ^3.1.0
+  cronet_http: ^1.10.0
   dio: ^5.3.3
   cross_file: ^0.3.4
   http_parser: ^4.0.2

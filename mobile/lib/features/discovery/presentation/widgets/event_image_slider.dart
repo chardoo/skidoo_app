@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
+import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
 
 // ── Image slider ──────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ class _EventImageSliderState extends State<EventImageSlider> {
                 child: JpergImage(
                   imageUrl: widget.pics[i].url,
                   ladder: widget.pics[i].ladder,
+                  maxPhysicalWidth: feedMaxPhysicalWidth(),
                   blurhash: widget.pics[i].blurhash,
                   semanticLabel: 'Event photo',
                   fit: BoxFit.cover,

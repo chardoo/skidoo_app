@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:jperg_app/app.dart';
+import 'package:jperg_app/core/cache/platform_http_client.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
 // import 'package:jperg_app/core/security/screenshot_guard.dart';
@@ -78,6 +79,15 @@ void main() async {
   // which cost several rounds of diagnosing a device that was not running what
   // was being diagnosed.
   debugPrint('[Startup] build marker: deeplink-session-fixes-v1');
+
+  // Which HTTP stack photos are being fetched over — and the only way to find
+  // out, since QUIC negotiation cannot be exercised in a test.
+  //
+  // 'cupertino' or 'cronet' means HTTP/3 is available; 'dart:io' means the
+  // platform stack could not be built — expected on an Android device without
+  // Google Play Services — and every image is on HTTP/1.1, which stalls the
+  // whole connection on one dropped packet. See [PlatformHttpClient].
+  debugPrint('[Startup] image transport: ${PlatformHttpClient.kind}');
 
   final authService = sl<AuthService>();
 

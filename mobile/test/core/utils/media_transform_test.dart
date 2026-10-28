@@ -270,6 +270,89 @@ void main() {
     });
   });
 
+  group('capping how many pixels are asked for', () {
+    // Measured on the live CDN, same photograph: the 1080 rung is 204 KB and
+    // the 1600 rung is 549 KB. A 393 pt card on a 3x screen wants 1179 device
+    // pixels, so uncapped selection reaches past 1080 and takes 1600 — 2.7x
+    // the bytes to avoid a 1.09x upscale nobody can see.
+    const feedCap = 1080;
+
+    test('a feed card takes the 1080 rung, not 1600', () {
+      final url = MediaTransform.image(
+        r2Url,
+        displayWidth: 393,
+        devicePixelRatio: 3.0,
+        ladder: const ImageLadder(version: 1, sourceWidth: 5000),
+        maxPhysicalWidth: feedCap,
+      );
+      expect(url, endsWith('_1080.webp'));
+    });
+
+    test('uncapped, the same slot still reaches 1600', () {
+      final url = MediaTransform.image(
+        r2Url,
+        displayWidth: 393,
+        devicePixelRatio: 3.0,
+        ladder: const ImageLadder(version: 1, sourceWidth: 5000),
+      );
+      expect(url, endsWith('_1600.webp'));
+    });
+
+    test('the cap is a ceiling, never a floor', () {
+      // A thumbnail asks for less than the cap and must keep getting less —
+      // a cap that rounded small slots up would be the opposite of the point.
+      final url = MediaTransform.image(
+        r2Url,
+        displayWidth: 100,
+        devicePixelRatio: 3.0,
+        ladder: const ImageLadder(version: 1, sourceWidth: 5000),
+        maxPhysicalWidth: feedCap,
+      );
+      expect(url, endsWith('_320.webp'));
+    });
+
+    test('a capped request can no longer exhaust the ladder', () {
+      // Uncapped, a 4x zoom wants more than the top rung and falls back to the
+      // original. Capped, it is pinned to a rung instead.
+      final url = MediaTransform.image(
+        r2Url,
+        displayWidth: 393 * 4,
+        devicePixelRatio: 3.0,
+        ladder: const ImageLadder(version: 1, sourceWidth: 6000),
+        maxPhysicalWidth: feedCap,
+      );
+      expect(url, endsWith('_1080.webp'));
+    });
+
+    test('caps the Cloudinary branch too, so legacy cards match', () {
+      final url = MediaTransform.image(
+        imageUrl,
+        displayWidth: 393,
+        devicePixelRatio: 3.0,
+        maxPhysicalWidth: feedCap,
+      );
+      // 1080 stepped up to the next 160 boundary.
+      expect(url, contains('w_1120'));
+      expect(url, isNot(contains('w_1280')));
+    });
+
+    test('still never asks for a rung the source never had', () {
+      // The upscale guard outranks the cap. A 900 px photo has rungs at 320 and
+      // 640 and nothing above, so the capped target of 1080 is met by no rung —
+      // and the answer is the original, not the 640. The original *is* 900 px
+      // wide, so dropping to 640 would be choosing a worse image than the one
+      // already there.
+      final url = MediaTransform.image(
+        r2Url,
+        displayWidth: 393,
+        devicePixelRatio: 3.0,
+        ladder: const ImageLadder(version: 1, sourceWidth: 900),
+        maxPhysicalWidth: feedCap,
+      );
+      expect(url, r2Url);
+    });
+  });
+
   group('ImageLadder', () {
     test('reads the pair out of a picture payload', () {
       final ladder = ImageLadder.fromJson(

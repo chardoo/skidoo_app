@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
+import 'package:jperg_app/core/cache/platform_http_client.dart';
+
 /// The disk cache the feed's music is played from.
 ///
 /// Audiomack bills per API request, and the feed is the one place that would
@@ -38,14 +40,23 @@ class JpergMusicCache {
 
   static const _key = 'jpergMusicCache';
 
-  static final CacheManager instance = CacheManager(
-    Config(
-      _key,
-      stalePeriod: const Duration(days: 20),
-      maxNrOfCacheObjects: 200,
-      fileService: _MusicFileService(),
-    ),
+  /// Held rather than inlined, so the index choice can be asserted — see
+  /// [JpergImageCache.config].
+  static final Config config = Config(
+    _key,
+    stalePeriod: const Duration(days: 20),
+    maxNrOfCacheObjects: 200,
+    // In memory rather than in sqflite, for the same reason the image cache
+    // is — see `JpergImageCache`, which has the measurements. It matters
+    // here too and not only there: a lookup happens for every scored card
+    // that scrolls into view, so this shares the platform channel with the
+    // image cache at exactly the moment the channel is busiest. At 200
+    // objects the whole index is a ~60 KB file.
+    repo: JsonCacheInfoRepository(databaseName: _key),
+    fileService: _MusicFileService(),
   );
+
+  static final CacheManager instance = CacheManager(config);
 }
 
 /// Downloads audio and tells the cache to keep it, whatever the origin said.
@@ -63,7 +74,11 @@ class JpergMusicCache {
 /// today as in a fortnight. So the response headers are ignored and the
 /// lifetime from [JpergMusicCache]'s config is applied instead.
 class _MusicFileService extends HttpFileService {
-  _MusicFileService();
+  /// Over the platform's HTTP stack, like the images — see
+  /// [PlatformHttpClient]. Audio is the other thing this app streams while
+  /// somebody is scrolling, and a stalled TCP stream is a track that never
+  /// starts.
+  _MusicFileService() : super(httpClient: PlatformHttpClient.instance);
 
   @override
   Future<FileServiceResponse> get(

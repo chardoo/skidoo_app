@@ -55,6 +55,7 @@ class JpergImage extends StatelessWidget {
     this.semanticLabel,
     this.ladder = ImageLadder.none,
     this.blurhash,
+    this.maxPhysicalWidth,
   });
 
   final String imageUrl;
@@ -73,6 +74,12 @@ class JpergImage extends StatelessWidget {
   /// lands — see [JpergImagePlaceholder]. Ignored when a [placeholder] of the
   /// caller's own is supplied, since that is then what fills the slot.
   final String? blurhash;
+
+  /// A ceiling on the device pixels requested, whatever the slot works out to
+  /// — see [MediaTransform.image]. The feed caps itself so a full-bleed card
+  /// takes the 1080 rung rather than reaching past it to 1600 for a difference
+  /// nobody can see. Null is uncapped, which is right for a viewer.
+  final int? maxPhysicalWidth;
 
   /// Logical display width used to derive the physical-pixel cache width.
   /// When null the widget measures its own layout constraints.
@@ -151,6 +158,7 @@ class JpergImage extends StatelessWidget {
     required double dpr,
     required bool isBlurBackground,
     required ImageLadder ladder,
+    int? maxPhysicalWidth,
   }) {
     // Blur backdrops request a tiny version since the blur destroys all
     // detail anyway; everything else is sized to what the slot displays.
@@ -172,7 +180,8 @@ class JpergImage extends StatelessWidget {
         displayWidth: requestWidth,
         devicePixelRatio: requestDpr,
         ladder: ladder,
-        sharpen: !isBlurBackground);
+        sharpen: !isBlurBackground,
+        maxPhysicalWidth: maxPhysicalWidth);
   }
 
   /// Downloads and decodes [imageUrl] now, so the [JpergImage] that asks for it
@@ -207,15 +216,18 @@ class JpergImage extends StatelessWidget {
     required double logicalWidth,
     bool isBlurBackground = false,
     ImageLadder ladder = ImageLadder.none,
+    int? maxPhysicalWidth,
   }) async {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final url = _deliveryUrl(imageUrl,
         logical: logicalWidth,
         dpr: dpr,
         isBlurBackground: isBlurBackground,
-        // Must be the same ladder the widget will pass, or the warmed URL and
-        // the requested one are different objects and the warm-up is wasted.
-        ladder: ladder);
+        // Must be the same ladder *and* the same cap the widget will pass, or
+        // the warmed URL and the requested one are different objects and the
+        // warm-up is wasted.
+        ladder: ladder,
+        maxPhysicalWidth: maxPhysicalWidth);
     if (url == null) return;
 
     final provider = ResizeImage.resizeIfNeeded(
@@ -236,6 +248,46 @@ class JpergImage extends StatelessWidget {
     );
   }
 
+  /// The provider this widget would use for [imageUrl] in a slot
+  /// [logicalWidth] wide — the same object, under the same [ImageCache] key.
+  ///
+  /// For a caller that needs to know when the image is *there* rather than to
+  /// draw it: [MediaBackdrop] holds its blurred fill back until the photo it
+  /// sits behind has arrived, and it can only do that by watching the very
+  /// provider the photo will be drawn from. Resolving a URL of its own would
+  /// be a second object with its own load, arriving at its own time — which
+  /// is the whole failure it exists to prevent.
+  ///
+  /// Null when there is nothing loadable: a video with no derivable poster.
+  ///
+  /// Shares [_deliveryUrl] and [_cacheWidthFor] with the widget and with
+  /// [precache] for the reason given on those — three call sites computing the
+  /// same key separately is how they come to disagree by one character.
+  static ImageProvider? providerFor(
+    BuildContext context,
+    String imageUrl, {
+    required double logicalWidth,
+    bool isBlurBackground = false,
+    ImageLadder ladder = ImageLadder.none,
+    int? maxPhysicalWidth,
+  }) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final url = _deliveryUrl(imageUrl,
+        logical: logicalWidth,
+        dpr: dpr,
+        isBlurBackground: isBlurBackground,
+        ladder: ladder,
+        maxPhysicalWidth: maxPhysicalWidth);
+    if (url == null) return null;
+
+    return ResizeImage.resizeIfNeeded(
+      _cacheWidthFor(
+          logical: logicalWidth, dpr: dpr, isBlurBackground: isBlurBackground),
+      null,
+      CachedNetworkImageProvider(url, cacheManager: JpergImageCache.instance),
+    );
+  }
+
   Widget _image(BuildContext context, double availableWidth) {
     final optimisedUrl = _deliveryUrl(
       imageUrl,
@@ -243,6 +295,7 @@ class JpergImage extends StatelessWidget {
       dpr: MediaQuery.devicePixelRatioOf(context),
       isBlurBackground: isBlurBackground,
       ladder: ladder,
+      maxPhysicalWidth: maxPhysicalWidth,
     );
     // A video with no derivable poster has nothing to load — show the empty
     // slot rather than fetch an mp4 into an image decoder.
