@@ -13,6 +13,7 @@ import 'package:jperg_app/features/auth/presentation/widgets/login_bottom_sheet.
 import 'package:jperg_app/features/discovery/presentation/bloc/discovery_bloc.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/full_bleed_event_card.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/feed_prefetch.dart';
+import 'package:jperg_app/features/music/presentation/feed_music_controller.dart';
 import 'package:jperg_app/features/home/presentation/pages/home_page.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -127,6 +128,13 @@ class _DiscoveryViewState extends State<_DiscoveryView> {
     _maybeLoadMore(events.length, index.toDouble());
     // The next card's opening frame, decoded while this one is being read.
     warmNextCards(context, events, index);
+    // And its soundtrack, onto the disk. Told here, where the next card is
+    // known; fetched only once *this* card is actually playing, so a flick
+    // still costs one download rather than one per card — see
+    // [FeedMusicController.prefetchNext].
+    if (sl.isRegistered<FeedMusicController>() && index + 1 < events.length) {
+      sl<FeedMusicController>().prefetchNext(events[index + 1].music);
+    }
   }
 
   /// Ask for another page while the drag is still moving.

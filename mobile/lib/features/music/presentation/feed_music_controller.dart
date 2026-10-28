@@ -511,6 +511,11 @@ class FeedMusicController with WidgetsBindingObserver {
       _sounding = true;
       _publish();
       _fadeTo(muted.value ? 0 : playbackVolume, generation);
+
+      // Only now: the card below's soundtrack, onto the disk, so arriving
+      // there is a cache hit rather than a redirect and a buffer. See
+      // [prefetchNext] for why it waits until this point.
+      _warmNextSoundtrack(generation);
     } catch (e) {
       // Music is decoration on a feed. A dead URL, an unplayable format or a
       // provider outage means no pill and no sound — never a message, because
@@ -518,6 +523,65 @@ class FeedMusicController with WidgetsBindingObserver {
       debugPrint('[Music] could not play soundtrack: $e');
       if (generation == _generation) _publishNowPlaying(null);
     }
+  }
+
+  /// The soundtrack of the card below, so it is on disk before it is reached.
+  ///
+  /// **Why music was late.** A cache hit plays from a local file and starts
+  /// at once; a miss returns the track's own URL, and that URL is
+  /// `/api/music/{id}/stream`, which redirects to a signed provider link. So
+  /// the first encounter with a track costs a settle, a load, a redirect and a
+  /// buffer before a single note — a second or more, every time, on a card the
+  /// reader is already looking at. Images are warmed fourteen cards ahead;
+  /// audio was fetched only once its card had arrived, and that asymmetry is
+  /// what "the music plays late" was.
+  ///
+  /// **Why it is one card and not fourteen.** Audiomack bills per request, and
+  /// the feed is the one path that could generate them without limit — the
+  /// settle delay in [claim] exists precisely so a flick through fifteen cards
+  /// costs one load rather than fifteen. Warming deep would undo that. One
+  /// card ahead is what a swipe can reach.
+  ///
+  /// **Why it waits for playback.** Called when the next card is *known*, but
+  /// deferred until this card is actually sounding — a flick never settles, so
+  /// it never warms, and the billing guarantee above holds exactly. Over a
+  /// session this costs no extra requests at all for anyone who keeps
+  /// scrolling: each track is still fetched once, just earlier than the moment
+  /// it is needed.
+  void prefetchNext(List<MusicTrack> tracks) {
+    if (_disposed) return;
+    _nextTracks = tracks.where((t) => t.isPlayable).toList(growable: false);
+  }
+
+  List<MusicTrack> _nextTracks = const [];
+
+  void _warmNextSoundtrack(int generation) {
+    if (_disposed || generation != _generation) return;
+    final next = _nextTracks;
+    if (next.isEmpty) return;
+
+    // The first track only. It is the one the card opens on, and a
+    // multi-track soundtrack's later entries are minutes away — far longer
+    // than it takes to fetch one once that card is the one playing.
+    final url = next.first.streamUrl;
+    if (url.isEmpty) return;
+
+    // [_resolveSource] *is* the warm-up, which is why there is no second code
+    // path here. It returns the local file when this device already holds the
+    // track — no request, nothing billed — and on a miss returns null having
+    // started the download in the background. That is exactly "fetch it only
+    // if absent", already written down and already injectable for tests. The
+    // answer is discarded: nothing is going to play this yet.
+    //
+    // Calling `downloadFile` directly would have been the obvious thing and
+    // the wrong one: it fetches unconditionally, so it would re-pay a billed
+    // request for audio already on disk, on every card advance, for exactly
+    // the popular tracks that recur across events — the cost
+    // [JpergMusicCache] exists to avoid.
+    unawaited(_resolveSource(url).then((_) {}, onError: (_) {
+      // A warm-up that fails has simply not helped. The card below streams it
+      // on arrival, exactly as it did before this existed.
+    }));
   }
 
   /// Stop what is audible now, without disturbing ownership.

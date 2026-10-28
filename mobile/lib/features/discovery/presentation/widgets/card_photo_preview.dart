@@ -257,6 +257,25 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                       maxPhysicalWidth: feedMaxPhysicalWidth(),
                       fit: BoxFit.contain,
                       semanticLabel: 'Event photo',
+                      // No ease-in on the photo itself, and this is the other
+                      // half of the backdrop's wait.
+                      //
+                      // The image is only painted once it is decoded, so the
+                      // fade had nothing to ease *from* except what sits
+                      // behind it — which is a blurred copy of the same photo.
+                      // Half a second of a picture dissolving up through its
+                      // own blur is the "shadow of the image" that opening an
+                      // album from a notification showed, and it survived the
+                      // backdrop being held back: both arrived together and
+                      // the ghost simply moved to the front.
+                      //
+                      // Swiping is unaffected. A swap keeps the outgoing photo
+                      // as the placeholder (`useOldImageOnUrlChange`) and
+                      // dissolves *it* out over `swapDuration`, so the slides
+                      // still cross-fade — the new one is simply solid
+                      // underneath while that happens, rather than two ghosts
+                      // overlapping.
+                      fadeInDuration: Duration.zero,
                       // With a hash in hand the slot shows the photo's own
                       // colours straight away, which beats a ring over a blur
                       // of an image that is itself still arriving.

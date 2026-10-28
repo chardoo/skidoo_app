@@ -158,6 +158,7 @@ Future<void> settle(WidgetTester t) async {
 
 void main() {
   _buildPhaseTests();
+  _prefetchTests();
   group('claiming', () {
     testWidgets('a claimed card plays its soundtrack', (t) async {
       final player = FakePlayer();
@@ -1052,4 +1053,101 @@ class _ClaimOnDependenciesState extends State<_ClaimOnDependencies> {
 
   @override
   Widget build(BuildContext context) => Text(widget.label);
+}
+
+/// Getting the card below's soundtrack onto the disk before it is reached.
+///
+/// **The bug.** A cache hit plays from a local file and starts at once; a miss
+/// returns the track's own URL, which redirects to a signed provider link — so
+/// the first encounter with a track costs a settle, a load, a redirect and a
+/// buffer before a single note. Images were warmed fourteen cards ahead and
+/// audio was not warmed at all, and that asymmetry is what "the music plays
+/// late" was.
+///
+/// **The constraint.** Audiomack bills per request, and the settle delay exists
+/// so a flick through fifteen cards costs one load rather than fifteen. A
+/// prefetch that fires on every card change would undo exactly that, so these
+/// pin *when* it fires as carefully as whether it does.
+void _prefetchTests() {
+  group('warming the next card\'s soundtrack', () {
+    testWidgets('fetches it once this card is playing', (t) async {
+      final player = FakePlayer();
+      final asked = <String>[];
+      final music = build(player, resolveSource: (url) async {
+        asked.add(url);
+        return url;
+      });
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      music.prefetchNext([track('b')]);
+      await settle(t);
+
+      expect(asked, contains('https://cdn.test/b.mp3'),
+          reason: 'the next card\'s track should be on disk before arrival');
+    });
+
+    testWidgets('a flick warms nothing, because nothing ever settles',
+        (t) async {
+      // The billing guarantee. Fifteen cards passed through without stopping
+      // must cost what one card costs — the prefetch rides the same settle
+      // timer the load does, so a card that never plays never warms.
+      final player = FakePlayer();
+      final asked = <String>[];
+      final music = build(player, resolveSource: (url) async {
+        asked.add(url);
+        return url;
+      });
+      addTearDown(music.dispose);
+
+      for (var i = 0; i < 15; i++) {
+        music.claim(Object(), 'event-$i', [track('t$i')]);
+        music.prefetchNext([track('n$i')]);
+      }
+
+      expect(asked, isEmpty, reason: 'no card settled, so nothing was fetched');
+
+      // The fifteenth claim left a settle timer pending — which is the point,
+      // it is the load that never happened. Cancelled so the test ends clean.
+      music.endSession();
+      await t.pumpAndSettle();
+    });
+
+    testWidgets('an event with no soundtrack warms nothing', (t) async {
+      final player = FakePlayer();
+      final asked = <String>[];
+      final music = build(player, resolveSource: (url) async {
+        asked.add(url);
+        return url;
+      });
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      music.prefetchNext(const []);
+      await settle(t);
+
+      expect(asked, ['https://cdn.test/a.mp3'],
+          reason: 'only the playing card, with nothing warmed after it');
+    });
+
+    testWidgets('only the first track of a multi-track next card', (t) async {
+      // The later entries are minutes of listening away — far longer than it
+      // takes to fetch one once that card is the one playing.
+      final player = FakePlayer();
+      final asked = <String>[];
+      final music = build(player, resolveSource: (url) async {
+        asked.add(url);
+        return url;
+      });
+      addTearDown(music.dispose);
+
+      music.claim(#cardA, 'event-1', [track('a')]);
+      music.prefetchNext([track('b'), track('c'), track('d')]);
+      await settle(t);
+
+      expect(asked, contains('https://cdn.test/b.mp3'));
+      expect(asked, isNot(contains('https://cdn.test/c.mp3')));
+      expect(asked, isNot(contains('https://cdn.test/d.mp3')));
+    });
+  });
 }
