@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/ios_store.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/photographers/data/premium_service.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
@@ -181,6 +182,66 @@ class _MyRequestsPageState extends State<MyRequestsPage>
   /// landed. Paystack redirecting back is not the same as the payment having
   /// been confirmed, and a receipt for a boost that did not happen is worse
   /// than no receipt at all.
+  /// Buy a boost through the App Store, and apply it when Apple confirms.
+  ///
+  /// The order is agreed first and recognised afterwards by a token that
+  /// travels with the purchase — a consumable product carries no idea of which
+  /// request it was for. `finish` runs only after the server has applied the
+  /// boost: StoreKit stops replaying a finished transaction, so finishing
+  /// first would leave somebody charged for a boost they never got.
+  Future<void> _boostWithAppStore(dynamic req, BoostTier tier) async {
+    try {
+      final started = await _repo.startIosBoost(req.id, days: tier.days);
+      if (!mounted) return;
+      if (started.productId.isEmpty || started.orderToken.isEmpty) {
+        AppSnackBar.error(context, 'Could not start the purchase. Try again.');
+        return;
+      }
+
+      final purchase = await IosStore.instance.buy(
+        productId: started.productId,
+        orderToken: started.orderToken,
+      );
+
+      final applied = await _repo.settleIosBoost(
+        orderToken: started.orderToken,
+        signedTransaction: purchase.verificationData.serverVerificationData,
+      );
+      // After the boost is applied, never before.
+      await IosStore.instance.finish(purchase);
+      if (!mounted) return;
+
+      if (!applied) {
+        AppSnackBar.error(
+          context,
+          'Payment went through but the boost did not start. It will be '
+          'applied shortly.',
+        );
+        return;
+      }
+      // Same ending as the card path: the receipt, then a reload so the card
+      // stops offering a boost that has been paid for.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => BoostSuccessPage(
+            requestTitle: req.title,
+            days: started.days,
+          ),
+        ),
+      );
+      if (mounted) await _load();
+    } on PurchaseCancelled {
+      // Backing out of the App Store sheet is an ordinary thing to do, not a
+      // failure worth an error message.
+    } on StoreUnavailable catch (e) {
+      if (mounted) AppSnackBar.error(context, e.message);
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Could not complete the purchase.');
+      }
+    }
+  }
+
   Future<void> _boost(FeedRequestModel req) async {
     debugPrint('[MyRequestsPage] _boost id=${req.id}');
 
@@ -206,6 +267,15 @@ class _MyRequestsPageState extends State<MyRequestsPage>
       builder: (_) => BoostRequestSheet(catalogue: catalogue),
     );
     if (tier == null || !mounted) return;
+
+    // On an iPhone a boost is sold through the App Store. Apple requires
+    // anything consumed inside the app to go through IAP, and a boost is
+    // consumed entirely inside it — what it buys is placement on the request
+    // board. Everywhere else keeps Paystack, which is the flow below.
+    if (IosStore.instance.isSupported) {
+      await _boostWithAppStore(req, tier);
+      return;
+    }
 
     try {
       final started = await _repo.startBoost(req.id, days: tier.days);

@@ -29,15 +29,6 @@ class CartState extends Equatable {
   final String? errorMessage;
   final String? successMessage;
 
-  /// What the App Store will actually charge for this basket, on iOS.
-  ///
-  /// Null everywhere else, and null until the preview lands. [totalAmount] is
-  /// the sum of the photographers' prices; on iOS the buyer pays a markup
-  /// covering Apple's commission, rounded up to a purchasable price point — so
-  /// a Pay button labelled from [totalAmount] alone would name a figure
-  /// nobody is charged. See `core/purchase/ios_photo_purchase.dart`.
-  final IosQuote? iosQuote;
-
   const CartState({
     this.items = const [],
     this.totalAmount = 0.0,
@@ -46,7 +37,6 @@ class CartState extends Equatable {
     this.paymentUrl,
     this.errorMessage,
     this.successMessage,
-    this.iosQuote,
   });
 
   CartState copyWith({
@@ -57,8 +47,6 @@ class CartState extends Equatable {
     String? paymentUrl,
     String? errorMessage,
     String? successMessage,
-    IosQuote? iosQuote,
-    bool clearIosQuote = false,
     bool clearMessages = false,
   }) {
     return CartState(
@@ -70,7 +58,6 @@ class CartState extends Equatable {
       errorMessage: clearMessages ? null : (errorMessage ?? this.errorMessage),
       successMessage:
           clearMessages ? null : (successMessage ?? this.successMessage),
-      iosQuote: clearIosQuote ? null : (iosQuote ?? this.iosQuote),
     );
   }
 
@@ -83,6 +70,5 @@ class CartState extends Equatable {
         paymentUrl,
         errorMessage,
         successMessage,
-        iosQuote,
       ];
 }

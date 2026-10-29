@@ -11,10 +11,21 @@ class BoostTier {
     required this.label,
     required this.blurb,
     this.bestValue = false,
+    this.ios,
   });
 
   final int days;
+
+  /// What the boost is configured at, in the admin console's currency.
   final double priceGhs;
+
+  /// Which App Store product pays for this tier, when the sheet asked for iOS.
+  ///
+  /// Null everywhere else. Carries no price: what a boost costs on an iPhone
+  /// is set in App Store Connect, and Apple localises it per storefront — so
+  /// the figure comes from StoreKit at display time rather than from a server
+  /// that would have to be kept in step with Apple's own catalogue.
+  final IosBoostPrice? ios;
 
   /// "7 Days" — the heading on the row.
   final String label;
@@ -31,8 +42,22 @@ class BoostTier {
         label: json['label'] as String? ?? '',
         blurb: json['blurb'] as String? ?? '',
         bestValue: json['best_value'] == true,
+        ios: json['ios'] is Map<String, dynamic>
+            ? IosBoostPrice.fromJson(json['ios'] as Map<String, dynamic>)
+            : null,
       );
 }
+
+/// Which App Store product pays for one tier.
+class IosBoostPrice {
+  const IosBoostPrice({required this.productId});
+
+  final String productId;
+
+  factory IosBoostPrice.fromJson(Map<String, dynamic> json) =>
+      IosBoostPrice(productId: json['productId'] as String? ?? '');
+}
+
 
 class BoostCatalogue {
   const BoostCatalogue({

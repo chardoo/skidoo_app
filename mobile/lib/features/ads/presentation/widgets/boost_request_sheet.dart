@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jperg_app/core/purchase/ios_store.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
@@ -30,16 +31,45 @@ class _BoostRequestSheetState extends State<BoostRequestSheet> {
     // Opens on the best-value tier, so the Pay button always carries a price
     // and the recommended option is the one you get by not choosing.
     _selected = widget.catalogue.defaultTier;
+    _loadStorePrices();
   }
 
   String _price(BoostTier tier) {
+    // On an iPhone, Apple's own figure — fetched from StoreKit and already
+    // localised to whatever storefront the buyer is in. The price is set in
+    // App Store Connect, so the server does not know it and anything this
+    // screen invented would be a second number to keep in step with Apple's.
+    //
+    // Falls back to the configured price while StoreKit is still answering,
+    // and on Android where it is the real price.
+    final storePrice = _storePrices[tier.ios?.productId];
+    if (storePrice != null) return storePrice;
+
     final amount = tier.priceGhs;
-    // Whole cedis in the designs. A tier priced in pesewas keeps its decimals
+    // Whole units in the designs. A price with real decimals keeps them
     // rather than being rounded into a different number.
     final text = amount == amount.roundToDouble()
         ? amount.toStringAsFixed(0)
         : amount.toStringAsFixed(2);
     return '${widget.catalogue.currency} $text';
+  }
+
+  /// What the App Store says each tier costs, by product id.
+  ///
+  /// Empty until StoreKit answers, and empty for good on Android. Asked once
+  /// when the sheet opens: the prices do not change while somebody reads them.
+  Map<String, String> _storePrices = const {};
+
+  Future<void> _loadStorePrices() async {
+    final ids = {
+      for (final t in widget.catalogue.tiers)
+        if (t.ios?.productId.isNotEmpty ?? false) t.ios!.productId,
+    };
+    if (ids.isEmpty) return;
+    final prices = await IosStore.instance.pricesFor(ids);
+    if (mounted && prices.isNotEmpty) {
+      setState(() => _storePrices = prices);
+    }
   }
 
   @override

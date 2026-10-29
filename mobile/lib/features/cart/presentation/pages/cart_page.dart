@@ -106,12 +106,7 @@ class _CartView extends StatelessWidget {
               ? AppButton(
                   width: 343.w,
                   isLoading: state.status == CartStatus.paymentLoading,
-                  // On iOS the buyer pays a markup covering Apple's
-                  // commission, rounded up to a purchasable price point — so
-                  // the figure on the button is the quote when one has
-                  // arrived, and the subtotal until then. Labelling it from
-                  // the subtotal alone would name an amount nobody is charged.
-                  label: 'Pay ${state.iosQuote?.charged ?? state.totalAmount}',
+                  label: 'Pay ${state.totalAmount}',
                   onPressed: state.totalAmount > 0
                       ? () => context
                           .read<CartBloc>()

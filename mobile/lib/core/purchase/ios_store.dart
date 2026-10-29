@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 
 /// Buying photos through the App Store.
 ///
@@ -89,6 +90,29 @@ class IosStore {
     } catch (e) {
       debugPrint('[IAP] isAvailable failed: $e');
       return false;
+    }
+  }
+
+  /// What the App Store charges for each of [productIds], already localised.
+  ///
+  /// Apple's own strings — "GH₵ 55.00", "₦ 4,500", "€ 3,49" — in whatever
+  /// storefront the buyer is in, with the symbol and grouping their region
+  /// uses. That is the whole reason prices are not quoted by the server: this
+  /// is correct everywhere without a rate anybody has to maintain.
+  ///
+  /// An empty map off iOS, and on any failure. A sheet that cannot reach
+  /// StoreKit shows the configured price rather than nothing.
+  Future<Map<String, String>> pricesFor(Set<String> productIds) async {
+    if (!isSupported || productIds.isEmpty) return const {};
+    try {
+      if (!await available()) return const {};
+      final response = await _iap.queryProductDetails(productIds);
+      return {
+        for (final p in response.productDetails) p.id: p.price,
+      };
+    } catch (e) {
+      debugPrint('[IAP] could not read prices: $e');
+      return const {};
     }
   }
 
@@ -214,6 +238,31 @@ class IosStore {
     // anyway, so a wrong guess here fails safely rather than granting.
     if (_pending.length == 1) {
       return _pending.remove(_pending.keys.first);
+    }
+    return null;
+  }
+}
+
+/// The order token a transaction was bought with.
+///
+/// Set as `applicationUserName` when the purchase started, and read back under
+/// two different names depending on which StoreKit the plugin used:
+/// `appAccountToken` on StoreKit 2, and the payment's `applicationUsername`
+/// on the StoreKit 1 path. Both are checked because which one a device takes
+/// is the plugin's decision, not this app's.
+///
+/// Null for a transaction carrying neither — a purchase made by a build that
+/// predates this flow. The caller finishes those rather than retrying them
+/// forever; there is nothing to match them to.
+extension OrderToken on IosStore {
+  static String? of(PurchaseDetails purchase) {
+    if (purchase is SK2PurchaseDetails) {
+      final token = purchase.appAccountToken;
+      if (token != null && token.isNotEmpty) return token;
+    }
+    if (purchase is AppStorePurchaseDetails) {
+      final name = purchase.skPaymentTransaction.payment.applicationUsername;
+      if (name != null && name.isNotEmpty) return name;
     }
     return null;
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:jperg_app/core/purchase/ios_store.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
@@ -529,7 +530,15 @@ class AdsRepository {
   /// amount.
   Future<BoostCatalogue> boostTiers() async {
     debugPrint('$_tag boostTiers →');
-    final resp = await _dio.get('/ads/requests/boost/tiers');
+    final resp = await _dio.get(
+      '/ads/requests/boost/tiers',
+      // On an iPhone the sheet has to show what Apple will charge, which is
+      // more than the configured price — a commission is grossed up and the
+      // total is rounded to a purchasable price point. Asking for it here
+      // rather than converting in the app keeps one answer on the server.
+      queryParameters:
+          IosStore.instance.isSupported ? {'platform': 'ios'} : null,
+    );
     final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
     debugPrint('$_tag boostTiers ← ${resp.statusCode}');
     return BoostCatalogue.fromJson(data);
@@ -1425,6 +1434,49 @@ class AdsRepository {
     debugPrint('$_tag deleteCampaign → id=$campaignId');
     final resp = await _dio.delete('/ads/campaigns/$campaignId');
     debugPrint('$_tag deleteCampaign ← status=${resp.statusCode}');
+  }
+
+  /// Agree what a boost costs through the App Store.
+  ///
+  /// Nothing is boosted here — it records the order so the transaction that
+  /// comes back can be matched to this request. See `core/purchase/`.
+  Future<({String productId, String orderToken, double charged, int days})>
+      startIosBoost(String requestId, {required int days}) async {
+    debugPrint('$_tag startIosBoost → id=$requestId days=$days');
+    final resp = await _dio.post(
+      '/ads/requests/$requestId/ios/boost-intent',
+      data: {'days': days},
+    );
+    final data = _unwrap<Map<String, dynamic>>(resp) ?? {};
+    return (
+      productId: data['productId'] as String? ?? '',
+      orderToken: data['orderToken'] as String? ?? '',
+      charged: (data['charged'] as num?)?.toDouble() ?? 0,
+      days: (data['days'] as num?)?.toInt() ?? days,
+    );
+  }
+
+  /// Apply the boost an App Store purchase paid for.
+  ///
+  /// Keyed on the order token alone — a transaction replayed on a later launch
+  /// carries the token and nothing else, and the server's pending payment row
+  /// knows which request it was for.
+  ///
+  /// Idempotent: StoreKit replays a transaction until it is finished, so a
+  /// second call for the same order is the ordinary case rather than an error.
+  Future<bool> settleIosBoost({
+    required String orderToken,
+    required String signedTransaction,
+  }) async {
+    debugPrint('$_tag settleIosBoost → token=$orderToken');
+    final resp = await _dio.post(
+      '/ads/requests/ios/boost-settle',
+      data: {
+        'orderToken': orderToken,
+        'signedTransaction': signedTransaction,
+      },
+    );
+    return resp.statusCode != null && resp.statusCode! < 300;
   }
 }
 

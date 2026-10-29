@@ -13,9 +13,8 @@ import 'package:jperg_app/features/photographers/presentation/widgets/premium_in
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_watcher.dart';
 import 'package:jperg_app/services/auth_service.dart';
-import 'package:jperg_app/core/purchase/ios_photo_purchase.dart';
 import 'package:jperg_app/core/purchase/ios_store.dart';
-import 'package:jperg_app/features/cart/data/datasources/cart_remote_data_source.dart';
+import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/feedback/feedback_prompt.dart';
 import 'package:jperg_app/services/push_notification_service.dart';
 import 'package:jperg_app/features/settings/presentation/personalisation_prompt.dart';
@@ -57,20 +56,37 @@ void main() async {
   // dashboard reaches an app that is already running. See AppConfigWatcher.
   AppConfigWatcher(sl<AppConfigRepository>().fetch).start();
 
-  // Listen for App Store transactions from launch, not from the checkout
-  // screen. StoreKit replays a purchase that was never finished — somebody
-  // paid, the app was killed before the server granted the photos, and the
-  // transaction comes back on the *next* launch. With nothing listening then,
-  // that buyer has paid for photos they will never receive.
+  // Listen for App Store transactions from launch, not from the screen that
+  // started one. StoreKit replays a purchase that was never finished —
+  // somebody paid for a boost, the app was killed before the server applied
+  // it, and the transaction comes back on the *next* launch. With nothing
+  // listening then, that buyer has paid for a boost they never got.
   //
-  // iOS only, and a no-op elsewhere: Android photo purchases go through
-  // Paystack.
+  // The order token Apple carries on the transaction is all the server needs:
+  // its pending payment row knows which request the boost was for.
+  //
+  // iOS only, and a no-op elsewhere — a boost is the one thing sold through
+  // In-App Purchase. Photographs and bookings go through Paystack.
   if (IosStore.instance.isSupported) {
-    final purchase = IosPhotoPurchase(sl<CartRemoteDataSource>());
     IosStore.instance.start(resolver: (details) async {
-      final clientId = await sl<AuthService>().getUserId();
-      if (clientId.isEmpty) return;
-      await purchase.resumeUnfinished(details, clientId: clientId);
+      final token = OrderToken.of(details);
+      if (token == null) {
+        // Nothing ties this to an order. Finishing it is the only option that
+        // does not replay forever.
+        await IosStore.instance.finish(details);
+        return;
+      }
+      try {
+        final applied = await sl<AdsRepository>().settleIosBoost(
+          orderToken: token,
+          signedTransaction: details.verificationData.serverVerificationData,
+        );
+        if (applied) await IosStore.instance.finish(details);
+      } catch (e) {
+        // Left unfinished on purpose: StoreKit offers it again next launch,
+        // which is the behaviour that eventually delivers the boost.
+        debugPrint('[IAP] could not settle a replayed boost: $e');
+      }
     }).ignore();
   }
 
