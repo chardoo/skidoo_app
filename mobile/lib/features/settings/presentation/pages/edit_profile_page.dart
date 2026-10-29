@@ -51,8 +51,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
   /// `Place` the search returned is what gets saved, and [_region] is only
   /// what the field prints. See `features/location/data/models/place.dart`.
   ///
-  /// Read from `GET /api/location` rather than from the profile state, which
-  /// has never carried a location.
+  /// Seeded from the profile state, which now carries `location` — the
+  /// profile payload used to return only `ip_region`, a column that has never
+  /// been written, so the region read back empty however often it was set.
+  /// `GET /api/location/context` then supplies the coordinates, which the
+  /// profile payload still does not carry.
   String _region = '';
   Place? _regionPlace;
 
@@ -87,6 +90,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _language = state.preferredLanguage;
     _locale = state.locale;
     _timezone = state.timezone;
+    // Seeded from the profile the settings page already loaded, so the field
+    // is filled on the first frame. [_readStoredRegion] then refines it with
+    // the stored `Place` — the coordinates, which the profile payload does not
+    // carry. Seeding here matters because that call is deliberately silent on
+    // failure: without this, one failed request left the field looking as
+    // though no region had ever been set.
+    _region = state.location;
     _interests = state.interestTags.toSet();
     _readStoredPhoto();
     _readStoredRegion();
@@ -104,7 +114,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() {
       _savedRegionPlace = place;
       _regionPlace = place;
-      _region = context.location ?? '';
+      _region = context.location ?? _region;
       // The account's own country wins over the profile row's when the two
       // disagree: `PUT /api/location` writes both together, so the location's
       // is the more recently stated of the two. Never over a choice the person

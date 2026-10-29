@@ -94,6 +94,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         locale: profile['locale'] as String? ?? '',
         preferredLanguage: profile['preferredLanguage'] as String? ?? '',
         timezone: profile['timezone'] as String? ?? '',
+        location: profile['location'] as String? ?? '',
         interestTags:
             List<String>.from((profile['interestTags'] as List?) ?? []),
         isMuted: _notifPrefs.isMuted,

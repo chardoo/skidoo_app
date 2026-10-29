@@ -77,6 +77,9 @@ class UserProfileRemoteDataSourceImpl implements UserProfileRemoteDataSource {
       'preferredLanguage':
           pick(['preferredLanguage', 'preferred_language', 'language']),
       'timezone': pick(['timezone', 'time_zone']),
+      // `location`, never `ip_region`. The payload carries both and only this
+      // one is ever written — see UserProfileState.location.
+      'location': pick(['location']),
       'interestTags':
           pickList(['interestTags', 'interest_tags', 'interests', 'tags']),
     };

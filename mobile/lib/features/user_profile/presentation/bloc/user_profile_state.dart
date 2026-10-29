@@ -15,6 +15,15 @@ class UserProfileState extends Equatable {
   final String locale;
   final String preferredLanguage;
   final String timezone;
+
+  /// Where they are, as they picked it — "Accra".
+  ///
+  /// Written by `PUT /api/location` (which also stores the coordinates the ad
+  /// and request boards measure distance from) and read back from the profile
+  /// payload's `location`. Not `ip_region`, which is a different column that
+  /// has never been written and so is always empty — reading that one is why
+  /// the region appeared blank everywhere no matter how often it was set.
+  final String location;
   final List<String> interestTags;
   final bool isLoggedOut;
   final bool isMuted;
@@ -39,6 +48,7 @@ class UserProfileState extends Equatable {
     this.locale = '',
     this.preferredLanguage = '',
     this.timezone = '',
+    this.location = '',
     this.interestTags = const [],
     this.isLoggedOut = false,
     this.isMuted = false,
@@ -64,6 +74,7 @@ class UserProfileState extends Equatable {
     String? locale,
     String? preferredLanguage,
     String? timezone,
+    String? location,
     List<String>? interestTags,
     bool? isLoggedOut,
     bool? isMuted,
@@ -93,6 +104,7 @@ class UserProfileState extends Equatable {
       locale: locale ?? this.locale,
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       timezone: timezone ?? this.timezone,
+      location: location ?? this.location,
       interestTags: interestTags ?? this.interestTags,
       isLoggedOut: isLoggedOut ?? this.isLoggedOut,
       isMuted: isMuted ?? this.isMuted,
@@ -124,6 +136,7 @@ class UserProfileState extends Equatable {
         locale,
         preferredLanguage,
         timezone,
+        location,
         interestTags,
         isLoggedOut,
         isMuted,
