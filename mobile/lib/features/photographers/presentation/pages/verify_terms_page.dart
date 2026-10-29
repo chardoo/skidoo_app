@@ -108,6 +108,12 @@ class _VerifyTermsPageState extends State<VerifyTermsPage> {
   Widget _body(AppThemeExtension ext) => VerificationForm(
         submitLabel: widget.entry.isSetup ? 'Continue' : 'Submit',
         canSubmit: _canContinue,
+        // The three boxes below are what this step cannot do without; the ID
+        // above them is a claim that waits for an admin either way. Somebody
+        // who leaves it empty carries on and becomes a creator — see
+        // [VerificationForm.allowSkip]. Not on the editing entry, where this
+        // screen was opened for the sake of the form itself.
+        allowSkip: widget.entry.isSetup,
         agreements: (
           terms: _acceptedTerms,
           uploadRights: _confirmedUploadRights,

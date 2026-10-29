@@ -125,21 +125,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
   }
 
-  /// Store the town, if it changed.
+  /// Store the town, if it changed. True when the region is as the form says.
   ///
-  /// Skipped entirely when it did not: this is a second request on a form
-  /// whose other fields go somewhere else, and re-sending an unchanged place
-  /// would overwrite `country_code` for somebody who only edited their name.
-  Future<void> _saveRegion() async {
-    final place = _regionPlace;
-    if (place == null || place == _savedRegionPlace) return;
+  /// Skipped entirely when it did not change: this is a second request on a
+  /// form whose other fields go somewhere else, and re-sending an unchanged
+  /// place would overwrite `country_code` for somebody who only edited their
+  /// name. Nothing to do is success.
+  Future<bool> _saveRegion() async {
+    // A country with no town is a real answer, and the one that has to be sent
+    // when somebody moves country without naming a place in it yet. Without
+    // it, [_onCountryChanged] emptied the town on screen and left the stored
+    // one where it was — so the account read "Nigeria" with Accra's
+    // coordinates still under it, and distance was measured from a city they
+    // had just said they left. A nameless place clears both.
+    //
+    // Only against a stored place we actually read back. [_readStoredRegion]
+    // is silent on failure, and a null there means "we could not ask", not
+    // "there is none" — sending a bare country on that would wipe a perfectly
+    // good town for somebody who opened this screen on a bad connection.
+    final saved = _savedRegionPlace;
+    final movedCountry = _countryTouched &&
+        _country.isNotEmpty &&
+        saved != null &&
+        saved.countryCode != _country;
+    final place =
+        _regionPlace ?? (movedCountry ? Place(countryCode: _country) : null);
+    if (place == null || place == saved) return true;
     try {
       await _locations.setLocation(place);
       _savedRegionPlace = place;
+      return true;
     } catch (_) {
-      if (mounted) {
-        AppSnackBar.error(context, 'Could not save your region. Try again.');
-      }
+      return false;
     }
   }
 
@@ -257,7 +274,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return null;
   }
 
-  void _save() {
+  /// True from the tap until the region call answers.
+  ///
+  /// The button's own busy state belongs to the bloc, and the bloc has not
+  /// been told anything yet while the region is in flight — so without this a
+  /// second tap starts a second save of everything.
+  bool _saving = false;
+
+  Future<void> _save() async {
+    if (_saving) return;
     final state = context.read<UserProfileBloc>().state;
     final handle = _username.text.trim();
     final problem =
@@ -269,10 +294,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     // The town goes to its own endpoint, which is also the only one that can
     // store the coordinates behind it — the profile PATCH has no field for
-    // either. Not awaited: the profile save below is what the screen's
-    // success and error states are wired to, and a region that fails to store
-    // is reported on its own rather than by failing the whole form.
-    _saveRegion();
+    // either.
+    //
+    // Awaited, and the form stops here when it fails. This used to be fired
+    // off unawaited so a failing region could not fail the whole form, and the
+    // error it reported was shown with `if (mounted)` — but the profile save
+    // right behind it pops this screen on success, so by the time the region
+    // call answered there was nothing mounted to say it on. The one thing
+    // somebody could not be told was the one thing that had gone wrong, and
+    // the screen said "Profile updated" over it.
+    setState(() => _saving = true);
+    final regionSaved = await _saveRegion();
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (!regionSaved) {
+      AppSnackBar.error(context, 'Could not save your region. Try again.');
+      return;
+    }
 
     context.read<UserProfileBloc>().add(ProfileUpdateSubmitted(
           name: _name.text.trim(),
@@ -459,8 +497,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       fullWidth: true,
                       label: 'Save changes',
                       borderRadius: AppRadius.pill,
-                      isLoading: state.isUpdateLoading,
-                      onPressed: state.isUpdateLoading ? null : _save,
+                      isLoading: state.isUpdateLoading || _saving,
+                      onPressed:
+                          (state.isUpdateLoading || _saving) ? null : _save,
                     ),
                   ],
                 ),

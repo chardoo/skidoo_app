@@ -35,6 +35,7 @@ class VerificationForm extends StatefulWidget {
     this.submitLabel = 'Submit for verification',
     this.extra,
     this.canSubmit = true,
+    this.allowSkip = false,
     this.agreements = const (terms: true, uploadRights: true, payoutPolicy: true),
   });
 
@@ -58,6 +59,23 @@ class VerificationForm extends StatefulWidget {
   /// Whether the button is live. The wizard holds it closed until all three
   /// boxes are ticked.
   final bool canSubmit;
+
+  /// Whether leaving the identity fields empty is an answer.
+  ///
+  /// True in the creator wizard, where this screen's real job is the three
+  /// agreements. Verification is a claim an admin checks later — it buys the
+  /// badge, it has never gated posting work, and nothing anyone types here can
+  /// complete it: every submission lands as *pending*. Requiring it to get
+  /// past the last step of signup turned an optional claim into a wall in
+  /// front of uploading anything at all, and Account & Security has carried
+  /// the same form all along for whenever somebody is ready.
+  ///
+  /// False in Settings, where the form *is* the task: an empty submission
+  /// there is somebody tapping a button, not a decision.
+  ///
+  /// It is all four fields or none either way — the server refuses a partial
+  /// set, because a name with no document is nothing to check.
+  final bool allowSkip;
 
   /// What was actually agreed to.
   ///
@@ -101,11 +119,28 @@ class _VerificationFormState extends State<VerificationForm> {
   @override
   void initState() {
     super.initState();
+    if (widget.allowSkip) {
+      // Only to keep the line under the button honest as somebody starts
+      // typing — and only when there is a line to keep honest.
+      _name.addListener(_identityTyped);
+      _number.addListener(_identityTyped);
+    }
     _load();
   }
 
+  /// Rebuild when the fields cross between empty and not, and not on every
+  /// keystroke in between.
+  void _identityTyped() {
+    final untouched = _identityUntouched;
+    if (untouched != _wasUntouched) setState(() => _wasUntouched = untouched);
+  }
+
+  bool _wasUntouched = true;
+
   @override
   void dispose() {
+    _name.removeListener(_identityTyped);
+    _number.removeListener(_identityTyped);
     _name.dispose();
     _number.dispose();
     super.dispose();
@@ -130,13 +165,30 @@ class _VerificationFormState extends State<VerificationForm> {
     });
   }
 
+  /// True when nobody has typed any identity details at all.
+  ///
+  /// The document *type* is not part of this: the picker opens on the first
+  /// document in the list, so it always has a value and was never a thing
+  /// somebody chose by leaving it alone.
+  bool get _identityUntouched =>
+      _name.text.trim().isEmpty && _number.text.trim().isEmpty && _dob == null;
+
+  /// Whether this tap means "continue without verifying".
+  bool get _skipping => widget.allowSkip && _identityUntouched;
+
   Future<void> _submit() async {
     if (_submitting) return;
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_type == null) return;
-    if (_dob == null) {
-      setState(() => _error = 'Please give your date of birth');
-      return;
+
+    // Continuing without details. The agreements still go — they are what this
+    // step is really for — and the form is not validated, because there is
+    // nothing in it to validate.
+    if (!_skipping) {
+      if (!(_formKey.currentState?.validate() ?? false)) return;
+      if (_type == null) return;
+      if (_dob == null) {
+        setState(() => _error = 'Please give your date of birth');
+        return;
+      }
     }
 
     setState(() {
@@ -145,10 +197,10 @@ class _VerificationFormState extends State<VerificationForm> {
     });
 
     final problem = await _api.submit(
-      legalName: _name.text,
-      idType: _type!.value,
-      idNumber: _number.text,
-      dateOfBirth: _dob!,
+      legalName: _skipping ? null : _name.text,
+      idType: _skipping ? null : _type!.value,
+      idNumber: _skipping ? null : _number.text,
+      dateOfBirth: _skipping ? null : _dob,
       countryCode: widget.countryCode,
       agreements: widget.agreements,
     );
@@ -308,6 +360,16 @@ class _VerificationFormState extends State<VerificationForm> {
           SizedBox(height: AppSpacing.md.h),
         ],
 
+        // Said before the fields rather than after them, because it changes
+        // whether somebody fills them in at all. The badge is the only thing
+        // on the other side of this form, and an admin has to look at a
+        // submission before it means anything — so holding up the end of
+        // signup for it helped nobody.
+        if (widget.allowSkip) ...[
+          _OptionalNote(ext: ext),
+          SizedBox(height: AppSpacing.md.h),
+        ],
+
         Form(
           key: _formKey,
           child: Column(
@@ -386,6 +448,17 @@ class _VerificationFormState extends State<VerificationForm> {
           isLoading: _submitting,
           onPressed: widget.canSubmit ? _submit : null,
         ),
+        // What the button is about to do, when the fields are empty and that
+        // is allowed. The label stays "Continue" — it does continue — and this
+        // is what stops that reading as a form somebody forgot to fill in.
+        if (widget.allowSkip && _identityUntouched) ...[
+          SizedBox(height: AppSpacing.sm.h),
+          Text(
+            'Continues without verification. You can add it any time.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
+          ),
+        ],
       ],
     );
   }
@@ -401,6 +474,41 @@ class UpperCaseFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) =>
       newValue.copyWith(text: newValue.text.toUpperCase());
+}
+
+/// "This part is optional", in the one place it has to be read.
+class _OptionalNote extends StatelessWidget {
+  const _OptionalNote({required this.ext});
+
+  final AppThemeExtension ext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.md.w),
+      decoration: BoxDecoration(
+        color: ext.cardSurface,
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        border: Border.all(color: ext.searchHintColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 18.sp, color: ext.infoBlue),
+          SizedBox(width: AppSpacing.sm.w),
+          Expanded(
+            child: Text(
+              'Verifying your identity is optional. It earns the verified '
+              'badge — you can start uploading without it, and add it later '
+              'under Account & Security.',
+              style: TextStyle(
+                  color: ext.searchHintColor, fontSize: 12.sp, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _DocumentPicker extends StatelessWidget {

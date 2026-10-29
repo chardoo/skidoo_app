@@ -19,6 +19,7 @@ class UpdatePhotographerProfileUseCase {
     String? bio,
     List<String>? specialties,
     String? location,
+    String? countryCode,
   }) =>
       _repository.updatePhotographerProfile(
         photographerId: photographerId,
@@ -26,6 +27,7 @@ class UpdatePhotographerProfileUseCase {
         bio: bio,
         specialties: specialties,
         location: location,
+        countryCode: countryCode,
       );
 }
 

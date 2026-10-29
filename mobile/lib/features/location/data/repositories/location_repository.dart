@@ -89,9 +89,18 @@ class LocationRepository {
 
   /// What the account has set, what the request appeared to come from, and
   /// whether those disagree. Asked on launch.
+  ///
+  /// `/location/...`, not `/api/location/...`. [ApiConfig.apiBaseUrl] already
+  /// ends in `/api` and Dio *concatenates* a leading-slash path onto the base
+  /// URL rather than resolving it against the host — so the three calls in
+  /// this file were the only ones in the app writing the prefix out again, and
+  /// every one of them asked for `/api/api/location`. The gateway sends that
+  /// to main, main has no such route, and all three 404ed: reading a region
+  /// answered "none" and setting one did nothing, for everybody, always. See
+  /// `core/config/api_config.dart`.
   Future<LocationContext?> context() async {
     try {
-      final resp = await _dio.get('/api/location/context');
+      final resp = await _dio.get('/location/context');
       final data = _data(resp);
       return data == null ? null : LocationContext.fromJson(data);
     } catch (e) {
@@ -103,7 +112,7 @@ class LocationRepository {
   /// Store the account's own location. Throws — unlike the searches above,
   /// this one is a deliberate save and silence would look like success.
   Future<LocationContext?> setLocation(Place place) async {
-    final resp = await _dio.put('/api/location', data: {
+    final resp = await _dio.put('/location', data: {
       'name': place.name,
       'country_code': place.countryCode,
       'lat': place.lat,
@@ -114,7 +123,7 @@ class LocationRepository {
   }
 
   Future<LocationContext?> clearLocation() async {
-    final resp = await _dio.delete('/api/location');
+    final resp = await _dio.delete('/location');
     final data = _data(resp);
     return data == null ? null : LocationContext.fromJson(data);
   }

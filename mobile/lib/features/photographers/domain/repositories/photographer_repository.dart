@@ -38,6 +38,7 @@ abstract class PhotographerRepository {
     String? bio,
     List<String>? specialties,
     String? location,
+    String? countryCode,
   });
 
   /// Uploads/replaces the personal avatar via `POST

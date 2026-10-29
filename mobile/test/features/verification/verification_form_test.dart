@@ -39,10 +39,10 @@ class _FakeApi implements VerificationApi {
 
   @override
   Future<String?> submit({
-    required String legalName,
-    required String idType,
-    required String idNumber,
-    required DateTime dateOfBirth,
+    String? legalName,
+    String? idType,
+    String? idNumber,
+    DateTime? dateOfBirth,
     String? countryCode,
     ({bool payoutPolicy, bool terms, bool uploadRights}) agreements =
         const (terms: true, uploadRights: true, payoutPolicy: true),
@@ -55,7 +55,12 @@ class _FakeApi implements VerificationApi {
       'terms': agreements.terms,
     });
     if (refusal == null) {
-      current = const VerificationStatus(status: 'pending');
+      // Only a submission carrying details is waiting on anybody. Accepting
+      // the agreements alone leaves the account exactly as unverified as it
+      // was — which is the whole of what skipping means.
+      current = legalName == null
+          ? null
+          : const VerificationStatus(status: 'pending');
     }
     return refusal;
   }
@@ -71,10 +76,25 @@ void main() {
       );
 
   Future<void> open(WidgetTester t, _FakeApi api,
-      {Widget? extra, bool canSubmit = true}) async {
+      {Widget? extra, bool canSubmit = true, bool allowSkip = false}) async {
     await t.pumpWidget(host(
-      VerificationForm(api: api, extra: extra, canSubmit: canSubmit),
+      VerificationForm(
+        api: api,
+        extra: extra,
+        canSubmit: canSubmit,
+        allowSkip: allowSkip,
+        submitLabel: allowSkip ? 'Continue' : 'Submit for verification',
+      ),
     ));
+    await t.pumpAndSettle();
+  }
+
+  /// The form is taller than the 800×600 test viewport once the wizard's note
+  /// is on it, and a button below the fold cannot be tapped.
+  Future<void> tapButton(WidgetTester t, String label) async {
+    await t.ensureVisible(find.text(label));
+    await t.pumpAndSettle();
+    await t.tap(find.text(label));
     await t.pumpAndSettle();
   }
 
@@ -177,6 +197,73 @@ void main() {
       await t.pumpAndSettle();
 
       expect(find.text('Pending verification'), findsOneWidget);
+    });
+  });
+
+  group('in the creator wizard, the details are optional', () {
+    // The three agreements are what that step cannot do without. The ID is a
+    // claim an admin checks later — it earns the badge and has never gated
+    // posting work — so requiring it to finish signing up was a wall in front
+    // of uploading anything at all.
+
+    testWidgets('an empty form continues, and sends no identity', (t) async {
+      final api = _FakeApi();
+      await open(t, api, allowSkip: true);
+
+      await tapButton(t, 'Continue');
+
+      expect(api.submissions.length, 1);
+      expect(api.submissions.single['legalName'], isNull);
+      expect(api.submissions.single['idNumber'], isNull);
+      expect(api.submissions.single['dob'], isNull);
+      // The agreements are the part that did go.
+      expect(api.submissions.single['terms'], isTrue);
+      // And nothing is waiting on anybody: skipping leaves the account as
+      // unverified as it was.
+      expect(find.text('Pending verification'), findsNothing);
+    });
+
+    testWidgets('it says what the button will do', (t) async {
+      await open(t, _FakeApi(), allowSkip: true);
+
+      expect(find.textContaining('optional'), findsOneWidget);
+      expect(find.textContaining('Continues without verification'),
+          findsOneWidget);
+    });
+
+    testWidgets('half an identity is still refused', (t) async {
+      // All four or none — a name with no document is nothing to check, and
+      // the server refuses the partial set anyway.
+      final api = _FakeApi();
+      await open(t, api, allowSkip: true);
+
+      await t.enterText(find.byType(TextField).at(0), 'Kwame Mensah');
+      await t.pumpAndSettle();
+      await tapButton(t, 'Continue');
+
+      expect(api.submissions, isEmpty);
+    });
+
+    testWidgets('a filled form still submits the details', (t) async {
+      final api = _FakeApi();
+      await open(t, api, allowSkip: true);
+
+      await fill(t);
+      await tapButton(t, 'Continue');
+
+      expect(api.submissions.single['legalName'], 'Kwame Mensah');
+      expect(find.text('Pending verification'), findsOneWidget);
+    });
+
+    testWidgets('outside the wizard an empty form is not an answer', (t) async {
+      // Settings is where the form *is* the task. An empty submission there is
+      // somebody tapping a button, not a decision.
+      final api = _FakeApi();
+      await open(t, api);
+
+      await tapButton(t, 'Submit for verification');
+
+      expect(api.submissions, isEmpty);
     });
   });
 

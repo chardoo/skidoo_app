@@ -29,6 +29,7 @@ class PortfolioFormData {
     required this.name,
     required this.bio,
     required this.location,
+    required this.countryCode,
     required this.specialties,
     required this.keptExistingSamples,
     required this.newSampleFiles,
@@ -49,6 +50,16 @@ class PortfolioFormData {
   /// the request flow — and unsettable until now, which is why all 24
   /// photographers had an empty one.
   final String location;
+
+  /// The country half, on its own, as an ISO code — null when none is chosen.
+  ///
+  /// Carried separately as well as inside [location] because the two are read
+  /// by different things. The line is what a card prints; the code is what the
+  /// request board gates on (`User.country_code`), and a country only ever
+  /// spelled inside a sentence is a country nothing can filter by. This form
+  /// knew which country had been picked and threw the answer away.
+  final String? countryCode;
+
   final Set<String> specialties;
 
   /// Samples fetched from the server (edit mode) that haven't been removed
@@ -76,6 +87,7 @@ class PortfolioForm extends StatefulWidget {
     this.initialName = '',
     this.initialBio = '',
     this.initialLocation = '',
+    this.initialCountryCode,
     this.initialSpecialties = const {},
     this.initialSamples = const [],
   });
@@ -86,6 +98,18 @@ class PortfolioForm extends StatefulWidget {
   final String initialName;
   final String initialBio;
   final String initialLocation;
+
+  /// The country already on the account, for when [initialLocation] does not
+  /// name one.
+  ///
+  /// Somebody arriving here from signup has a country on their account and an
+  /// empty `location`, so parsing the country out of the line was the one way
+  /// of answering the question that could not work for them: the dropdown
+  /// opened empty, and a city typed under it composed to a line with no
+  /// country in it at all. The stored line still wins where it has one — it is
+  /// the more specific statement, and it is what the rest of the app prints.
+  final String? initialCountryCode;
+
   final Set<String> initialSpecialties;
   final List<PhotographerSample> initialSamples;
 
@@ -104,7 +128,14 @@ class _PortfolioFormState extends State<PortfolioForm> {
       TextEditingController(text: cityOf(widget.initialLocation));
 
   /// ISO code of the picked country, or null when nothing is chosen yet.
-  late String? _countryCode = countryCodeOf(widget.initialLocation);
+  ///
+  /// The stored line first, the account's own country behind it — and only a
+  /// country this form actually offers, so a code the dropdown has no item for
+  /// leaves it unset rather than throwing on build.
+  late String? _countryCode = countryCodeOf(widget.initialLocation) ??
+      (kCountryOptions.containsKey(widget.initialCountryCode)
+          ? widget.initialCountryCode
+          : null);
   late final Set<String> _specialties = {...widget.initialSpecialties};
   late List<PhotographerSample> _keptExisting = [...widget.initialSamples];
   final List<XFile> _newSamples = [];
@@ -146,6 +177,7 @@ class _PortfolioFormState extends State<PortfolioForm> {
       name: _nameCtrl.text.trim(),
       bio: _bioCtrl.text.trim(),
       location: _composedLocation,
+      countryCode: _countryCode,
       specialties: _specialties,
       keptExistingSamples: _keptExisting,
       newSampleFiles: _newSamples,

@@ -2,6 +2,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:jperg_app/api/dio_client_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
+import 'package:jperg_app/services/auth_service.dart';
 
 /// A document somebody can verify with, as the server offers it.
 ///
@@ -128,21 +129,31 @@ class VerificationApi {
   /// because the server is the only thing that knows *which* field was wrong —
   /// "that does not look like a valid number for that document" is worth
   /// putting in front of somebody, and a generic failure is not.
+  ///
+  /// **The identity details are optional and the agreements are not.** Leaving
+  /// all four out is a creator accepting the terms without claiming an
+  /// identity yet: the role still moves, the badge still waits. Sending some
+  /// of them is refused — half an identity is nothing to check.
+  ///
+  /// This is also where the session's token is replaced. The role lives inside
+  /// the JWT and the request board reads it from there, so an app still
+  /// holding the token it signed in with is a creator the board answers as a
+  /// viewer: an empty list, for the whole life of that token.
   Future<String?> submit({
-    required String legalName,
-    required String idType,
-    required String idNumber,
-    required DateTime dateOfBirth,
+    String? legalName,
+    String? idType,
+    String? idNumber,
+    DateTime? dateOfBirth,
     String? countryCode,
     ({bool terms, bool uploadRights, bool payoutPolicy}) agreements =
         const (terms: true, uploadRights: true, payoutPolicy: true),
   }) async {
     try {
-      await _dio.post('/photographer/verification', data: {
-        'legal_name': legalName.trim(),
-        'id_type': idType,
-        'id_number': idNumber.trim(),
-        'date_of_birth': _date(dateOfBirth),
+      final resp = await _dio.post('/photographer/verification', data: {
+        if (legalName != null) 'legal_name': legalName.trim(),
+        if (idType != null) 'id_type': idType,
+        if (idNumber != null) 'id_number': idNumber.trim(),
+        if (dateOfBirth != null) 'date_of_birth': _date(dateOfBirth),
         if (countryCode != null) 'country_code': countryCode,
         // Passed through rather than assumed: they are a record of what was
         // agreed to, and the server stores the three separately for the same
@@ -152,6 +163,7 @@ class VerificationApi {
         'confirmed_upload_rights': agreements.uploadRights,
         'accepted_payout_policy': agreements.payoutPolicy,
       });
+      await _storeToken(resp.data);
       return null;
     } on dio.DioException catch (e) {
       // The server's own words, which are the only thing that knows *which*
@@ -165,6 +177,29 @@ class VerificationApi {
     } catch (e) {
       debugPrint('[Verification] submit failed: $e');
       return 'We could not submit that just now. Please try again.';
+    }
+  }
+
+  /// Replace the session's token with the one this submission answered with.
+  ///
+  /// The role moved server-side, and the old token still says what the account
+  /// used to be. Every service behind the gateway reads the role out of the
+  /// token rather than the database — the request board is photographers-only
+  /// and decides that from the claim — so until this lands the app is a
+  /// creator that every other service still treats as a viewer. Tokens here
+  /// last for months, so "it will sort itself out at the next sign-in" is not
+  /// a timescale anybody would wait through.
+  ///
+  /// Quiet when there is no token in the answer: an older server does not send
+  /// one, and that is a session that keeps working exactly as it did before.
+  Future<void> _storeToken(dynamic body) async {
+    final data = body is Map && body['data'] is Map ? body['data'] : body;
+    final token = data is Map ? data['token'] : null;
+    if (token is! String || token.isEmpty) return;
+    try {
+      await sl<AuthService>().setToken(token);
+    } catch (e) {
+      debugPrint('[Verification] could not store the new token: $e');
     }
   }
 

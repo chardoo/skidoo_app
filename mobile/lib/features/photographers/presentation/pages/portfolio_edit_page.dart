@@ -76,6 +76,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
   String? _studioImageUrl;
   String _name = '';
   String _location = '';
+  String? _countryCode;
   String _bio = '';
   Set<String> _specialties = {};
   bool _verifiedByAdmin = false;
@@ -124,6 +125,10 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         _name = (profile['name'] ?? profile['studio_name'] ?? '').toString();
         _bio = (profile['bio'] ?? '').toString();
         _location = (profile['location'] ?? '').toString();
+        // The account already knows which country this is, whether or not
+        // anybody has ever written a line of text about where they work. See
+        // [PortfolioForm.initialCountryCode].
+        _countryCode = (profile['country_code'] as String?)?.trim();
         _specialties =
             ((profile['specialties'] as List?)?.map((e) => e.toString()) ??
                     const [])
@@ -169,6 +174,12 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
         name: data.name,
         bio: data.bio,
         location: data.location,
+        // The country as a code, not only as the last words of the line above.
+        // `User.country_code` is the request board's hard gate — a creator it
+        // is unset for is never excluded, but one whose portfolio says Ghana
+        // while the column says nothing ranks as unplaceable on every board
+        // they open. Saying where you work is the moment to record it.
+        countryCode: data.countryCode,
         specialties: data.specialties.toList(),
       );
       if (data.newProfilePhoto != null) {
@@ -234,6 +245,7 @@ class _PortfolioEditPageState extends State<PortfolioEditPage> {
             initialStudioImageUrl: _studioImageUrl,
             initialName: _name,
             initialLocation: _location,
+            initialCountryCode: _countryCode,
             initialBio: _bio,
             initialSpecialties: _specialties,
             initialSamples: _originalSamples,

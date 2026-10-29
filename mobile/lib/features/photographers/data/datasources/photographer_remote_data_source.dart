@@ -32,6 +32,7 @@ abstract class PhotographerRemoteDataSource {
     String? bio,
     List<String>? specialties,
     String? location,
+    String? countryCode,
   });
   Future<String> uploadProfilePhoto({
     required String photographerId,
@@ -245,6 +246,7 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
     String? bio,
     List<String>? specialties,
     String? location,
+    String? countryCode,
   }) async {
     try {
       final formData = dio.FormData.fromMap({
@@ -254,6 +256,11 @@ class PhotographerRemoteDataSourceImpl implements PhotographerRemoteDataSource {
         if (name != null) 'name': name,
         if (bio != null) 'bio': bio,
         if (location != null) 'location': location,
+        // The gate the request board reads. The endpoint drops anything that
+        // is not a country rather than storing it — see the server's
+        // country_code.py — so sending it can only ever improve the answer.
+        if (countryCode != null && countryCode.isNotEmpty)
+          'country_code': countryCode,
         if (specialties != null) 'specialties': jsonEncode(specialties),
       });
       await _api.dio.patch(
