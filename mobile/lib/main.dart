@@ -77,17 +77,38 @@ void main() async {
         return;
       }
       try {
-        final applied = await sl<AdsRepository>().settleIosBoost(
+        final outcome = await sl<AdsRepository>().settleIosBoost(
           orderToken: token,
           signedTransaction: details.verificationData.serverVerificationData,
         );
-        if (applied) await IosStore.instance.finish(details);
+        if (outcome != BoostSettleOutcome.retry) {
+          await IosStore.instance.finish(details);
+        }
       } catch (e) {
         // Left unfinished on purpose: StoreKit offers it again next launch,
         // which is the behaviour that eventually delivers the boost.
         debugPrint('[IAP] could not settle a replayed boost: $e');
       }
     }).ignore();
+
+    // And sweep what StoreKit is already holding, rather than waiting to be
+    // offered it. The stream above covers a purchase made while the app is
+    // running; it is not a dependable way to be re-offered one from a previous
+    // launch, and an unfinished transaction is not merely an undelivered boost
+    // — StoreKit refuses to sell the same product again while one exists, so
+    // it takes that tier off sale on this phone until it is cleared. That is
+    // the "I tap Pay and nothing happens at all" failure.
+    //
+    // Deliberately not awaited: a buyer who opens the app is not waiting on a
+    // recovery sweep, and the boost sheet runs the same sweep before it buys.
+    unawaited(IosStore.instance.drainUnfinished(
+      settle: (token, receipt) async =>
+          await sl<AdsRepository>().settleIosBoost(
+            orderToken: token,
+            signedTransaction: receipt,
+          ) !=
+          BoostSettleOutcome.retry,
+    ));
   }
 
   // Prints once per launch. Its absence means the running binary predates the

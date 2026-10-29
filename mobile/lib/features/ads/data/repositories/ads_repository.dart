@@ -1464,20 +1464,56 @@ class AdsRepository {
   ///
   /// Idempotent: StoreKit replays a transaction until it is finished, so a
   /// second call for the same order is the ordinary case rather than an error.
-  Future<bool> settleIosBoost({
+  ///
+  /// Throws whatever Dio throws for a refusal the caller should explain — the
+  /// server writes those messages to be read. Only the two answers that decide
+  /// whether the transaction may be *finished* come back as a value.
+  Future<BoostSettleOutcome> settleIosBoost({
     required String orderToken,
     required String signedTransaction,
   }) async {
     debugPrint('$_tag settleIosBoost → token=$orderToken');
-    final resp = await _dio.post(
-      '/ads/requests/ios/boost-settle',
-      data: {
-        'orderToken': orderToken,
-        'signedTransaction': signedTransaction,
-      },
-    );
-    return resp.statusCode != null && resp.statusCode! < 300;
+    try {
+      final resp = await _dio.post(
+        '/ads/requests/ios/boost-settle',
+        data: {
+          'orderToken': orderToken,
+          'signedTransaction': signedTransaction,
+        },
+      );
+      final ok = resp.statusCode != null && resp.statusCode! < 300;
+      debugPrint('$_tag settleIosBoost ← status=${resp.statusCode}');
+      return ok ? BoostSettleOutcome.applied : BoostSettleOutcome.retry;
+    } on DioException catch (e) {
+      debugPrint('$_tag settleIosBoost ERROR status=${e.response?.statusCode} '
+          'body=${e.response?.data}');
+      if (e.response?.statusCode == 404) return BoostSettleOutcome.unknownOrder;
+      rethrow;
+    }
   }
+}
+
+/// What the server made of a transaction it was handed.
+///
+/// The distinction that matters is whether the transaction may be finished.
+/// Finishing one makes StoreKit forget it, so it must never happen while there
+/// is still a boost to be granted — and *not* finishing one that can never be
+/// granted is just as bad in the other direction: StoreKit refuses to start a
+/// new purchase of a product that has an unfinished transaction, so a receipt
+/// left in limbo blocks every later purchase of that boost tier.
+enum BoostSettleOutcome {
+  /// The boost is on. Finish the transaction.
+  applied,
+
+  /// There is no order for this purchase and there never will be — the pending
+  /// row is gone, or this receipt belongs to a flow that no longer exists.
+  /// Nothing can be granted for it, so it is finished rather than kept.
+  unknownOrder,
+
+  /// Could not be settled *now*: the verifier was unreachable, the receipt was
+  /// refused, the tier was withdrawn. Left unfinished so StoreKit offers it
+  /// again.
+  retry,
 }
 
 /// What a budget buys, as the budget step reports it.

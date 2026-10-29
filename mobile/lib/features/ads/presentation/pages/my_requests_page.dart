@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart' show PurchaseDetails;
+import 'package:jperg_app/core/config/api_config.dart';
 import 'package:jperg_app/core/purchase/ios_store.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/features/photographers/data/premium_service.dart';
@@ -198,20 +200,36 @@ class _MyRequestsPageState extends State<MyRequestsPage>
         return;
       }
 
-      final purchase = await IosStore.instance.buy(
-        productId: started.productId,
-        orderToken: started.orderToken,
-      );
+      // Clear anything StoreKit is still holding before asking it to sell.
+      // It refuses to start a purchase while an unfinished transaction for the
+      // same product exists, and refuses *before* the payment sheet — so a
+      // receipt that never settled reads as a Buy button that does nothing.
+      // Cheap when there is nothing to clear, which is the normal case.
+      await _drainHeldPurchases();
 
-      final applied = await _repo.settleIosBoost(
+      final purchase = await _buyOrRecover(started);
+      if (purchase == null) {
+        if (mounted) {
+          AppSnackBar.error(
+            context,
+            'An earlier purchase of this boost is still being confirmed. '
+            'Please try again in a moment.',
+          );
+        }
+        return;
+      }
+
+      final outcome = await _repo.settleIosBoost(
         orderToken: started.orderToken,
         signedTransaction: purchase.verificationData.serverVerificationData,
       );
       // After the boost is applied, never before.
-      await IosStore.instance.finish(purchase);
+      if (outcome != BoostSettleOutcome.retry) {
+        await IosStore.instance.finish(purchase);
+      }
       if (!mounted) return;
 
-      if (!applied) {
+      if (outcome != BoostSettleOutcome.applied) {
         AppSnackBar.error(
           context,
           'Payment went through but the boost did not start. It will be '
@@ -236,10 +254,94 @@ class _MyRequestsPageState extends State<MyRequestsPage>
     } on StoreUnavailable catch (e) {
       if (mounted) AppSnackBar.error(context, e.message);
     } catch (e) {
-      if (mounted) {
-        AppSnackBar.error(context, 'Could not complete the purchase.');
+      // Logged, and the server's own wording preferred over ours. Every
+      // refusal on this path explains itself — "this request has expired",
+      // "that boost cannot be bought in the app yet" — and this catch used to
+      // replace all of them with one sentence that says nothing and record
+      // nothing, which left "could not complete the purchase" as the only
+      // evidence of what went wrong.
+      debugPrint('[MyRequestsPage] _boostWithAppStore ERROR: $e');
+      if (mounted) AppSnackBar.error(context, _purchaseFailureMessage(e));
+    }
+  }
+
+  /// What to say about a failed App Store boost.
+  ///
+  /// A 404 is called out separately because it is not a refusal, it is the
+  /// endpoint not being there: a build talking to a deployment that predates
+  /// App Store boosts gets one, and the symptom is a Pay button that produces
+  /// nothing at all — the purchase never starts, so there is no sheet, no
+  /// charge and no Apple error. That is indistinguishable from a dozen other
+  /// things under one generic sentence, and it cost a round of looking at
+  /// StoreKit for a problem that was a deploy.
+  String _purchaseFailureMessage(Object error) {
+    int? status;
+    try {
+      status = (error as dynamic).response?.statusCode as int?;
+    } catch (_) {
+      // Not a Dio error.
+    }
+    if (status == 404) {
+      debugPrint('[MyRequestsPage] the App Store boost endpoints are not on '
+          'this backend (404 from ${ApiConfig.host}) — it is older than the '
+          'feature, or this build points at the wrong deployment');
+      return 'Boosting through the App Store is not available yet. '
+          'Please try again later.';
+    }
+    return _serverMessage(error, 'Could not complete the purchase.');
+  }
+
+  /// Buy, and if StoreKit is holding an earlier purchase of this product,
+  /// settle that and try once more.
+  ///
+  /// Null means it is still holding one after the retry. There is nothing
+  /// useful to do with a second failure: the receipt it will not let go of
+  /// needs a server that can verify it, and this is not the screen that can
+  /// change that.
+  Future<PurchaseDetails?> _buyOrRecover(
+      ({String productId, String orderToken, double charged, int days})
+          started) async {
+    try {
+      return await IosStore.instance.buy(
+        productId: started.productId,
+        orderToken: started.orderToken,
+      );
+    } on PurchaseStillSettling {
+      debugPrint('[MyRequestsPage] StoreKit is holding an earlier purchase — '
+          'settling it before retrying');
+      final cleared = await _drainHeldPurchases();
+      if (cleared == 0) return null;
+      try {
+        return await IosStore.instance.buy(
+          productId: started.productId,
+          orderToken: started.orderToken,
+        );
+      } on PurchaseStillSettling {
+        return null;
       }
     }
+  }
+
+  Future<int> _drainHeldPurchases() => IosStore.instance.drainUnfinished(
+        settle: (token, receipt) async =>
+            await _repo.settleIosBoost(
+              orderToken: token,
+              signedTransaction: receipt,
+            ) !=
+            BoostSettleOutcome.retry,
+      );
+
+  /// The server's own wording where it has some. The same helper the booking
+  /// page keeps, for the same reason: replacing a refusal that says what to do
+  /// next with a generic failure throws away the only useful part of it.
+  String _serverMessage(Object error, String fallback) {
+    try {
+      final message = (error as dynamic).response?.data?['error']?['message'];
+      if (message is String && message.isNotEmpty) return message;
+    } catch (_) {
+      // Not a Dio error, or shaped differently.
+    }
+    return fallback;
   }
 
   Future<void> _boost(FeedRequestModel req) async {
