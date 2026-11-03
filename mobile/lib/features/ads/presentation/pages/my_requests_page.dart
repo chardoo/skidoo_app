@@ -526,22 +526,18 @@ class _MyRequestsPageState extends State<MyRequestsPage>
 
   void _showEditSheet(
       BuildContext context, FeedRequestModel req, AppThemeExtension ext) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => EditRequestSheet(
-        request: req,
-        ext: ext,
-        onSave: (updated) {
-          setState(() {
-            final idx = _requests.indexWhere((r) => r.id == updated.id);
-            if (idx != -1) _requests[idx] = updated;
-          });
-          AppSnackBar.success(context, 'Request updated.');
-        },
-        repo: _repo,
-      ),
+    EditRequestSheet.show(
+      context,
+      request: req,
+      ext: ext,
+      repo: _repo,
+      onSave: (updated) {
+        setState(() {
+          final idx = _requests.indexWhere((r) => r.id == updated.id);
+          if (idx != -1) _requests[idx] = updated;
+        });
+        AppSnackBar.success(context, 'Request updated.');
+      },
     );
   }
 
@@ -901,6 +897,36 @@ class EditRequestSheet extends StatefulWidget {
   final AppThemeExtension ext;
   final ValueChanged<FeedRequestModel> onSave;
   final AdsRepository repo;
+
+  /// Opens the sheet. Both screens that edit a request come through here, so
+  /// how it is presented — and in particular how tall it is allowed to get —
+  /// is decided in one place rather than at each of them.
+  static Future<void> show(
+    BuildContext context, {
+    required FeedRequestModel request,
+    required AppThemeExtension ext,
+    required AdsRepository repo,
+    required ValueChanged<FeedRequestModel> onSave,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      // Without a ceiling the sheet grows to fit its content, and the content
+      // is a twenty-field form — so it opened at very nearly full screen, with
+      // no scrim left to say it was a sheet or to tap on to leave. The form
+      // scrolls inside this instead.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      ),
+      builder: (_) => EditRequestSheet(
+        request: request,
+        ext: ext,
+        repo: repo,
+        onSave: onSave,
+      ),
+    );
+  }
 
   @override
   State<EditRequestSheet> createState() => _EditRequestSheetState();
@@ -1315,313 +1341,334 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
         type: MaterialType.transparency,
         child: SafeArea(
           top: false,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
-                    width: 36.w,
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      color: ext.searchHintColor.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
+          // The handle and the title sit deliberately *outside* the scroll
+          // view. A modal sheet's drag-to-dismiss and a scrollable both want
+          // the same vertical drag, and the scrollable wins it — it is the
+          // inner recogniser — for as long as it has anywhere left to scroll.
+          // With the whole form inside one, every downward swipe scrolled the
+          // form and the sheet could not be dragged away at all, the handle
+          // included. A fixed header has no scrollable in the hit path, so a
+          // swipe there reaches the sheet and closes it; and the title stays
+          // put while the form moves under it.
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  margin: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: ext.searchHintColor.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
-                Text(
-                  'Edit Request',
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontFamily: AppTypography.displayFontFamily,
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
+              ),
+              Text(
+                'Edit Request',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
                 ),
-                SizedBox(height: AppSpacing.lg.h),
-                _EditField(label: 'Title *', ctrl: _titleCtrl, ext: ext),
-                SizedBox(height: AppSpacing.md.h),
-                _EditField(
-                    label: 'Description',
-                    ctrl: _descCtrl,
-                    ext: ext,
-                    maxLines: 3),
-                SizedBox(height: AppSpacing.md.h),
-                _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
-                SizedBox(height: AppSpacing.xs.h),
-                Text(
-                  'Where the shoot happens.',
-                  style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
-                ),
-                SizedBox(height: AppSpacing.md.h),
-                // The other half of what used to be one field. Separate here as
-                // it is on the create form: the venue says where to turn up,
-                // this says which photographers ever see the card.
-                Text(
-                  'Who should see this',
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: AppSpacing.xs.h),
-                LocationChips(
-                  places: _targets,
-                  emptyLabel: 'Everywhere',
-                  onAdd: () async {
-                    final place = await LocationPickerSheet.show(
-                      context,
-                      title: 'Show photographers in…',
-                    );
-                    if (place == null || !mounted) return;
-                    if (!_targets.contains(place)) {
-                      setState(() => _targets = [..._targets, place]);
-                    }
-                  },
-                  onRemove: (place) => setState(
-                    () => _targets = [
-                      for (final p in _targets)
-                        if (p != place) p,
-                    ],
-                  ),
-                ),
-                SizedBox(height: AppSpacing.md.h),
-                // ── When, and how much of the day ──────────────────────
-                //
-                // All four were missing from this sheet while the create form
-                // collected them and the server's PATCH already accepted them.
-                // The date is the one that mattered most: the card leads on
-                // it, the board filters on it, and the premium promise is
-                // measured from it — so a postponed shoot meant deleting the
-                // request and posting it again.
-                _EditPicker(
-                  label: 'Event date',
-                  value: _eventDate == null
-                      ? 'Not set'
-                      : '${_eventDate!.day.toString().padLeft(2, '0')}.'
-                          '${_eventDate!.month.toString().padLeft(2, '0')}.'
-                          '${_eventDate!.year}',
-                  isSet: _eventDate != null,
-                  ext: ext,
-                  onTap: _pickDate,
-                ),
-                SizedBox(height: AppSpacing.md.h),
-                _EditPicker(
-                  label: 'Start time',
-                  value: _eventTime == null
-                      ? 'Not set'
-                      : _eventTime!.format(context),
-                  isSet: _eventTime != null,
-                  ext: ext,
-                  onTap: _pickTime,
-                  // Optional on a request and always has been: plenty are
-                  // posted before the day is planned that far.
-                  onClear: _eventTime == null
-                      ? null
-                      : () => setState(() => _eventTime = null),
-                ),
-                SizedBox(height: AppSpacing.md.h),
-                _EditPicker(
-                  label: 'Coverage',
-                  value: _coverageLabel,
-                  isSet: _coverageKind != null,
-                  ext: ext,
-                  onTap: () => _pickCoverage(ext),
-                  onClear: _coverageKind == null
-                      ? null
-                      : () => setState(() {
-                            _coverageKind = null;
-                            _coverageHours = null;
-                            _coverageNote = '';
-                          }),
-                ),
-                SizedBox(height: AppSpacing.md.h),
-                // A range, like the create form. The single figure this sheet
-                // used to hold could only write the midpoint back over what
-                // somebody had actually asked for.
-                Row(
-                  children: [
-                    Expanded(
-                      child: _EditField(
-                        label: 'Budget from (${widget.request.currency})',
-                        ctrl: _budgetMinCtrl,
-                        ext: ext,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    SizedBox(width: AppSpacing.md.w),
-                    Expanded(
-                      child: _EditField(
-                        label: 'to',
-                        ctrl: _budgetMaxCtrl,
-                        ext: ext,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                Text(
-                  'Event Type',
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: AppSpacing.sm.h),
-                Wrap(
-                  spacing: 8.w,
-                  runSpacing: 8.h,
-                  children: [
-                    _Chip(
-                      label: 'Any',
-                      selected: _eventType == null,
-                      ext: ext,
-                      onTap: () => setState(() => _eventType = null),
-                    ),
-                    ..._editEventTypes.map((t) => _Chip(
-                          label: t,
-                          selected: _eventType == t.toLowerCase(),
-                          ext: ext,
-                          onTap: () =>
-                              setState(() => _eventType = t.toLowerCase()),
-                        )),
-                  ],
-                ),
-                SizedBox(height: AppSpacing.xl.h),
-                Text(
-                  'Photos',
-                  style: TextStyle(
-                    color: ext.greetingColor,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: AppSpacing.sm.h),
-                _EditPhotos(
-                  media: _media,
-                  ext: ext,
-                  busy: _mediaBusy,
-                  onAdd: _addPhoto,
-                  onRemove: _removePhoto,
-                ),
-                // Asking for a creator under a delivery promise, changed
-                // after the fact. Drawn only while the tier exists, and only
-                // enabled once there is an event date — the promise is
-                // measured from it and the server refuses the pair without
-                // one, so a switch that could be turned on without a date
-                // would only ever produce an error.
-                if (_premiumTerms?.enabled == true) ...[
-                  SizedBox(height: AppSpacing.xl.h),
-                  Material(
-                    color: ext.searchFieldFill,
-                    borderRadius: BorderRadius.circular(AppRadius.md.r),
-                    clipBehavior: Clip.antiAlias,
-                    child: SwitchListTile(
-                      value: _premiumOnly,
-                      onChanged: _eventDate == null
-                          ? null
-                          : (v) => setState(() => _premiumOnly = v),
-                      activeThumbColor: ext.accentGold,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
-                      title: Text(
-                        'Only a ${_premiumTerms!.name} can answer',
-                        style: TextStyle(
-                          color: ext.greetingColor,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        _eventDate == null
-                            ? 'Needs an event date — the promise is measured '
-                                'from it.'
-                            : 'Creators who promise your photos within '
-                                '${_premiumTerms!.windowLabel} of the shoot.',
-                        style: TextStyle(
-                          color: ext.searchHintColor,
-                          fontSize: 12.sp,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-                SizedBox(height: AppSpacing.xl.h),
-                Material(
-                  // Not a decorated Container: the tile's ink needs a Material
-                  // beneath it, and a DecoratedBox in between swallows it.
-                  color: ext.searchFieldFill,
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
-                  clipBehavior: Clip.antiAlias,
-                  child: SwitchListTile(
-                    value: _commentsEnabled,
-                    onChanged: (v) => setState(() => _commentsEnabled = v),
-                    activeThumbColor: ext.accentGold,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
-                    title: Text(
-                      'Allow comments',
-                      style: TextStyle(
-                        color: ext.greetingColor,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Let people comment on this request',
-                      style: TextStyle(
-                          color: ext.searchHintColor, fontSize: 12.sp),
-                    ),
-                  ),
-                ),
-                SizedBox(height: AppSpacing.xxl.h),
-                Semantics(
-                    button: true,
-                    label: 'Save',
-                    child: GestureDetector(
-                      onTap: _saving ? null : _save,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 15.h),
-                        decoration: BoxDecoration(
-                          gradient: _saving
-                              ? null
-                              : LinearGradient(
-                                  colors: [ext.accentGold, ext.accentGoldDark],
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                ),
-                          color: _saving ? ext.searchFieldFill : null,
-                          borderRadius: BorderRadius.circular(14.r),
-                        ),
-                        alignment: Alignment.center,
-                        child: _saving
-                            ? SizedBox(
-                                width: 20.w,
-                                height: 20.w,
-                                child: CircularProgressIndicator(
-                                    color: ext.accentGold, strokeWidth: 2),
-                              )
-                            : Text(
-                                'Save changes',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    )),
-              ],
-            ),
+              ),
+              SizedBox(height: AppSpacing.lg.h),
+              Flexible(child: SingleChildScrollView(child: _form(ext))),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  /// The scrolling half of the sheet: every field, and Save.
+  ///
+  /// Out of [build] because the sheet is two parts with two jobs — a fixed
+  /// header the sheet can be dragged away by, and this, which moves under it.
+  Widget _form(AppThemeExtension ext) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _EditField(label: 'Title *', ctrl: _titleCtrl, ext: ext),
+        SizedBox(height: AppSpacing.md.h),
+        _EditField(
+            label: 'Description',
+            ctrl: _descCtrl,
+            ext: ext,
+            maxLines: 3),
+        SizedBox(height: AppSpacing.md.h),
+        _EditField(label: 'Location', ctrl: _locationCtrl, ext: ext),
+        SizedBox(height: AppSpacing.xs.h),
+        Text(
+          'Where the shoot happens.',
+          style: TextStyle(color: ext.searchHintColor, fontSize: 11.sp),
+        ),
+        SizedBox(height: AppSpacing.md.h),
+        // The other half of what used to be one field. Separate here as
+        // it is on the create form: the venue says where to turn up,
+        // this says which photographers ever see the card.
+        Text(
+          'Who should see this',
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: AppSpacing.xs.h),
+        LocationChips(
+          places: _targets,
+          emptyLabel: 'Everywhere',
+          onAdd: () async {
+            final place = await LocationPickerSheet.show(
+              context,
+              title: 'Show photographers in…',
+            );
+            if (place == null || !mounted) return;
+            if (!_targets.contains(place)) {
+              setState(() => _targets = [..._targets, place]);
+            }
+          },
+          onRemove: (place) => setState(
+            () => _targets = [
+              for (final p in _targets)
+                if (p != place) p,
+            ],
+          ),
+        ),
+        SizedBox(height: AppSpacing.md.h),
+        // ── When, and how much of the day ──────────────────────
+        //
+        // All four were missing from this sheet while the create form
+        // collected them and the server's PATCH already accepted them.
+        // The date is the one that mattered most: the card leads on
+        // it, the board filters on it, and the premium promise is
+        // measured from it — so a postponed shoot meant deleting the
+        // request and posting it again.
+        _EditPicker(
+          label: 'Event date',
+          value: _eventDate == null
+              ? 'Not set'
+              : '${_eventDate!.day.toString().padLeft(2, '0')}.'
+                  '${_eventDate!.month.toString().padLeft(2, '0')}.'
+                  '${_eventDate!.year}',
+          isSet: _eventDate != null,
+          ext: ext,
+          onTap: _pickDate,
+        ),
+        SizedBox(height: AppSpacing.md.h),
+        _EditPicker(
+          label: 'Start time',
+          value: _eventTime == null
+              ? 'Not set'
+              : _eventTime!.format(context),
+          isSet: _eventTime != null,
+          ext: ext,
+          onTap: _pickTime,
+          // Optional on a request and always has been: plenty are
+          // posted before the day is planned that far.
+          onClear: _eventTime == null
+              ? null
+              : () => setState(() => _eventTime = null),
+        ),
+        SizedBox(height: AppSpacing.md.h),
+        _EditPicker(
+          label: 'Coverage',
+          value: _coverageLabel,
+          isSet: _coverageKind != null,
+          ext: ext,
+          onTap: () => _pickCoverage(ext),
+          onClear: _coverageKind == null
+              ? null
+              : () => setState(() {
+                    _coverageKind = null;
+                    _coverageHours = null;
+                    _coverageNote = '';
+                  }),
+        ),
+        SizedBox(height: AppSpacing.md.h),
+        // A range, like the create form. The single figure this sheet
+        // used to hold could only write the midpoint back over what
+        // somebody had actually asked for.
+        Row(
+          children: [
+            Expanded(
+              child: _EditField(
+                label: 'Budget from (${widget.request.currency})',
+                ctrl: _budgetMinCtrl,
+                ext: ext,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            SizedBox(width: AppSpacing.md.w),
+            Expanded(
+              child: _EditField(
+                label: 'to',
+                ctrl: _budgetMaxCtrl,
+                ext: ext,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: AppSpacing.lg.h),
+        Text(
+          'Event Type',
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SizedBox(height: AppSpacing.sm.h),
+        Wrap(
+          spacing: 8.w,
+          runSpacing: 8.h,
+          children: [
+            _Chip(
+              label: 'Any',
+              selected: _eventType == null,
+              ext: ext,
+              onTap: () => setState(() => _eventType = null),
+            ),
+            ..._editEventTypes.map((t) => _Chip(
+                  label: t,
+                  selected: _eventType == t.toLowerCase(),
+                  ext: ext,
+                  onTap: () =>
+                      setState(() => _eventType = t.toLowerCase()),
+                )),
+          ],
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        Text(
+          'Photos',
+          style: TextStyle(
+            color: ext.greetingColor,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        SizedBox(height: AppSpacing.sm.h),
+        _EditPhotos(
+          media: _media,
+          ext: ext,
+          busy: _mediaBusy,
+          onAdd: _addPhoto,
+          onRemove: _removePhoto,
+        ),
+        // Asking for a creator under a delivery promise, changed
+        // after the fact. Drawn only while the tier exists, and only
+        // enabled once there is an event date — the promise is
+        // measured from it and the server refuses the pair without
+        // one, so a switch that could be turned on without a date
+        // would only ever produce an error.
+        if (_premiumTerms?.enabled == true) ...[
+          SizedBox(height: AppSpacing.xl.h),
+          Material(
+            color: ext.searchFieldFill,
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            clipBehavior: Clip.antiAlias,
+            child: SwitchListTile(
+              value: _premiumOnly,
+              onChanged: _eventDate == null
+                  ? null
+                  : (v) => setState(() => _premiumOnly = v),
+              activeThumbColor: ext.accentGold,
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+              title: Text(
+                'Only a ${_premiumTerms!.name} can answer',
+                style: TextStyle(
+                  color: ext.greetingColor,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: Text(
+                _eventDate == null
+                    ? 'Needs an event date — the promise is measured '
+                        'from it.'
+                    : 'Creators who promise your photos within '
+                        '${_premiumTerms!.windowLabel} of the shoot.',
+                style: TextStyle(
+                  color: ext.searchHintColor,
+                  fontSize: 12.sp,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+        SizedBox(height: AppSpacing.xl.h),
+        Material(
+          // Not a decorated Container: the tile's ink needs a Material
+          // beneath it, and a DecoratedBox in between swallows it.
+          color: ext.searchFieldFill,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          clipBehavior: Clip.antiAlias,
+          child: SwitchListTile(
+            value: _commentsEnabled,
+            onChanged: (v) => setState(() => _commentsEnabled = v),
+            activeThumbColor: ext.accentGold,
+            contentPadding:
+                EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+            title: Text(
+              'Allow comments',
+              style: TextStyle(
+                color: ext.greetingColor,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(
+              'Let people comment on this request',
+              style: TextStyle(
+                  color: ext.searchHintColor, fontSize: 12.sp),
+            ),
+          ),
+        ),
+        SizedBox(height: AppSpacing.xxl.h),
+        Semantics(
+            button: true,
+            label: 'Save',
+            child: GestureDetector(
+              onTap: _saving ? null : _save,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 15.h),
+                decoration: BoxDecoration(
+                  gradient: _saving
+                      ? null
+                      : LinearGradient(
+                          colors: [ext.accentGold, ext.accentGoldDark],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                  color: _saving ? ext.searchFieldFill : null,
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
+                alignment: Alignment.center,
+                child: _saving
+                    ? SizedBox(
+                        width: 20.w,
+                        height: 20.w,
+                        child: CircularProgressIndicator(
+                            color: ext.accentGold, strokeWidth: 2),
+                      )
+                    : Text(
+                        'Save changes',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            )),
+      ],
     );
   }
 }

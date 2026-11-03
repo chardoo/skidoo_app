@@ -640,23 +640,19 @@ class _ReviewPhotographersPageState extends State<ReviewPhotographersPage> {
 
   Future<void> _edit() async {
     final ext = Theme.of(context).extension<AppThemeExtension>()!;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => EditRequestSheet(
-        request: _request,
-        ext: ext,
-        repo: _repo,
-        onSave: (updated) {
-          if (mounted) {
-            setState(() {
-              _request = updated;
-              _changed = true;
-            });
-          }
-        },
-      ),
+    await EditRequestSheet.show(
+      context,
+      request: _request,
+      ext: ext,
+      repo: _repo,
+      onSave: (updated) {
+        if (mounted) {
+          setState(() {
+            _request = updated;
+            _changed = true;
+          });
+        }
+      },
     );
   }
 
