@@ -24,10 +24,13 @@ class ExploreEventCta extends StatelessWidget {
 
   /// What a post with a single photo says instead: there is nothing to browse,
   /// only this one thing to see properly.
+  ///
+  /// There is no video counterpart, and that is deliberate rather than an
+  /// omission. A single clip gets no offer at all — it is already playing
+  /// full-screen, so the only thing a pill across the middle of it could
+  /// invite you to do is look at what it is covering. See
+  /// `FullBleedEventCard._showExploreCta`.
   static const forOneImage = 'View full image';
-
-  /// And when that single thing is a clip.
-  static const forOneVideo = 'View full video';
 
   /// What holds the white glyphs up once the fill behind them is light enough
   /// to see the photo through.

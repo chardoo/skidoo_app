@@ -9,6 +9,7 @@ import 'package:jperg_app/features/admin/data/models/exchange_rates.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/security/web_navigation.dart';
 
 class AdsCheckoutPage extends StatefulWidget {
   const AdsCheckoutPage({
@@ -58,6 +59,15 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
   WebViewController? _controller;
   bool _loading = true;
 
+  /// The host the payer is actually on, under the title.
+  ///
+  /// A WebView has no address bar, so without this the screen says "Complete
+  /// Payment" whatever page is inside it — and a card payment legitimately
+  /// moves to the issuing bank's own domain partway through. Naming the host
+  /// is what makes a page that should not be there visible, and what makes the
+  /// bank's page recognisable rather than alarming.
+  String? _host;
+
   /// This screen has done its job. More than one channel reports the same
   /// return — see [initState] — and without this the payer was settled twice
   /// and `pop` was called twice, the second taking the screen underneath.
@@ -70,7 +80,12 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: (url) {
-          if (mounted) setState(() => _loading = true);
+          if (mounted) {
+            setState(() {
+              _loading = true;
+              _host = webViewHost(url) ?? _host;
+            });
+          }
           // A second channel for the return, because `onNavigationRequest`
           // does not fire for a redirect driven from script — which is how
           // Paystack's success page leaves — nor, on iOS, for some server
@@ -82,6 +97,10 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
         },
         onUrlChange: (change) {
           final url = change.url;
+          if (mounted && url != null) {
+            final host = webViewHost(url);
+            if (host != null && host != _host) setState(() => _host = host);
+          }
           if (url != null && PaystackReturn.isFinished(url)) _finish(url);
         },
         onWebResourceError: (error) {
@@ -95,7 +114,22 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
             _finish(request.url);
             return NavigationDecision.prevent;
           }
-          return NavigationDecision.navigate;
+          // Where this payment page may go. It used to be "anywhere", which
+          // on a screen with no address bar and scripting enabled is the
+          // whole of an in-app phishing surface. https still renders, so a
+          // card sent to its bank's 3-D Secure page works exactly as before;
+          // a scheme belonging to a bank or wallet app is handed to the
+          // system instead of rendered. See [decideWebNavigation].
+          switch (decideWebNavigation(request.url)) {
+            case WebNavigation.render:
+              return NavigationDecision.navigate;
+            case WebNavigation.handOff:
+              handOffWebNavigation(request.url, where: 'checkout');
+              return NavigationDecision.prevent;
+            case WebNavigation.refuse:
+              debugPrint('[WebView:checkout] refused ${request.url}');
+              return NavigationDecision.prevent;
+          }
         },
       ))
       ..loadRequest(Uri.parse(widget.authorizationUrl));
@@ -138,13 +172,42 @@ class _AdsCheckoutPageState extends State<AdsCheckoutPage> {
           // the flows that settle in the app have to be told either way.
           onPressed: () => _finish(null),
         ),
-        title: Text(
-          'Complete Payment',
-          style: TextStyle(
-              color: ext.greetingColor,
-              fontFamily: AppTypography.displayFontFamily,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w700),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Complete Payment',
+              style: TextStyle(
+                  color: ext.greetingColor,
+                  fontFamily: AppTypography.displayFontFamily,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700),
+            ),
+            // Where the payer actually is — see [_host]. With the padlock,
+            // because every page this view will render is https and the one
+            // thing worth saying about a payment page is that it is.
+            if (_host != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_outline,
+                      size: 11.sp, color: ext.searchHintColor),
+                  SizedBox(width: 3.w),
+                  Flexible(
+                    child: Text(
+                      _host!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: ext.searchHintColor,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
         centerTitle: false,
       ),

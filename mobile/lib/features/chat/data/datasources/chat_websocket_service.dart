@@ -6,6 +6,7 @@ import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/config/chat_config.dart';
 import 'package:jperg_app/core/utils/server_time.dart';
 import 'package:jperg_app/features/chat/data/local/chat_database.dart';
+import 'package:jperg_app/features/chat/data/datasources/ws_connect.dart';
 import 'package:jperg_app/models/chat/chat_message.dart';
 import 'package:jperg_app/models/chat/chat_room.dart';
 import 'package:jperg_app/models/chat/like_update.dart'
@@ -526,14 +527,14 @@ class ChatWebSocketService {
         .replaceFirst('https://', 'wss://')
         .replaceFirst('http://', 'ws://');
     final token = await _authService.getToken();
+    // No token in the URL. It goes in the `Authorization` header, which is
+    // what the chat service prefers and what keeps a year-long session token
+    // out of every access log that records a request line. See [openChatSocket].
     final uri = Uri.parse('$wsBase/chat/ws/me').replace(
-      queryParameters: {
-        if (token.isNotEmpty) 'token': token,
-        'client_type': 'mobile',
-      },
+      queryParameters: {'client_type': 'mobile'},
     );
 
-    await _doConnect(uri);
+    await _doConnect(uri, token);
     if (roomId != null) {
       debugPrint('[WS#$_instanceId] Connected — subscribing to room $roomId');
       _sendRaw({'type': 'subscribe_room', 'room_id': roomId});
@@ -543,7 +544,48 @@ class ChatWebSocketService {
     }
   }
 
-  Future<void> _doConnect(Uri uri) async {
+  /// Whether this session has had to fall back to the token-in-URL handshake.
+  ///
+  /// Sticky for the life of the process: if something in front of the chat
+  /// service drops `Authorization` on an upgrade, every reconnect would
+  /// otherwise pay for the failed attempt again — and reconnects happen on
+  /// every network change.
+  static bool _tokenInUrlFallback = false;
+
+  /// A connected channel, with the token in a header where that is possible.
+  ///
+  /// Falls back to the legacy query-string handshake once, because the failure
+  /// it guards against — a proxy stripping a standard header on an upgrade
+  /// request — would otherwise take the whole of chat down, and "the socket
+  /// never connects" is indistinguishable from a network problem from in here.
+  Future<WebSocketChannel> _openReadyChannel(Uri uri, String token) async {
+    Future<WebSocketChannel> ready(WebSocketChannel channel) async {
+      await channel.ready.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () =>
+            throw TimeoutException('WebSocket handshake timed out'),
+      );
+      return channel;
+    }
+
+    if (!_tokenInUrlFallback) {
+      try {
+        return await ready(openChatSocket(uri, token: token));
+      } catch (e) {
+        debugPrint('[WS#$_instanceId] header handshake failed (${e.runtimeType})'
+            ' — retrying with the token in the URL');
+      }
+    }
+    final channel = await ready(openChatSocketLegacy(uri, token: token));
+    if (!_tokenInUrlFallback) {
+      _tokenInUrlFallback = true;
+      debugPrint('[WS#$_instanceId] this deployment needs the token in the URL'
+          ' — Authorization is not surviving the upgrade request');
+    }
+    return channel;
+  }
+
+  Future<void> _doConnect(Uri uri, String token) async {
     _connectedController = StreamController<WsConnectedEvent>.broadcast();
     _errorController = StreamController<WsChatErrorEvent>.broadcast();
     _msgController = StreamController<ChatMessage>.broadcast();
@@ -574,12 +616,7 @@ class ChatWebSocketService {
         StreamController<WsDeliveryReceiptEvent>.broadcast();
 
     try {
-      _channel = WebSocketChannel.connect(uri);
-      await _channel!.ready.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () =>
-            throw TimeoutException('WebSocket handshake timed out'),
-      );
+      _channel = await _openReadyChannel(uri, token);
     } catch (e) {
       debugPrint('[WS] Connection failed: ${e.runtimeType}');
       disconnect();

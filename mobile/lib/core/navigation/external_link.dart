@@ -41,7 +41,7 @@ class ExternalLink {
   /// is a tap handler on text, and text is full of things that look like
   /// addresses and are not.
   static Future<void> open(BuildContext context, String raw) async {
-    final uri = _parse(raw);
+    final uri = safeUrl(raw);
     if (uri == null) return;
 
     // Ours? Then it is a navigation, not a departure. The host is checked
@@ -226,7 +226,24 @@ class ExternalLink {
   /// nothing at all. Anything that is not http(s) after that is refused: a
   /// `tel:`, `mailto:` or custom scheme in a stranger's message is a different
   /// question from a web page, and this sheet does not ask it.
-  static Uri? _parse(String raw) {
+  /// [raw] as a web address, or null if it is not one we will open.
+  ///
+  /// **Every address written by somebody else goes through here**, whatever it
+  /// is going to be handed to afterwards — `launchUrl`, a WebView, a share
+  /// sheet. The rule is one rule: it has to be `http` or `https` and it has to
+  /// name a host.
+  ///
+  /// The scheme test is the point of it. `launchUrl` hands anything else
+  /// straight to the operating system, so a `tel:` in an advertiser's
+  /// call-to-action dials a number, an `sms:` drafts a message, and on Android
+  /// an `intent://` can address components in other apps entirely. None of
+  /// those are a link somebody meant to tap. `hasScheme` — which is what the
+  /// campaign button used to check — is satisfied by all three.
+  ///
+  /// A bare "example.com/x" is read as https rather than refused: people write
+  /// addresses without the scheme constantly, and guessing the secure one is
+  /// both what every browser does and the safe direction to guess in.
+  static Uri? safeUrl(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 

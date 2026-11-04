@@ -356,6 +356,12 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
     // Nowhere to explore to: this card is the album's own page, and a tap
     // already opens the viewer. See [isOwnPage].
     if (widget.isOwnPage) return false;
+    // A lone clip has nowhere to go either. "View full video" was an offer to
+    // open the thing already playing full-screen under the pill — and the pill
+    // sat across the middle of it to say so. A photo earns the offer because
+    // the feed shows it contained and the viewer shows it properly; a video is
+    // already as full as it gets here. See [_exploreCtaLabel].
+    if (pics.length == 1 && pics.first.isVideo) return false;
     if ((_mediaIndex + 1) % _exploreEvery == 0) return true;
     if (_mediaIndex != pics.length - 1) return false;
     return _mediaIndex == 0 || _mediaIndex % _exploreEvery != 0;
@@ -368,12 +374,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
   /// they were already looking at, wondering where the rest went. The offer is
   /// still worth making — a tap belongs to the chrome now, so this is the only
   /// way to see that photo properly — it just has to say what it does.
+  /// A lone clip never reaches here — [_showExploreCta] has already stood the
+  /// offer down for it — so the single-item case is a photograph by the time
+  /// this is asked.
   String get _exploreCtaLabel {
     final pics = widget.event.pictures;
     if (pics.length != 1) return 'Explore event photos';
-    return pics.first.isVideo
-        ? ExploreEventCta.forOneVideo
-        : ExploreEventCta.forOneImage;
+    return ExploreEventCta.forOneImage;
   }
 
   /// Opens the album in the shared full-screen viewer, at the photo on screen.
@@ -965,6 +972,13 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
             pics: event.pictures,
             pageController: _mediaPageCtrl,
             showBlur: false,
+            // Video fills the card here, photographs still do not — see
+            // [PostPhotoCarousel.videoFit]. This is the feed people scroll
+            // expecting the picture to reach every edge, and a contained clip
+            // sat in a letterbox: 9:16 is the shape phones *record*, not the
+            // shape of the screen they play back on, so even a perfectly
+            // vertical upload left a dead band top and bottom.
+            videoFit: BoxFit.cover,
             onDoubleTap: _doubleTapLike,
             onTap: _onCardTapped,
             cardIndex: widget.cardIndex,

@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/security/web_navigation.dart';
 
 /// A lightweight in-app browser used to show remote, always-up-to-date content
 /// (privacy policy, terms, etc.) without bundling it in the app.
@@ -66,6 +67,22 @@ class _InAppWebViewPageState extends State<InAppWebViewPage> {
             setState(() => _loading = false);
             AppSnackBar.error(
                 context, 'Could not load page: ${error.description}');
+          }
+        },
+        // This view had no rule at all: a link inside our own terms page
+        // opened in here, and whatever that link pointed at opened in here
+        // after it. Same rule as the checkouts — https renders, a scheme the
+        // OS owns is handed over, nothing else is drawn in our chrome.
+        onNavigationRequest: (request) {
+          switch (decideWebNavigation(request.url)) {
+            case WebNavigation.render:
+              return NavigationDecision.navigate;
+            case WebNavigation.handOff:
+              handOffWebNavigation(request.url, where: 'in-app-browser');
+              return NavigationDecision.prevent;
+            case WebNavigation.refuse:
+              debugPrint('[WebView:in-app-browser] refused ${request.url}');
+              return NavigationDecision.prevent;
           }
         },
       ))

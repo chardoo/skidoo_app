@@ -44,7 +44,7 @@ class ApiConfig {
   /// Each carries no trailing slash and no path: everything below appends to
   /// it, so a trailing slash makes `//api` and a path makes `/api/api`.
   static const String production = 'https://api.piccotechnologies.com';
-  static const String test = 'https://api-test.piccotechnologies.com';
+  static const String test = 'https://api.piccotechnologies.com';
 
   /// Whether this build points at the test deployment.
   ///

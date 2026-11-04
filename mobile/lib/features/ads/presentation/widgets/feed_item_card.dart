@@ -30,6 +30,7 @@ import 'package:jperg_app/features/discovery/presentation/widgets/card_photo_pre
 import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/navigation/external_link.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for campaigns and requests
@@ -492,8 +493,16 @@ class _FeedItemCardState extends State<FeedItemCard> {
     d.onCtaTap?.call();
     final raw = d.ctaUrl;
     if (raw == null || raw.isEmpty) return;
-    final uri = Uri.tryParse(raw);
-    if (uri == null || !uri.hasScheme) return;
+    // An advertiser wrote this, so it is checked rather than trusted: see
+    // [ExternalLink.safeUrl]. `hasScheme` was the whole test here, and it is
+    // satisfied by `tel:` and by Android's `intent://` — neither of which is a
+    // link, and both of which `launchUrl` hands to the operating system.
+    //
+    // The server refuses anything but http/https when the campaign is written,
+    // so this is the second lock rather than the first. It is here because the
+    // rule that matters is the one next to the thing that opens the link.
+    final uri = ExternalLink.safeUrl(raw);
+    if (uri == null) return;
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {

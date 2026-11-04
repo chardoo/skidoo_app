@@ -28,6 +28,7 @@ class PostPhotoCarousel extends StatefulWidget {
     this.videoControlsBottomInset = 0,
     this.onVideoEnded,
     this.readiness,
+    this.videoFit = BoxFit.contain,
   });
 
   final List<EventPicture> pics;
@@ -66,6 +67,26 @@ class PostPhotoCarousel extends StatefulWidget {
   /// Null opts out entirely: the carousel scrolls freely, which is what the
   /// standalone uses of it want.
   final MediaReadiness? readiness;
+
+  /// How a video fills its slide.
+  ///
+  /// [BoxFit.contain] everywhere by default, which is this carousel's rule for
+  /// photographs and the right one for them: cropping somebody's picture to
+  /// fit a phone is a decision the app does not get to make, so a photo that
+  /// does not match the screen is letterboxed over its own blurred copy.
+  ///
+  /// A video in the full-bleed feed is the exception, and it is not an
+  /// inconsistency — the two are read differently. A photo is looked *at*; a
+  /// clip is immersive, and the feed it lives in is the one people arrive at
+  /// expecting the picture to reach every edge. Contained, even a 9:16 clip —
+  /// the shape phones record in — left 226 dp of dead band top and bottom on a
+  /// 19.5:9 screen, because 9:16 is not the shape of a modern phone and no
+  /// upload will ever match it exactly.
+  ///
+  /// Passed in rather than decided here so the standalone carousels — chat
+  /// media, the album viewer — keep letterboxing, where seeing the whole frame
+  /// is the entire point.
+  final BoxFit videoFit;
 
   @override
   State<PostPhotoCarousel> createState() => _PostPhotoCarouselState();
@@ -205,10 +226,13 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              // A contained video letterboxes on nearly every card, so the fill
-              // is most of the screen. It used to be a flat colour; now it is
-              // the clip's own poster frame, the same treatment the photo
-              // slides get.
+              // The backdrop is the clip's own poster frame, blurred. It only
+              // shows where the video does not reach — so with [videoFit] set
+              // to cover it is painted and never seen, and with the default
+              // contain it is most of the screen. Kept on both paths because
+              // which one is in play is the caller's choice, and a cover fit
+              // still leaves a hair of backdrop visible for the frame or two
+              // before the first video frame is decoded.
               MediaBackdrop(
                 url: pic.url,
                 child: _SliderVideoItem(
@@ -218,7 +242,7 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
                   onTap: widget.onTap,
                   cardIndex: widget.cardIndex,
                   activeCardIndex: widget.activeCardIndex,
-                  fit: BoxFit.contain,
+                  fit: widget.videoFit,
                   controlsBottomInset: widget.videoControlsBottomInset,
                   onEnded: widget.onVideoEnded,
                 ),

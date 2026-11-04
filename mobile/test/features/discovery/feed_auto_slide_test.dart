@@ -283,9 +283,12 @@ void main() {
       expect(find.text('Explore event photos'), findsNothing);
     });
 
-    testWidgets('a single clip is offered as a clip', (t) async {
-      // Same case, different noun. "View full image" over a video is the kind
-      // of wrong that reads as the app not knowing what it is showing.
+    testWidgets('a single clip is offered nothing at all', (t) async {
+      // A photo earns the offer because the feed shows it contained and the
+      // viewer shows it properly. A clip is already playing full-screen, so
+      // "View full video" was an invitation to open the thing underneath the
+      // pill — and the pill sat across the middle of it to extend the
+      // invitation. There is nowhere for it to go.
       await t.pumpWidget(host(EventDiscovery(
         id: 'e1',
         eventName: 'University Graduation',
@@ -303,7 +306,11 @@ void main() {
       )));
       await t.pump();
 
-      expect(find.text('View full video'), findsOneWidget);
+      expect(find.byType(ExploreEventCta), findsNothing);
+      expect(find.text('View full video'), findsNothing);
+      // And not the photo wording either — the fix is no offer, not a
+      // different noun on one.
+      expect(find.text('View full image'), findsNothing);
     });
 
     testWidgets('two photos are an album again', (t) async {

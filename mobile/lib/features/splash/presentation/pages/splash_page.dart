@@ -11,6 +11,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/utils/media_transform.dart';
 import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/discovery/data/services/feed_cache_service.dart';
+import 'package:jperg_app/core/startup/launch_prefetch.dart';
 import 'package:jperg_app/features/discovery/domain/usecases/get_random_images_usecase.dart';
 import 'package:jperg_app/features/onboarding/presentation/pages/onboarding_page.dart';
 import 'package:jperg_app/models/event_discovery/event_discovery.dart';
@@ -154,12 +155,19 @@ class _SplashPageState extends State<SplashPage> {
   /// nobody chose to look at.
   static const _kMediaWarmBudget = Duration(milliseconds: 1500);
 
-  /// One page of events — the same page `DiscoveryBloc` asks for, because the
-  /// bloc now adopts this page rather than fetching its own. It had drifted:
-  /// the comment here claimed the two matched while this asked for ten and the
-  /// bloc asked for twenty, which was harmless only for as long as the page
-  /// was going to be thrown away and refetched.
-  static const _kPageSize = 20;
+  /// How many events the launch asks for — three, and deliberately small.
+  ///
+  /// Enough to paint the first card and give the reader somewhere to swipe to.
+  /// The rest arrives as an ordinary page request kicked off the moment the
+  /// bloc adopts this one, which lands while they are still looking at the
+  /// first photo.
+  ///
+  /// Held in one place rather than two. This used to be its own `20` beside a
+  /// comment claiming it matched the bloc, which it never did — and twenty was
+  /// waste at both ends: `FeedCacheService` keeps only eight, so the remainder
+  /// was decoded and dropped, and on the wire it is 30.9 KB against 5.2 KB for
+  /// three. See [LaunchPrefetch.pageSize], which is the number actually sent.
+  static const _kPageSize = LaunchPrefetch.pageSize;
 
   @override
   void initState() {
@@ -308,11 +316,18 @@ class _SplashPageState extends State<SplashPage> {
 
     if (events.isEmpty) {
       try {
-        events = await sl<GetRandomImagesUseCase>()(
-          take: _kPageSize,
-          skip: 0,
-          userId: await sl<AuthService>().getUserId(),
-        );
+        // Adopted, not started. `main()` put this request on the wire before
+        // the config fetches, so by the time this screen is built it has been
+        // in flight for however long the DI and the first frame took — and
+        // critically it did not have to queue behind another socket's
+        // handshake. Falls back to fetching here if nothing was started, which
+        // is the path a widget test takes. See [LaunchPrefetch].
+        events = await LaunchPrefetch.take() ??
+            await sl<GetRandomImagesUseCase>()(
+              take: _kPageSize,
+              skip: 0,
+              userId: await sl<AuthService>().getUserId(),
+            );
         // Marked as this launch's own page, so the bloc adopts it instead of
         // asking for the first page a second time. Every `skip == 0` is a
         // fresh deal server-side, so a second request would hand back a

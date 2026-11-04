@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/music/domain/entities/music_track.dart';
+import 'package:jperg_app/core/navigation/external_link.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Where the music pill leads: what is playing, and the way to hear all of it.
@@ -36,7 +37,10 @@ class MusicTrackSheet extends StatelessWidget {
   Future<void> _openProvider(BuildContext context) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.maybeOf(context);
-    final url = Uri.tryParse(track.pageUrl);
+    // Checked, not parsed: this address comes from the music catalogue rather
+    // than from us. Same rule as the campaign button — see
+    // [ExternalLink.safeUrl].
+    final url = ExternalLink.safeUrl(track.pageUrl);
 
     // Closed first, whatever happens next. Leaving the sheet up behind an
     // external app means coming back to a modal still sitting over the feed.

@@ -88,8 +88,19 @@ class AuthService {
   static bool get isPhotographer => role.value == 'photographer';
 
   // ── Mobile backend ───────────────────────────────────────────────────────────
+  //
+  // `encryptedSharedPreferences: true` used to be here and is gone as of
+  // flutter_secure_storage 10: Google deprecated the Jetpack Security library
+  // the flag selected, the package replaced it with its own ciphers, and the
+  // parameter is now **ignored** — anything written under the old backend is
+  // migrated to the new one on first access, which is the whole reason this
+  // app is on 10.x and not 11.x. See the note in pubspec.yaml; removing the
+  // flag changes no behaviour, and leaving it in invites somebody to
+  // "re-enable" a backend that no longer exists.
+  //
+  // `first_unlock` stays: the token is read during startup, which can happen
+  // in the background before the device has been unlocked since boot.
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 

@@ -317,6 +317,25 @@ class DiscoveryBloc extends Bloc<DiscoveryEvent, DiscoveryState> {
       emit(state.copyWith(currentUserId: userId, hasMore: true));
       if (userId != null) _enrichInBackground(cached, userId);
       _prefetchRooms(cached);
+
+      // ── And the rest of the feed, now rather than on the first swipe ──────
+      //
+      // The launch asks for three events, not a full page: enough to paint the
+      // first card without carrying twenty events' worth of JSON through the
+      // one moment nobody is willing to wait. That trade only holds if the
+      // remainder is already arriving — the reader is looking at the first
+      // photo, and this page lands in that time.
+      //
+      // It would not arrive on its own. Load-more fires from `onPageChanged`
+      // and from a drag edge, so a reader who simply *looks* at the first card
+      // triggers nothing, and the feed would sit three deep until they moved.
+      //
+      // Safe against the rule this whole branch exists to protect: this is a
+      // `skip == _skip` request, never a second `skip == 0`, so it appends and
+      // cannot re-deal the card on top. See [FeedCacheService.takeHandoff].
+      if (cached.length < _pageSize) {
+        add(const DiscoveryLoadMoreRequested());
+      }
       return;
     }
 

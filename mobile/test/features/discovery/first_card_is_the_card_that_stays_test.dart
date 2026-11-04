@@ -214,8 +214,18 @@ void main() {
     );
 
     expect(firsts.toSet(), {'a'}, reason: 'the first card changed: $firsts');
-    expect(lastCallSkips, isEmpty,
-        reason: 'the splash had already fetched this page');
+    // The invariant is one *first-page* request, which is what re-deals the
+    // ranking — not one request full stop. This asserted `isEmpty`, which
+    // happened to say the same thing while the only call the bloc could make
+    // after a handoff was a second `skip == 0`.
+    expect(lastCallSkips, isNot(contains(0)),
+        reason: 'a second first-page request re-deals the card the splash '
+            'warmed: $lastCallSkips');
+    // And the other half of the bargain. The launch asks for three events so
+    // the first card paints sooner; that is only a trade rather than a loss
+    // if the rest follows without waiting to be swiped for.
+    expect(lastCallSkips, contains(2),
+        reason: 'the rest of the feed should be on its way already');
   });
 
   test('a hidden post is never the first card, not even briefly', () async {

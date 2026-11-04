@@ -466,6 +466,15 @@ class _JpergVideoPlayerState extends State<JpergVideoPlayer>
     super.dispose();
   }
 
+  /// Whether [widget.fit] is one whose whole purpose is to leave no gap.
+  ///
+  /// These two are the fits a caller chooses when the video is the background
+  /// rather than the subject. The rest — contain, fitWidth, fitHeight, scaleDown
+  /// — all accept a gap by definition, so sizing to the video's own ratio is
+  /// what they want and the AspectRatio branch stays theirs.
+  bool get _fillsSlot =>
+      widget.fit == BoxFit.cover || widget.fit == BoxFit.fill;
+
   Widget _buildVideoSurface() {
     final ctrl = _ctrl;
     final size = _videoSize;
@@ -524,6 +533,33 @@ class _JpergVideoPlayerState extends State<JpergVideoPlayer>
     } else if (widget.height != null) {
       sized = SizedBox(
           width: widget.height! * ratio, height: widget.height, child: video);
+    } else if (_fillsSlot) {
+      // A filling fit means "leave no gap", and [AspectRatio] is the one thing
+      // that can stop it keeping that promise.
+      //
+      // Given a loose slot, AspectRatio sizes itself to the largest box of the
+      // video's own ratio that fits — which *is* a letterbox. The FittedBox
+      // inside then covers that box, which it already matches exactly, so
+      // `BoxFit.cover` had no work left to do and a 9:16 clip still sat in
+      // black bands on a 19.5:9 screen. The fit was right and this undid it
+      // one level down.
+      //
+      // Only where there is a slot to fill. The note above is still binding —
+      // every branch ends up bounded on both axes — so an unbounded
+      // constraint falls back to the ratio rather than laying the video out at
+      // its full pixel height.
+      sized = LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.hasBoundedWidth && constraints.hasBoundedHeight) {
+            return SizedBox(
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              child: video,
+            );
+          }
+          return AspectRatio(aspectRatio: ratio, child: video);
+        },
+      );
     } else {
       sized = AspectRatio(aspectRatio: ratio, child: video);
     }

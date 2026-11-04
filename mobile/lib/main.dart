@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:jperg_app/app.dart';
 import 'package:jperg_app/core/cache/platform_http_client.dart';
+import 'package:jperg_app/core/startup/launch_prefetch.dart';
+import 'package:jperg_app/core/logging/log_redaction.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 // Temporarily disabled for presentation screenshots — re-enable with the call below.
 // import 'package:jperg_app/core/security/screenshot_guard.dart';
@@ -21,6 +23,14 @@ import 'package:jperg_app/features/settings/presentation/personalisation_prompt.
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Before anything logs. `debugPrint` keeps printing in a release build — to
+  // os_log and to logcat, and from there into any sysdiagnose or bug report —
+  // and the repositories log whole response bodies, which carry email
+  // addresses, phone numbers and, on an auth call, the session token. One
+  // filter at the exit redacts those and keeps the diagnostics. See
+  // [installLogRedaction].
+  installLogRedaction();
 
   // Cap Flutter's decoded-image cache to prevent OOM crashes on photo feeds.
   // The default (1000 images / unbounded bytes) is dangerously high for an app
@@ -45,6 +55,18 @@ void main() async {
 
   await setupServiceLocator();
   debugPrint('[Startup] DI ready — ${sw.elapsedMilliseconds}ms');
+
+  // The feed's first page, before anything else touches the network.
+  //
+  // Order is the whole point. `dart:io`'s HttpClient is HTTP/1.1, so it cannot
+  // multiplex: two requests in flight at once are two sockets, and each pays
+  // its own TCP and TLS handshake — about 440 ms of the second that a cold
+  // launch takes. The config fetches below used to start first and leave the
+  // feed queueing behind them on a connection it could not share, so the one
+  // request the reader is actually waiting for was the one that paid full
+  // price. It goes first now; the splash awaits this very future rather than
+  // starting a second. See [LaunchPrefetch].
+  LaunchPrefetch.start();
 
   // Fire-and-forget — never blocks startup; failures use safe defaults.
   Future.wait([
