@@ -4,14 +4,6 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<!-- Deep links are handled by app_links → DeepLinkService, not by Flutter's
-	     built-in routing. Left enabled, the engine also forwards the URL to the
-	     framework as a `pushRoute`, which MaterialApp (Navigator 1.0) turns into
-	     pushNamed("/e/<id>") — an unregistered name — so onUnknownRoute pushes
-	     DiscoveryPage on top of the screen the link had just opened. See the
-	     matching note in AndroidManifest.xml. -->
-	<key>FlutterDeepLinkingEnabled</key>
-	<false/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -45,43 +37,14 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>jperg needs access to your camera to take photos and scan items.</string>
-	<!-- jperg itself never asks for location: nothing in lib/ requests it, and
-	     the only permissions the app uses are photos and storage. The key is
-	     here because the OneSignal SDK bundles OneSignalLocation, which links
-	     CoreLocation, and App Store validation rejects the build (90683) when
-	     a framework references those APIs with no purpose string — whether or
-	     not the app calls them. It cannot be dropped: onesignal_flutter depends
-	     on the OneSignalComplete subspec, and CocoaPods takes the union of
-	     subspecs, so asking for the notification-only one in the Podfile leaves
-	     OneSignalLocation installed anyway (tried, verified).
-
-	     No prompt will ever be shown, because showing one needs an explicit
-	     OneSignal.Location.requestPermission() call that this app does not
-	     make. The wording says exactly that, since App Review is the only
-	     audience this string will ever have. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>jperg does not use your location. This notice is required because the notification service bundled with the app includes location-based features, which jperg keeps switched off.</string>
-	<!-- Same situation as the location key above, and the same rejection
-	     (90683). jperg records no audio and no video: the only two cameras it
-	     opens are the selfie capture and the face capture, both of which pass
-	     `enableAudio: false` precisely so the microphone is never requested —
-	     see the note in selfie_capture_screen.dart, where defaulting to true
-	     once failed the whole camera initialise when somebody declined a mic
-	     prompt on a screen called "Take a Selfie".
-
-	     The key is required anyway because `camera_avfoundation` links
-	     AVCaptureDevice's audio APIs to support video recording, and App Store
-	     validation rejects a build whose frameworks reference those APIs with
-	     no purpose string — whether or not the app calls them. image_picker,
-	     mobile_scanner and audio_session are in the same position.
-
-	     No prompt will ever be shown, because nothing in the app asks for
-	     microphone access. The wording says exactly that, since App Review is
-	     the only audience this string will ever have. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>jperg does not use your microphone and records no audio. This notice is required because the camera library bundled with the app includes video-recording features, which jperg keeps switched off.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
@@ -114,6 +77,23 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+	</array>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<!-- Required of any app holding the communication-notifications
+		     entitlement, and declared here rather than in the extension: it is
+		     the app that holds the entitlement, so it is the app that has to
+		     name the intent types it will be handed. Without it App Store
+		     Connect warns on every upload, and iOS has grounds to decline the
+		     intent at runtime — which would leave notifications arriving
+		     correctly but wearing the app icon, the one failure that looks
+		     like nothing is wrong.
+
+		     INSendMessageIntent only. INStartCallIntent is the other member
+		     of this family and this app places no calls; naming it would
+		     claim a capability that does not exist. See
+		     ios/NotificationServiceExtension/NotificationService.swift. -->
+		<string>INSendMessageIntent</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
