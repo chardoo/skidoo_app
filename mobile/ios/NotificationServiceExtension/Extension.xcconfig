@@ -1,0 +1,20 @@
+// The extension's version has to come from the same place the app's does.
+//
+// Info.plist here reads $(FLUTTER_BUILD_NAME) and $(FLUTTER_BUILD_NUMBER), and
+// those are defined in Flutter/Generated.xcconfig — which Runner picks up
+// through Flutter/Debug.xcconfig and this target, having no base configuration
+// at all, did not. The variables resolved to nothing, CFBundleVersion shipped
+// as an empty string, and installd refused the whole app:
+//
+//   Unable to Install "jperg" — Appex bundle … does not have a CFBundleVersion
+//   key with a non-zero length string value in its Info.plist
+//
+// Hardcoding a version here would have fixed the install and broken the upload
+// instead: an app extension's CFBundleVersion and CFBundleShortVersionString
+// must match its host app's, and a number written in two places is a number
+// that will disagree at the worst moment. Both now come from pubspec.yaml, once.
+//
+// Generated.xcconfig is written by `flutter pub get` and is not in git, which
+// is why this include is unconditional — if it is missing the build should say
+// so loudly rather than quietly produce an unversioned bundle again.
+#include "../Flutter/Generated.xcconfig"
