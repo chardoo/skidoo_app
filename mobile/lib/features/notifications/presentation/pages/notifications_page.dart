@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:jperg_app/core/cache/session_cache.dart';
 import 'package:jperg_app/core/common/widgets/app_widgets.dart';
 import 'package:jperg_app/core/deep_links/deep_link_service.dart';
@@ -490,7 +491,11 @@ class _NotificationTile extends StatelessWidget {
                         : Colors.transparent,
                   ),
                 ),
-                _Thumbnail(imageUrl: item.imageUrl, look: look),
+                _Thumbnail(
+                  avatarUrl: item.avatarUrl,
+                  imageUrl: item.imageUrl,
+                  look: look,
+                ),
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Padding(
@@ -574,15 +579,37 @@ String _stamp(DateTime when) {
   return label == 'Just now' ? 'now' : label;
 }
 
-/// The picture on the left: whatever the notification is about, or the icon for
-/// its kind when it is about nothing you can photograph.
+/// The picture on the left: who the notification is from, or what it is about,
+/// or the icon for its kind when it is neither.
+///
+/// Three cases in that order, deliberately. A face beats a photograph — "Yaa
+/// posted an album" is from Yaa, and her face is what makes the row findable
+/// in a list of thirty. The album cover is still in the row's payload and
+/// still opens from the tap; it is simply not what identifies this as hers.
+///
+/// A face also gets the jperg mark badged over its bottom-right corner, which
+/// is the same thing the push notification does on the lock screen — Android
+/// draws it over `large_icon`, iOS draws it over the communication
+/// notification's avatar, and this draws it here so the list and the buzz look
+/// like two views of one event rather than two designs. Nothing the app itself
+/// sent gets the badge: a receipt is not from a person, and badging the app
+/// icon onto the app's own icon says nothing.
 class _Thumbnail extends StatelessWidget {
-  const _Thumbnail({required this.imageUrl, required this.look});
+  const _Thumbnail({
+    required this.avatarUrl,
+    required this.imageUrl,
+    required this.look,
+  });
 
+  final String? avatarUrl;
   final String? imageUrl;
   final _Look look;
 
   static const _size = 44.0;
+  // Just under a third of the circle. Large enough to read as a mark at a
+  // glance on a phone, small enough that it still reads as a badge on
+  // somebody's face rather than as a second picture beside it.
+  static const _badge = 16.0;
 
   @override
   Widget build(BuildContext context) {
@@ -597,17 +624,59 @@ class _Thumbnail extends StatelessWidget {
       child: Icon(look.icon, size: 22.sp, color: look.color),
     );
 
-    if (imageUrl == null || imageUrl!.isEmpty) return fallback;
+    final url = avatarUrl ?? imageUrl;
+    if (url == null || url.isEmpty) return fallback;
 
-    return ClipOval(
+    final circle = ClipOval(
       child: JpergImage(
-        imageUrl: imageUrl!,
+        imageUrl: url,
         width: _size.w,
         height: _size.w,
         logicalWidth: _size.w,
         fit: BoxFit.cover,
         placeholder: (_, __) => fallback,
         errorWidget: (_, __, ___) => fallback,
+      ),
+    );
+
+    if (avatarUrl == null) return circle;
+
+    return SizedBox(
+      width: _size.w,
+      height: _size.w,
+      child: Stack(
+        // The badge sits half off the circle, like the system's own. Clipped
+        // to the box it would be a quarter-disc tucked inside the face
+        // instead.
+        clipBehavior: Clip.none,
+        children: [
+          circle,
+          Positioned(
+            right: -2.w,
+            bottom: -1.h,
+            child: Container(
+              width: _badge.w,
+              height: _badge.w,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary,
+                // A ring in the row's own background, so the badge stays
+                // separate from whatever it is sitting on — a dark jacket in
+                // somebody's profile picture otherwise swallows it.
+                border: Border.all(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  width: 1.5.w,
+                ),
+              ),
+              child: SvgPicture.asset(
+                'assets/logo/jperg_icon_white.svg',
+                width: (_badge * 0.55).w,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

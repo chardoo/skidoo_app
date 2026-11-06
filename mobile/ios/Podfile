@@ -35,6 +35,26 @@ target 'Runner' do
   end
 end
 
+# NotificationServiceExtension is deliberately absent from this file.
+#
+# It has no pods, and that is the design rather than an omission — see
+# ios/NotificationServiceExtension/NotificationService.swift. Both ways of
+# giving it OneSignal's extension framework fail in this project:
+#
+#   * `pod 'OneSignalXCFramework'` in its own target makes two aggregate
+#     targets copy the same xcframework slices into one shared products
+#     directory, and Xcode refuses — "Multiple commands produce
+#     …/XCFrameworkIntermediates/OneSignalXCFramework/OneSignalExtension".
+#   * `inherit! :search_paths` hands the extension the *app's* whole link
+#     line — camera_avfoundation, mobile_scanner, every Flutter plugin — and
+#     the resulting dependency tangle is a build cycle inside Runner.
+#
+# Neither is worth solving, because the extension does not need OneSignal. The
+# two things it does — attach the picture and rebuild the notification as
+# coming from a person — both read keys this backend puts in `data` itself.
+# What it gives up is OneSignal's confirmed-delivery receipts, which have never
+# run for this app in any case: there was no extension at all until now.
+
 post_install do |installer|
   # Fix gRPC-Core and gRPC-C++ basic_seq.h: Apple Clang 15+ requires an explicit
   # template argument list after the `template` keyword in dependent contexts.

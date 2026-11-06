@@ -54,6 +54,24 @@ class AppNotification {
     return null;
   }
 
+  /// The face of whoever this is from — the follower, the commenter, the
+  /// photographer whose album it is.
+  ///
+  /// Distinct from [imageUrl], which is what the notification is *about*. Most
+  /// rows have one or the other; a new album has both, and the face is the one
+  /// that belongs in the circle. Null for everything the app itself sent: a
+  /// receipt is not from anybody, and those keep their kind's icon.
+  String? get avatarUrl {
+    final value = data['avatar']?.toString().trim();
+    return (value == null || value.isEmpty) ? null : value;
+  }
+
+  /// Who that face belongs to, so tapping it can open their profile.
+  String? get actorId {
+    final value = data['actor']?.toString().trim();
+    return (value == null || value.isEmpty) ? null : value;
+  }
+
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
       id: json['id']?.toString() ?? '',

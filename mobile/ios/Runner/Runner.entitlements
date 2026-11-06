@@ -4,6 +4,14 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Lets a notification be drawn as coming from a person: their face,
+	     round, with the app icon badged over its corner. Granted to the app as
+	     well as to the extension that builds the intent — iOS checks the
+	     bundle the notification belongs to, not only the one that rewrote it.
+	     Must also be ticked on the App ID in the developer portal, or signing
+	     fails. See docs/NOTIFICATION_AVATARS.md in the backend repo. -->
+	<key>com.apple.developer.usernotifications.communication</key>
+	<true/>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:jperg.com</string>
