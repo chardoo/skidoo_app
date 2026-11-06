@@ -934,7 +934,14 @@ class EditRequestSheet extends StatefulWidget {
 
 class _EditRequestSheetState extends State<EditRequestSheet> {
   final _picker = ImagePicker();
-  late List<AdMedia> _media = widget.request.media;
+  /// The requester's own photos — never the stand-in the server fills in for
+  /// a request posted without any. That one has no id behind it and nothing to
+  /// delete, and showing it here would offer a Remove button that cannot work
+  /// on a picture they never added. See [AdMedia.isDefault].
+  late List<AdMedia> _media = _own(widget.request.media);
+
+  static List<AdMedia> _own(List<AdMedia> media) =>
+      [for (final m in media) if (!m.isDefault) m];
   bool _mediaBusy = false;
 
   late final TextEditingController _titleCtrl;
@@ -1042,7 +1049,7 @@ class _EditRequestSheetState extends State<EditRequestSheet> {
       final refreshed = await widget.repo.getRequest(widget.request.id);
       if (!mounted) return;
       if (refreshed != null) {
-        setState(() => _media = refreshed.media);
+        setState(() => _media = _own(refreshed.media));
         widget.onSave(refreshed);
       }
     } catch (e) {

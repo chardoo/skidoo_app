@@ -7,6 +7,7 @@ class AdMedia {
     this.width,
     this.height,
     this.durationSeconds,
+    this.isDefault = false,
   });
 
   final String id;
@@ -22,6 +23,15 @@ class AdMedia {
 
   /// Duration in seconds (video only). Null for images.
   final double? durationSeconds;
+
+  /// True when this is the platform's stand-in image rather than one the
+  /// requester attached — a request may be posted without a photo, and the
+  /// server fills the gap so every card has something to show.
+  ///
+  /// It is not a row in anybody's media list: `id` is empty and there is
+  /// nothing to delete. Screens that edit photos must leave it out; screens
+  /// that only display them can treat it like any other image.
+  final bool isDefault;
 
   bool get isVideo => mediaType == 'video';
 
@@ -41,6 +51,7 @@ class AdMedia {
             (j['sort_order'] as num? ?? j['position'] as num?)?.toInt() ?? 0,
         width: (j['width'] as num?)?.toInt(),
         height: (j['height'] as num?)?.toInt(),
+        isDefault: j['is_default'] as bool? ?? false,
         durationSeconds: (j['duration_seconds'] as num?)?.toDouble(),
       );
 }

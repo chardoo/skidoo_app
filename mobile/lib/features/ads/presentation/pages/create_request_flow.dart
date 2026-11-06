@@ -136,8 +136,17 @@ class RequestDraft {
   double? budgetMin;
   double? budgetMax;
 
-  /// Required. A request without a photo of the venue, the couple, the thing
-  /// being shot gives a photographer nothing to answer.
+  /// Optional, and worth adding. A photo of the venue, the couple, the thing
+  /// being shot is the difference between a request a photographer can answer
+  /// and one they have to ask about first — so the picker stays where it is,
+  /// above the fold.
+  ///
+  /// It stopped being required because the people it stopped were not the ones
+  /// posting thin requests: somebody who has typed a date, a place, a budget
+  /// and two paragraphs has said everything a creator needs, and standing a
+  /// file picker between them and Publish lost the request instead of
+  /// improving it. A request posted without one shows the platform's stand-in
+  /// image on the board — the server fills it in, see AdMedia.isDefault.
   final List<XFile> photos = [];
 
   /// Ask for a creator who has promised a delivery window.
@@ -157,8 +166,9 @@ class RequestDraft {
       // nobody is aimed at goes to every photographer on the platform, and that
       // is a decision worth making on purpose rather than by leaving a field
       // alone.
-      targetLocations.isNotEmpty &&
-      photos.isNotEmpty;
+      //
+      // `photos` is deliberately not in this list — see the field.
+      targetLocations.isNotEmpty;
 }
 
 const requestEventTypes = [
@@ -584,11 +594,14 @@ class _NewRequestStepState extends State<_NewRequestStep> {
               ],
             ),
           ),
-          // Not in the design, and required all the same: a photographer
-          // answering a request needs to see what they would be shooting.
+          // Not in the design, and worth the room: a photographer answering a
+          // request wants to see what they would be shooting. Optional —
+          // nothing below blocks on it — and kept in the flow rather than
+          // behind a disclosure, because a picker nobody finds is a picker
+          // nobody uses.
           _Field(
             ext: ext,
-            label: 'Photos',
+            label: 'Photos (optional)',
             child: _DraftPhotos(
               photos: draft.photos,
               ext: ext,
@@ -613,11 +626,9 @@ class _NewRequestStepState extends State<_NewRequestStep> {
             SizedBox(height: AppSpacing.sm.h),
             Center(
               child: Text(
-                draft.photos.isEmpty
-                    ? 'Add at least one photo to continue'
-                    : draft.targetLocations.isEmpty
-                        ? 'Pick at least one area that should see this'
-                        : 'Fill in the name, date, type and location',
+                draft.targetLocations.isEmpty
+                    ? 'Pick at least one area that should see this'
+                    : 'Fill in the name, date, type and location',
                 style: TextStyle(color: ext.searchHintColor, fontSize: 12.sp),
               ),
             ),
