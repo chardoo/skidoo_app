@@ -5,11 +5,21 @@
 	<key>aps-environment</key>
 	<string>development</string>
 	<!-- Lets a notification be drawn as coming from a person: their face,
-	     round, with the app icon badged over its corner. Granted to the app as
-	     well as to the extension that builds the intent — iOS checks the
-	     bundle the notification belongs to, not only the one that rewrote it.
-	     Must also be ticked on the App ID in the developer portal, or signing
-	     fails. See docs/NOTIFICATION_AVATARS.md in the backend repo. -->
+	     round, with the app icon badged over its corner.
+
+	     On the app and **only** the app, even though it is the notification
+	     service extension that builds the intent. The permission belongs to
+	     the bundle the notification is addressed to, not to whichever process
+	     rewrote it on the way in, and Apple does not offer this entitlement
+	     for app-extension identifiers at all — asking for it on the extension
+	     gets the profile refused outright:
+
+	       Entitlement com.apple.developer.usernotifications.communication
+	       not found and could not be included in profile.
+
+	     Must also be ticked on the App ID in the developer portal; automatic
+	     signing does that for you the first time it builds. See
+	     docs/NOTIFICATION_AVATARS.md in the backend repo. -->
 	<key>com.apple.developer.usernotifications.communication</key>
 	<true/>
 	<key>com.apple.developer.associated-domains</key>

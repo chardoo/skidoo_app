@@ -173,9 +173,10 @@ class NotificationService: UNNotificationServiceExtension {
             return try content.updating(from: intent)
         } catch {
             // iOS refuses the intent when the communication-notifications
-            // entitlement is missing from the build. The notification still
-            // has to arrive — it just arrives looking the way it did before
-            // this target existed.
+            // entitlement is missing from the *host app* — it is granted
+            // there, not here, and this process inherits the answer. The
+            // notification still has to arrive; it just arrives looking the
+            // way it did before this target existed.
             return content
         }
     }
