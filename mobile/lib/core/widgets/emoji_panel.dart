@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 // ── Emoji data ────────────────────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ class _EmojiPickerPanelState extends State<EmojiPickerPanel> {
         children: [
           // ── Category tabs ───────────────────────────────────────────────────
           SizedBox(
-            height: 40.h,
+            height: 40.tapH,
             child: Row(
               children: _kEmojiCategories.keys.map((cat) {
                 final active = cat == _activeCategory;

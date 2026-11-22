@@ -11,6 +11,7 @@ import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/ads/data/repositories/ads_repository.dart';
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Swapping the chosen photographer for another one.
 ///
@@ -154,7 +155,7 @@ class _ChangePhotographerPageState extends State<ChangePhotographerPage> {
             ),
             child: SizedBox(
               width: double.infinity,
-              height: 50.h,
+              height: 50.tapH,
               child: ElevatedButton(
                 // Nothing to do until they pick someone other than the person
                 // already chosen.
@@ -399,7 +400,7 @@ class _ConfirmSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: SizedBox(
-                      height: 46.h,
+                      height: 46.tapH,
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(false),
                         style: OutlinedButton.styleFrom(
@@ -423,7 +424,7 @@ class _ConfirmSheet extends StatelessWidget {
                   SizedBox(width: AppSpacing.md.w),
                   Expanded(
                     child: SizedBox(
-                      height: 46.h,
+                      height: 46.tapH,
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(true),
                         style: ElevatedButton.styleFrom(

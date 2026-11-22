@@ -5,6 +5,7 @@ import 'package:jperg_app/core/common/widgets/app_text_field.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Shared text-input bar for both event and photo comments.
 ///
@@ -210,8 +211,8 @@ class CommentInputBarWidget extends StatelessWidget {
                       onTap: onSend,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
-                        width: 42.w,
-                        height: 42.h,
+                        width: 42.tapW,
+                        height: 42.tapH,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [ext.accentGold, ext.accentGoldDark],

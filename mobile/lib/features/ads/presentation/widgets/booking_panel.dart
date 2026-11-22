@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// The quote, what it costs, and whatever the requester can do about it next.
 ///
@@ -331,7 +332,7 @@ class BookingPanel extends StatelessWidget {
   Widget _primary({required String label, required VoidCallback onTap}) =>
       SizedBox(
         width: double.infinity,
-        height: 46.h,
+        height: 46.tapH,
         child: ElevatedButton(
           onPressed: busy ? null : onTap,
           style: ElevatedButton.styleFrom(
@@ -367,7 +368,7 @@ class BookingPanel extends StatelessWidget {
   Widget _outlined({required String label, required VoidCallback onTap}) =>
       SizedBox(
         width: double.infinity,
-        height: 46.h,
+        height: 46.tapH,
         child: OutlinedButton(
           onPressed: busy ? null : onTap,
           style: OutlinedButton.styleFrom(
@@ -395,7 +396,7 @@ class BookingPanel extends StatelessWidget {
     final colour = danger ? const Color(0xFFEF4444) : ext.searchHintColor;
     return SizedBox(
       width: double.infinity,
-      height: 42.h,
+      height: 42.tapH,
       child: TextButton(
         onPressed: busy ? null : onTap,
         child: Text(

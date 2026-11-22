@@ -6,6 +6,7 @@ import 'package:jperg_app/models/photographer/photographer_sample.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 class SamplesFullscreenPage extends StatefulWidget {
   const SamplesFullscreenPage({
@@ -105,8 +106,8 @@ class _SamplesFullscreenPageState extends State<SamplesFullscreenPage> {
                       onTap: () => Navigator.of(context).pop(),
                       child: Container(
                         margin: EdgeInsets.only(left: AppSpacing.lg.w),
-                        width: 36.w,
-                        height: 36.h,
+                        width: 36.tapW,
+                        height: 36.tapH,
                         decoration: const BoxDecoration(
                           color: Colors.black54,
                           shape: BoxShape.circle,

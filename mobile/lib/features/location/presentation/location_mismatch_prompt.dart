@@ -9,6 +9,7 @@ import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/location/data/repositories/location_repository.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// "You seem to be somewhere else — is your location still right?"
 ///
@@ -249,7 +250,7 @@ class _MismatchSheetState extends State<_MismatchSheet> {
                 SizedBox(height: AppSpacing.xl.h),
                 SizedBox(
                   width: double.infinity,
-                  height: 46.h,
+                  height: 46.tapH,
                   child: ElevatedButton(
                     onPressed: _saving ? null : _update,
                     style: ElevatedButton.styleFrom(

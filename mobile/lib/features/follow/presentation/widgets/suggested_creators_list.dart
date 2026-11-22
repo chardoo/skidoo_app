@@ -8,6 +8,7 @@ import 'package:jperg_app/features/follow/data/follow_repository.dart';
 import 'package:jperg_app/features/discovery/presentation/utils/open_photographer_profile.dart';
 import 'package:jperg_app/core/common/widgets/user_avatar.dart';
 import 'package:jperg_app/core/common/widgets/verified_badge.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// A run of suggested creators, each with its own Follow button.
 ///
@@ -247,7 +248,7 @@ class _FollowButton extends StatelessWidget {
       button: true,
       label: following ? 'Following' : 'Follow',
       child: SizedBox(
-        height: 32.h,
+        height: 32.tapH,
         child: OutlinedButton(
           onPressed: pending ? null : onToggle,
           style: OutlinedButton.styleFrom(

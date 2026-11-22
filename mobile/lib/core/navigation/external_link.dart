@@ -9,6 +9,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Opening a link that somebody else wrote.
 ///
@@ -275,7 +276,7 @@ class _SheetButton extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 48.h,
+        height: 48.tapH,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: filled ? ext.accentGold : Colors.transparent,

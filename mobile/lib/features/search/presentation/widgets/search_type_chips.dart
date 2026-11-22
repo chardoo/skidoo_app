@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/features/search/domain/entities/search_models.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Events / Photographers / People / Tags. Only the sections the query matched
 /// are offered — a chip that opens an empty list is a dead end — and the whole
@@ -25,7 +26,7 @@ class SearchTypeChips extends StatelessWidget {
     if (types.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 40.h,
+      height: 40.tapH,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),

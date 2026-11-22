@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/data/models/feed_request_model.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/creator_profile_page.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// One photographer who answered a request: who they are, what they have shot,
 /// and what people say about them.
@@ -87,7 +88,7 @@ class RequestPhotographerPage extends StatelessWidget {
           // rather than one choice on it.
           Center(
             child: SizedBox(
-              height: 46.h,
+              height: 46.tapH,
               child: ElevatedButton(
                 onPressed:
                     alreadySelected ? null : () => _confirm(context, ext),
@@ -224,7 +225,7 @@ class _ConfirmSheet extends StatelessWidget {
               SizedBox(height: AppSpacing.xl.h),
               SizedBox(
                 width: double.infinity,
-                height: 46.h,
+                height: 46.tapH,
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(true),
                   style: ElevatedButton.styleFrom(

@@ -18,6 +18,7 @@ import 'package:jperg_app/features/ads/models/ad_media.dart';
 import 'package:jperg_app/features/ads/presentation/pages/campaign_wizard_page.dart';
 import 'package:jperg_app/features/location/presentation/widgets/location_picker_sheet.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Edit Campaign — the whole wizard on one page.
 ///
@@ -589,7 +590,7 @@ class _EditCampaignFormPageState extends State<EditCampaignFormPage> {
           SizedBox(height: AppSpacing.xxl.h),
           Center(
             child: SizedBox(
-              height: 48.h,
+              height: 48.tapH,
               child: ElevatedButton(
                 onPressed: (_complete && !_saving) ? _save : null,
                 style: ElevatedButton.styleFrom(

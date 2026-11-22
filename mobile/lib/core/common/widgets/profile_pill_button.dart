@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Follow and Message, on either kind of profile.
 ///
@@ -53,7 +54,7 @@ class ProfilePillButton extends StatelessWidget {
         child: Opacity(
           opacity: content,
           child: Container(
-            height: 44.h,
+            height: 44.tapH,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: filled

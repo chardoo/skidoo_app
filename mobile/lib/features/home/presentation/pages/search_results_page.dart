@@ -25,6 +25,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 class SearchResultsPage extends StatefulWidget {
   static const routeName = '/searchresults';
@@ -999,7 +1000,7 @@ class _ActionButton extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             opacity: disabled ? 0.5 : 1.0,
             child: Container(
-              height: 46.h,
+              height: 46.tapH,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(AppRadius.md.r),

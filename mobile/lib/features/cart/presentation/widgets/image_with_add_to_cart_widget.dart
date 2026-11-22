@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:jperg_app/models/photos/Photo.dart';
@@ -75,8 +76,8 @@ class ImageWithAddToCartWidget extends StatelessWidget {
                 }
               },
               child: Container(
-                width: 36.w,
-                height: 36.w,
+                width: 36.tapW,
+                height: 36.tapW,
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.7),
                   shape: BoxShape.circle,

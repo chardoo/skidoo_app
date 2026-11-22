@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/ads/data/models/booking_model.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// "Create Quote" — the photographer pricing a job they were picked for.
 ///
@@ -252,7 +253,7 @@ class _QuoteComposerSheetState extends State<QuoteComposerSheet> {
                   Expanded(
                     flex: 2,
                     child: SizedBox(
-                      height: 46.h,
+                      height: 46.tapH,
                       child: ElevatedButton(
                         onPressed: _valid && !_submitting ? _submit : null,
                         style: ElevatedButton.styleFrom(

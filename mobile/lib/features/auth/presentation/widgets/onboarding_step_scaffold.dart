@@ -5,6 +5,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Shared chrome for every step of the post-signup onboarding wizard — back
 /// arrow, segmented step-progress bar, title/subtitle, scrollable content,
@@ -69,7 +70,7 @@ class OnboardingStepScaffold extends StatelessWidget {
                 children: [
                   SizedBox(height: AppSpacing.sm.h),
                   SizedBox(
-                    height: 40.h,
+                    height: 40.tapH,
                     child: canPop
                         ? const Align(
                             alignment: Alignment.centerLeft,
@@ -112,7 +113,7 @@ class OnboardingStepScaffold extends StatelessWidget {
                     SizedBox(height: AppSpacing.lg.h),
                     AppButton(
                       fullWidth: true,
-                      height: 52.h,
+                      height: 52.tapH,
                       label: primaryLabel!,
                       isLoading: primaryLoading,
                       onPressed: primaryEnabled && !primaryLoading

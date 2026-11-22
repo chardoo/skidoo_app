@@ -4,6 +4,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/theme/app_typography.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// What the photographer chose to do about a request.
 enum InvitationAction { send, withdraw }
@@ -157,7 +158,7 @@ class _InvitationSheetState extends State<InvitationSheet> {
                 SizedBox(height: AppSpacing.md.h),
                 SizedBox(
                   width: double.infinity,
-                  height: 48.h,
+                  height: 48.tapH,
                   child: ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(
                       InvitationResult(

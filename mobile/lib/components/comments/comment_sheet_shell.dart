@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/components/comments/comment_sheet_scope.dart';
 import 'package:jperg_app/core/celebration/comment_milestone_watcher.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Which end of the thread comes first.
 ///
@@ -251,7 +252,7 @@ class _SortControl extends StatelessWidget {
         for (final option in CommentSort.values)
           PopupMenuItem<CommentSort>(
             value: option,
-            height: 40.h,
+            height: 40.tapH,
             child: Row(
               children: [
                 Icon(

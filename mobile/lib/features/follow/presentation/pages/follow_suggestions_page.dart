@@ -11,6 +11,7 @@ import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/services/auth_service.dart';
 import 'package:jperg_app/features/auth/onboarding_step.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Final onboarding step — "Creators to follow" (4/4), the same for every
 /// role. Photographer-only portfolio setup + verification no longer happen
@@ -217,7 +218,7 @@ class _SuggestionCard extends StatelessWidget {
           ),
           SizedBox(width: AppSpacing.sm.w),
           SizedBox(
-            height: 34.h,
+            height: 34.tapH,
             child: Semantics(
               button: true,
               label: following ? 'Following' : 'Follow',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Primary Continue/Get-Started button with a Skip text button beneath it.
 class OnboardingActionsSection extends StatelessWidget {
@@ -23,7 +24,7 @@ class OnboardingActionsSection extends StatelessWidget {
       children: [
         SizedBox(
           width: double.infinity,
-          height: 52.h,
+          height: 52.tapH,
           child: Semantics(
             button: true,
             label: isLast ? 'Get Started' : 'Continue',

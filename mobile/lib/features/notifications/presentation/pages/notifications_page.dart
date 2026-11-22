@@ -13,6 +13,7 @@ import 'package:jperg_app/core/widgets/jperg_image.dart';
 import 'package:jperg_app/features/notifications/data/notification_inbox.dart';
 import 'package:jperg_app/features/notifications/data/notification_service.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// The notification inbox.
 ///
@@ -393,7 +394,7 @@ class _FilterBar extends StatelessWidget {
     final accent = ext.accentGold;
 
     return SizedBox(
-      height: 52.h,
+      height: 52.tapH,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),

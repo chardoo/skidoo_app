@@ -8,6 +8,7 @@ import 'package:jperg_app/core/theme/app_theme_extension.dart';
 import 'package:jperg_app/core/utils/snackbar_utils.dart';
 import 'package:jperg_app/features/gallery/data/repositories/found_review_repository.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// "Tap to deselect photos that aren't you."
 ///
@@ -293,7 +294,7 @@ class _ConfirmButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 52.h,
+      height: 52.tapH,
       child: ElevatedButton(
         onPressed: busy ? null : onPressed,
         style: ElevatedButton.styleFrom(

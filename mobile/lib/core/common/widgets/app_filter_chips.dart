@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
@@ -44,10 +45,23 @@ class AppFilterChip extends StatelessWidget {
   final VoidCallback onTap;
   final AppFilterRowStyle style;
 
-  /// The height of a row of these. Exposed so [AppFilterRow] can size itself,
-  /// and so a caller laying chips out by hand gets the same number.
+  /// The height the pill itself is **drawn** at. Not the height of the row it
+  /// sits in — see [rowHeightFor], and the note there for why they differ.
   static double heightFor(AppFilterRowStyle style) =>
       style == AppFilterRowStyle.primary ? 40 : 32;
+
+  /// The height of a row of these. Exposed so [AppFilterRow] can size itself,
+  /// and so a caller laying chips out by hand gets the same number.
+  ///
+  /// Taller than the pill, and deliberately. A secondary chip is drawn 32 high
+  /// because two rows of 44pt pills read as eight buttons of equal weight —
+  /// but 32 scaled down to 25pt on an iPhone SE, and a 25pt-tall thing is not
+  /// something a thumb can reliably hit. So the row is floored at the 44pt
+  /// minimum and the pill is centred in it: the chip looks exactly as it was
+  /// drawn, and the target around it is the size it has to be. The tap lands
+  /// on the row, not on the pill — see the `HitTestBehavior.opaque` below.
+  static double rowHeightFor(AppFilterRowStyle style) =>
+      heightFor(style).tapH;
 
   @override
   Widget build(BuildContext context) {
@@ -83,28 +97,38 @@ class AppFilterChip extends StatelessWidget {
       label: label,
       child: GestureDetector(
         onTap: onTap,
+        // Opaque, and wrapped in a [Center] that takes the full row height, so
+        // the target is the whole 44pt band and not just the pill drawn inside
+        // it. See [rowHeightFor].
         behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(
-            horizontal: (primary ? AppSpacing.lg : AppSpacing.md).w,
-          ),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(AppRadius.pill.r),
-            border: Border.all(color: border),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: foreground,
-              fontSize: (primary ? 14 : 13).sp,
-              // Weight carries the selection as well as colour, so the state
-              // survives for anyone who cannot separate the green from the
-              // grey.
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        // Fills the row vertically and wraps the pill horizontally: the row is
+        // what gives this its 44pt, and the chip row scrolls sideways, so the
+        // width has to come from the label.
+        child: Center(
+          widthFactor: 1,
+          child: AnimatedContainer(
+            height: heightFor(style).h,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            alignment: Alignment.center,
+            padding: EdgeInsets.symmetric(
+              horizontal: (primary ? AppSpacing.lg : AppSpacing.md).w,
+            ),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(AppRadius.pill.r),
+              border: Border.all(color: border),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: foreground,
+                fontSize: (primary ? 14 : 13).sp,
+                // Weight carries the selection as well as colour, so the state
+                // survives for anyone who cannot separate the green from the
+                // grey.
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -178,7 +202,7 @@ class _AppFilterRowState extends State<AppFilterRow> {
 
   @override
   Widget build(BuildContext context) {
-    final height = AppFilterChip.heightFor(widget.style).h;
+    final height = AppFilterChip.rowHeightFor(widget.style);
 
     final row = SizedBox(
       height: height,

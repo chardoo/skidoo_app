@@ -51,6 +51,10 @@
 	<string>jperg needs permission to save images to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>jperg needs access to your photo library to select and save images.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>INSendMessageIntent</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -78,23 +82,6 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
-	<key>NSUserActivityTypes</key>
-	<array>
-		<!-- Required of any app holding the communication-notifications
-		     entitlement, and declared here rather than in the extension: it is
-		     the app that holds the entitlement, so it is the app that has to
-		     name the intent types it will be handed. Without it App Store
-		     Connect warns on every upload, and iOS has grounds to decline the
-		     intent at runtime — which would leave notifications arriving
-		     correctly but wearing the app icon, the one failure that looks
-		     like nothing is wrong.
-
-		     INSendMessageIntent only. INStartCallIntent is the other member
-		     of this family and this app places no calls; naming it would
-		     claim a capability that does not exist. See
-		     ios/NotificationServiceExtension/NotificationService.swift. -->
-		<string>INSendMessageIntent</string>
-	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -102,13 +89,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>

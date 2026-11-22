@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// The six-box entry for an emailed code.
 ///
@@ -130,8 +131,8 @@ class _AppCodeFieldState extends State<AppCodeField> {
             }
 
             return Container(
-              width: 44.w,
-              height: 52.h,
+              width: 44.tapW,
+              height: 52.tapH,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: ext.searchFieldFill,

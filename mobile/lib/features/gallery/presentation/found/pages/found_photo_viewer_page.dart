@@ -18,6 +18,7 @@ import 'package:jperg_app/models/photos/Photo.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/features/discovery/presentation/widgets/photo_more_options_sheet.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Full-screen viewer for an album's photos: "n of total" in the app bar, the
 /// photo with its badge/action-rail/photographer overlays, and a filmstrip of
@@ -403,7 +404,7 @@ class _ViewerTopBar extends StatelessWidget {
     final title = this.title;
     if (title != null) {
       return SizedBox(
-        height: 48.h,
+        height: 48.tapH,
         child: Row(
           children: [
             const AppBackButton(),
@@ -433,7 +434,7 @@ class _ViewerTopBar extends StatelessWidget {
     }
 
     return SizedBox(
-      height: 48.h,
+      height: 48.tapH,
       child: Stack(
         children: [
           const Align(

@@ -11,6 +11,7 @@ import 'package:jperg_app/features/photographers/data/repositories/reviews_repos
 import 'package:jperg_app/features/photographers/presentation/widgets/photographer_meta.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/utils/avatar_initial.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Everything a client says about a photographer, and the screen where they
 /// say it.
@@ -105,7 +106,7 @@ class _PhotographerReviewsPageState extends State<PhotographerReviewsPage> {
       body: Column(
         children: [
           SizedBox(
-            height: 44.h,
+            height: 44.tapH,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
@@ -672,7 +673,7 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
           ),
           SizedBox(height: AppSpacing.lg.h),
           SizedBox(
-            height: 52.h,
+            height: 52.tapH,
             child: ElevatedButton(
               // A review with no stars is not a review; the words are optional.
               // Once the server has said this person already reviewed this
@@ -777,7 +778,7 @@ class ReviewSubmittedPage extends StatelessWidget {
             SizedBox(height: AppSpacing.xxl.h),
             SizedBox(
               width: double.infinity,
-              height: 52.h,
+              height: 52.tapH,
               child: ElevatedButton(
                 // Back to the request, not back to the composer.
                 onPressed: () => Navigator.of(context).pop(true),

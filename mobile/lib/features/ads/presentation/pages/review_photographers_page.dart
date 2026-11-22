@@ -28,6 +28,7 @@ import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
 import 'package:jperg_app/features/photographers/presentation/pages/reviews_pages.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/widgets/text_prompt_dialog.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// What happened to a request while it was open, so the list behind it knows
 /// whether it is out of date.
@@ -992,7 +993,7 @@ class _ReviewPrompt extends StatelessWidget {
           SizedBox(height: AppSpacing.md.h),
           SizedBox(
             width: double.infinity,
-            height: 44.h,
+            height: 44.tapH,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(

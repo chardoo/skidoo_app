@@ -17,6 +17,7 @@ import 'package:jperg_app/features/admin/data/models/app_config.dart';
 import 'package:jperg_app/features/admin/data/repositories/app_config_repository.dart';
 import 'package:jperg_app/features/ads/models/ad_campaign.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Everything the five steps collect, in one place.
 ///
@@ -467,7 +468,7 @@ class _Footer extends StatelessWidget {
           if (onBack != null) ...[
             Expanded(
               child: SizedBox(
-                height: 48.h,
+                height: 48.tapH,
                 child: OutlinedButton(
                   onPressed: saving ? null : onBack,
                   style: OutlinedButton.styleFrom(
@@ -490,7 +491,7 @@ class _Footer extends StatelessWidget {
           Expanded(
             flex: onBack == null ? 1 : 1,
             child: SizedBox(
-              height: 48.h,
+              height: 48.tapH,
               child: ElevatedButton(
                 onPressed: (enabled && !saving) ? onNext : null,
                 style: ElevatedButton.styleFrom(
@@ -1984,7 +1985,7 @@ class CampaignSubmittedPage extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.xl.h),
                 SizedBox(
-                  height: 48.h,
+                  height: 48.tapH,
                   child: ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(

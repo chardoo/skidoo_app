@@ -18,6 +18,7 @@ import 'package:jperg_app/core/widgets/video_player/jperg_video_player.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
@@ -296,8 +297,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
                         ? null
                         : _showMediaPicker,
                     child: Container(
-                      width: 40.w,
-                      height: 40.h,
+                      width: 40.tapW,
+                      height: 40.tapH,
                       decoration: BoxDecoration(
                         color: ext.searchFieldFill,
                         shape: BoxShape.circle,
@@ -378,8 +379,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     onTap: widget.isUploadingImage ? null : widget.onSend,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: 44.w,
-                      height: 44.h,
+                      width: 44.tapW,
+                      height: 44.tapH,
                       decoration: BoxDecoration(
                         color: widget.isUploadingImage
                             ? ext.accentGold.withValues(alpha: 0.4)

@@ -19,6 +19,7 @@ import 'package:jperg_app/features/ads/presentation/pages/edit_campaign_form_pag
 import 'package:jperg_app/features/ads/presentation/widgets/campaign_status_pill.dart';
 import 'package:jperg_app/features/ads/presentation/widgets/media_carousel.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// One campaign: what it is, and whatever it currently wants from its owner.
 ///
@@ -862,7 +863,7 @@ class _PayButton extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
         child: SizedBox(
-          height: 52.h,
+          height: 52.tapH,
           child: ElevatedButton(
             onPressed: onTap,
             style: ElevatedButton.styleFrom(
@@ -1127,7 +1128,7 @@ class _ConfirmSheet extends StatelessWidget {
                   children: [
                     Expanded(
                       child: SizedBox(
-                        height: 46.h,
+                        height: 46.tapH,
                         child: OutlinedButton(
                           onPressed: () => Navigator.of(context).pop(false),
                           style: OutlinedButton.styleFrom(
@@ -1151,7 +1152,7 @@ class _ConfirmSheet extends StatelessWidget {
                     SizedBox(width: AppSpacing.md.w),
                     Expanded(
                       child: SizedBox(
-                        height: 46.h,
+                        height: 46.tapH,
                         child: ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(true),
                           style: ElevatedButton.styleFrom(
@@ -1199,7 +1200,7 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
         child: SizedBox(
-          height: 50.h,
+          height: 50.tapH,
           child: filled
               ? ElevatedButton(
                   onPressed: onTap,
@@ -1347,7 +1348,7 @@ class CampaignResumedPage extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.xl.h),
                 SizedBox(
-                  height: 48.h,
+                  height: 48.tapH,
                   child: ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(

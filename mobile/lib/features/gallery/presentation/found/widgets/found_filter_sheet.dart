@@ -14,6 +14,7 @@ import 'package:jperg_app/features/gallery/presentation/found/models/found_filte
 import 'package:jperg_app/features/gallery/presentation/found/models/found_filters.dart';
 import 'package:jperg_app/features/gallery/presentation/found/widgets/found_filter_chip.dart';
 import 'package:jperg_app/core/common/widgets/app_drag_handle.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Bottom sheet holding the Found tab's date / visibility / photographer
 /// filters.
@@ -368,7 +369,7 @@ class _FoundFilterSheetState extends State<FoundFilterSheet> {
               child: Center(
                 child: AppButton(
                   label: _ctaLabel,
-                  height: 52.h,
+                  height: 52.tapH,
                   borderRadius: AppRadius.pill,
                   // ~half the screen, as measured off the design, but never
                   // wider than the sheet's content column.

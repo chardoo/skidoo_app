@@ -31,6 +31,7 @@ import 'package:jperg_app/features/discovery/presentation/widgets/report_sheet.d
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/core/navigation/external_link.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data model — same shape for campaigns and requests
@@ -1231,7 +1232,7 @@ class _CtaButton extends StatelessWidget {
         onTap: enabled ? onTap : null,
         child: Container(
           width: double.infinity,
-          height: 46.h,
+          height: 46.tapH,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.25),

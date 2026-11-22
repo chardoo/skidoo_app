@@ -13,6 +13,7 @@ import 'package:jperg_app/features/auth/domain/usecases/resend_verification_usec
 import 'package:jperg_app/features/auth/domain/usecases/verify_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/face_capture_step_page.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 const _kCodeLength = 6;
 const _kResendCooldown = Duration(seconds: 30);
@@ -271,7 +272,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
 
                   SizedBox(
                     width: double.infinity,
-                    height: 52.h,
+                    height: 52.tapH,
                     child: ElevatedButton(
                       onPressed: (_isLoading || _code.length != _kCodeLength)
                           ? null

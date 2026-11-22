@@ -17,6 +17,7 @@ import 'package:jperg_app/features/ads/presentation/widgets/quote_composer_sheet
 import 'package:jperg_app/features/chat/domain/usecases/chat_usecases.dart';
 import 'package:jperg_app/features/chat/presentation/chat_error_text.dart';
 import 'package:jperg_app/features/chat/presentation/pages/chat_room_page.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// A job from the photographer's side: what was asked for, what they quoted,
 /// and where the money has got to.
@@ -422,7 +423,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
             SizedBox(height: AppSpacing.lg.h),
             SizedBox(
               width: double.infinity,
-              height: 46.h,
+              height: 46.tapH,
               child: OutlinedButton.icon(
                 onPressed: _busy ? null : _deliverPhotos,
                 icon: Icon(Icons.photo_library_outlined,
@@ -448,7 +449,7 @@ class _PhotographerBookingPageState extends State<PhotographerBookingPage> {
             SizedBox(height: AppSpacing.lg.h),
             SizedBox(
               width: double.infinity,
-              height: 46.h,
+              height: 46.tapH,
               child: ElevatedButton(
                 onPressed: _busy ? null : _sendQuote,
                 style: ElevatedButton.styleFrom(

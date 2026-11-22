@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:jperg_app/core/common/widgets/reaction_pop.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/common/reaction_feedback.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// One button in an action rail over media: an icon with its count underneath,
 /// both shadowed so they stay legible on any photo, and a press-scale so the
@@ -179,8 +182,12 @@ class _MediaRailActionState extends State<MediaRailAction>
             children: [
               if (widget.tapTargetSize != null)
                 SizedBox(
-                  width: widget.tapTargetSize,
-                  height: widget.tapTargetSize,
+                  // Floored here rather than at the call sites, so a caller
+                  // asking for a compact button gets a compact *glyph* and
+                  // not a target a thumb misses. The album's download asked
+                  // for `32.r`, which is 25pt on an iPhone SE.
+                  width: math.max(widget.tapTargetSize!, kMinTapTarget),
+                  height: math.max(widget.tapTargetSize!, kMinTapTarget),
                   child: Center(
                       child:
                           ReactionPop(active: widget.active, child: glyph)),

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:jperg_app/core/theme/app_radius.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 import 'package:jperg_app/core/theme/app_theme_extension.dart';
 
 /// App-wide button — one shape/radius/loading-state recipe, four variants.
@@ -225,7 +227,12 @@ class _AppButtonState extends State<AppButton> {
     return _pressable(
       SizedBox(
         width: effectiveWidth,
-        height: widget.height ?? 50.h,
+        // Floored at the 44pt minimum, and the floor is applied to the
+        // caller's number too rather than only to the default. A caller
+        // passing `40.h` is asking for a compact button, not for a 32pt one —
+        // which is what 40.h comes to on an iPhone SE, and is under the size
+        // App Review measures. See [kMinTapTarget].
+        height: math.max(widget.height ?? 50.h, kMinTapTarget),
         child: ElevatedButton(
           statesController: _states,
           onPressed: _loading || widget.onPressed == null ? null : _handlePress,

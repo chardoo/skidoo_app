@@ -14,6 +14,7 @@ import 'package:jperg_app/core/theme/app_radius.dart';
 import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -411,7 +412,7 @@ class _EditCampaignPageState extends State<EditCampaignPage> {
                 child: GestureDetector(
                   onTap: _saving ? null : _save,
                   child: Container(
-                    height: 50.h,
+                    height: 50.tapH,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: _saving

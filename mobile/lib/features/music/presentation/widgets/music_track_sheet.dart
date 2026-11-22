@@ -7,6 +7,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/music/domain/entities/music_track.dart';
 import 'package:jperg_app/core/navigation/external_link.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Where the music pill leads: what is playing, and the way to hear all of it.
 ///
@@ -148,7 +149,7 @@ class MusicTrackSheet extends StatelessWidget {
 
               SizedBox(
                 width: double.infinity,
-                height: 52.h,
+                height: 52.tapH,
                 child: ElevatedButton(
                   onPressed: () => _openProvider(context),
                   style: ElevatedButton.styleFrom(

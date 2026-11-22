@@ -17,6 +17,7 @@ import 'package:jperg_app/core/theme/app_spacing.dart';
 import 'package:jperg_app/core/common/widgets/app_back_button.dart';
 import 'package:jperg_app/core/common/widgets/app_section_label.dart';
 import 'package:jperg_app/core/theme/app_icons.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 const _objectives = ['awareness', 'traffic', 'conversion'];
 const _objectiveLabels = {
@@ -629,7 +630,7 @@ class _BottomBar extends StatelessWidget {
                   onTap: onBack,
                   child: Container(
                     width: 48.w,
-                    height: 50.h,
+                    height: 50.tapH,
                     decoration: BoxDecoration(
                       color: ext.searchFieldFill,
                       borderRadius: BorderRadius.circular(AppRadius.md.r),
@@ -647,7 +648,7 @@ class _BottomBar extends StatelessWidget {
                 child: GestureDetector(
                   onTap: loading ? null : onNext,
                   child: Container(
-                    height: 50.h,
+                    height: 50.tapH,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: loading

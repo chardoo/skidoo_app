@@ -16,6 +16,7 @@ import 'package:jperg_app/core/theme/app_icons.dart';
 import 'package:jperg_app/features/photographers/data/premium_service.dart';
 import 'package:jperg_app/core/di/service_locator.dart';
 import 'package:jperg_app/core/widgets/text_prompt_dialog.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 /// Posting a request: fill it in, read it back, publish.
 ///
@@ -1387,7 +1388,7 @@ class _PrimaryButton extends StatelessWidget {
         isLoading: busy,
         fullWidth: true,
         // The flow's own rhythm: a little taller than the app default.
-        height: 52.h,
+        height: 52.tapH,
         borderRadius: AppRadius.pill,
       );
 }

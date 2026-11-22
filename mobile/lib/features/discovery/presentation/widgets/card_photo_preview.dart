@@ -70,22 +70,14 @@ class PostPhotoCarousel extends StatefulWidget {
 
   /// How a video fills its slide.
   ///
-  /// [BoxFit.contain] everywhere by default, which is this carousel's rule for
-  /// photographs and the right one for them: cropping somebody's picture to
-  /// fit a phone is a decision the app does not get to make, so a photo that
+  /// [BoxFit.contain] everywhere, which is this carousel's rule for
+  /// photographs and the right one for clips too: cropping somebody's media to
+  /// fit a phone is a decision the app does not get to make, so anything that
   /// does not match the screen is letterboxed over its own blurred copy.
   ///
-  /// A video in the full-bleed feed is the exception, and it is not an
-  /// inconsistency — the two are read differently. A photo is looked *at*; a
-  /// clip is immersive, and the feed it lives in is the one people arrive at
-  /// expecting the picture to reach every edge. Contained, even a 9:16 clip —
-  /// the shape phones record in — left 226 dp of dead band top and bottom on a
-  /// 19.5:9 screen, because 9:16 is not the shape of a modern phone and no
-  /// upload will ever match it exactly.
-  ///
-  /// Passed in rather than decided here so the standalone carousels — chat
-  /// media, the album viewer — keep letterboxing, where seeing the whole frame
-  /// is the entire point.
+  /// Still a parameter rather than a constant, because a *thumbnail* of a clip
+  /// is a different question — a grid tile is a crop by definition. Only a
+  /// full-bleed slide, where the clip is the subject, has to show all of it.
   final BoxFit videoFit;
 
   @override
@@ -226,13 +218,15 @@ class _PostPhotoCarouselState extends State<PostPhotoCarousel> {
           return Stack(
             fit: StackFit.expand,
             children: [
-              // The backdrop is the clip's own poster frame, blurred. It only
-              // shows where the video does not reach — so with [videoFit] set
-              // to cover it is painted and never seen, and with the default
-              // contain it is most of the screen. Kept on both paths because
-              // which one is in play is the caller's choice, and a cover fit
-              // still leaves a hair of backdrop visible for the frame or two
-              // before the first video frame is decoded.
+              // The backdrop is the clip's own poster frame, blurred. It is
+              // what fills the card where the video does not reach, and with
+              // the contained fit above that is the band top and bottom of
+              // every vertical clip — so it is not decoration here, it is the
+              // reason a whole, uncropped video can still look full-bleed.
+              //
+              // Kept on a cover fit too, which a thumbnail may pass: even
+              // there a hair of backdrop shows for the frame or two before the
+              // first video frame is decoded.
               MediaBackdrop(
                 url: pic.url,
                 child: _SliderVideoItem(

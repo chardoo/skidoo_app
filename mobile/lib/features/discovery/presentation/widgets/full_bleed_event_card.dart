@@ -972,13 +972,23 @@ class _FullBleedEventCardState extends State<FullBleedEventCard>
             pics: event.pictures,
             pageController: _mediaPageCtrl,
             showBlur: false,
-            // Video fills the card here, photographs still do not — see
-            // [PostPhotoCarousel.videoFit]. This is the feed people scroll
-            // expecting the picture to reach every edge, and a contained clip
-            // sat in a letterbox: 9:16 is the shape phones *record*, not the
-            // shape of the screen they play back on, so even a perfectly
-            // vertical upload left a dead band top and bottom.
-            videoFit: BoxFit.cover,
+            // Video is shown whole, exactly as photographs are — see
+            // [PostPhotoCarousel.videoFit].
+            //
+            // This was `cover` for a while, to make a clip reach every edge of
+            // the feed. It did, by cropping: 9:16 is the shape phones record
+            // and no screen is that shape, so covering a 19.5:9 screen scales
+            // a vertical clip up by a fifth and throws away the sides —
+            // whoever was framed at the edge of the shot is simply gone, and a
+            // clip someone filmed is not ours to re-crop.
+            //
+            // The screen is still filled, just not by the clip: [MediaBackdrop]
+            // paints a blurred, dimmed copy of the clip's own poster frame
+            // across the whole card, so the bands carry the video's light
+            // rather than reading as dead space. Nothing is cut and no edge is
+            // bare — which is the same bargain the photographs here already
+            // strike.
+            videoFit: BoxFit.contain,
             onDoubleTap: _doubleTapLike,
             onTap: _onCardTapped,
             cardIndex: widget.cardIndex,

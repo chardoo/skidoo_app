@@ -14,6 +14,7 @@ import 'package:jperg_app/core/theme/app_typography.dart';
 import 'package:jperg_app/features/auth/domain/usecases/request_password_reset_usecase.dart';
 import 'package:jperg_app/features/auth/domain/usecases/verify_reset_code_usecase.dart';
 import 'package:jperg_app/features/auth/presentation/pages/set_new_password_page.dart';
+import 'package:jperg_app/core/utils/responsive.dart';
 
 const _kCodeLength = 6;
 const _kResendCooldown = Duration(seconds: 30);
@@ -252,7 +253,7 @@ class _VerifyResetCodePageState extends State<VerifyResetCodePage> {
 
                   SizedBox(
                     width: double.infinity,
-                    height: 52.h,
+                    height: 52.tapH,
                     child: ElevatedButton(
                       onPressed: (_isLoading || _code.length != _kCodeLength)
                           ? null

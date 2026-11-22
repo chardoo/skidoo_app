@@ -45,6 +45,25 @@ void main() async {
   PaintingBinding.instance.imageCache.maximumSize = 120;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
 
+  // Portrait, and this line is the only thing holding it.
+  //
+  // iOS lets an app ask, through this call, for a subset of what its
+  // Info.plist names — so the plist lists the two landscapes as well, and the
+  // fullscreen video player is the one screen that asks for them back (see
+  // core/widgets/video_player/jperg_video_player.dart). Do not "tidy" the
+  // landscape entries out of UISupportedInterfaceOrientations: fullscreen
+  // video can only be granted an orientation that is declared there.
+  //
+  // The matching reason the app is iPhone-only (TARGETED_DEVICE_FAMILY = 1):
+  // a multitasking iPad ignores this call outright, so on iPad the app was
+  // free to rotate into a 1366pt-wide landscape that a 390×844 design has no
+  // answer for. Every size in the app is scaled off that design by screenutil
+  // — see core/utils/responsive.dart — so widths grew ~3× while text stayed
+  // phone-sized. That is what App Review saw in November 2026. Re-enabling
+  // the iPad device family means doing the adaptive-layout work first.
+  //
+  // Note that Xcode rewrites ios/Runner/Info.plist and strips XML comments
+  // from it, which is why this note lives here and not next to the key.
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Block screenshots / screen recording app-wide before the first frame.
